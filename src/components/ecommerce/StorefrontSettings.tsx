@@ -2,7 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN STOREFRONT & MULTI-PAGE WEBSITE STUDIO MANAGER ---
- * VERSION: v18.0 OMEGA (CUSTOM THEME ENGINE, MULTI-PAGE BUILDER & GLOBAL SHIPPING)
+ * VERSION: v19.0 OMEGA (MULTI-PRODUCT MEDIA LINKER, CAMERA FIX & REACTIVE TEMPLATES)
  * JURISDICTION: Standard Retail, Real Estate, Hotel/Airbnb & Professional Services
  */
 
@@ -32,9 +32,10 @@ import {
     MessageSquare, Phone, Mail, Store, 
     ShieldCheck, Upload, Home, Hotel, 
     Briefcase, Layers, ShoppingBag, Wifi,
-    Car, Utensils, Tv, KeyRound, Check, Film, Image, 
+    Car, Utensils, Tv, KeyRound, Check, Film, Image as ImageIcon, 
     Trash2, Sparkles, HelpCircle, Star, LayoutTemplate, Plus,
-    Truck, MapPin, Zap, FileText, Sliders, Moon, Sun, Crown, Building2
+    Truck, MapPin, Zap, FileText, Sliders, Moon, Sun, Crown, Building2,
+    CheckSquare, Square
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ import { updateStoreSettings, StoreSettingsFormValues } from "@/lib/ecommerce/ac
 
 const supabase = createClient();
 
+// HELPER: DETECT IF URL IS A VIDEO FILE
 const isVideoUrl = (url?: string) => {
     if (!url) return false;
     const cleanUrl = url.split('?')[0].toLowerCase();
@@ -102,20 +104,22 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingProductMedia, setIsUploadingProductMedia] = useState(false);
-  const [selectedVariantId, setSelectedVariantId] = useState<string>('');
 
-  // 1. DYNAMIC CUSTOM MULTI-PAGE BUILDER STATE
+  // MULTI-PRODUCT SELECTION STATE (ALLOWS SELECTING MULTIPLE ITEMS AT ONCE)
+  const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([]);
+
+  // MULTI-PAGE BUILDER STATE
   const [customPages, setCustomPages] = useState<Array<{ id: string; title: string; slug: string; content: string }>>([
     { id: '1', title: 'About Us & Quality Guarantee', slug: 'about', content: 'Learn more about our business history, quality standards, and customer guarantees.' }
   ]);
 
-  // 2. DYNAMIC FAQ BUILDER STATE (+ PLUS BUTTON FOR UNLIMITED Q&A)
+  // DYNAMIC FAQ BUILDER STATE
   const [faqs, setFaqs] = useState<Array<{ id: string; question: string; answer: string }>>([
     { id: '1', question: 'How do I place an order or book an inspection?', answer: 'You can add items to your shopping bag for direct Mobile Money checkout or click the WhatsApp button to chat directly with our agent.' },
     { id: '2', question: 'What are your delivery or check-in terms?', answer: 'Orders are processed immediately upon payment confirmation. Delivery occurs within 24 hours.' }
   ]);
 
-  // 3. HOTEL AMENITIES TOGGLES STATE
+  // HOTEL AMENITIES TOGGLES STATE
   const [hotelAmenities, setHotelAmenities] = useState<Record<string, boolean>>({
     wifi: true, ac: true, breakfast: true, parking: true, pool: false, tv: true
   });
@@ -158,14 +162,14 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
     }
   });
 
-  // DATA: Fetch Variants for media linker
+  // DATA: Fetch Product Variants for Media Linker
   const { data: productVariants } = useQuery({
     queryKey: ['variants_for_media_attach', activeBusinessId],
     enabled: !!activeBusinessId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('product_variants')
-        .select('id, name, sku, primary_media_url, products(name)')
+        .select('id, name, sku, primary_media_url, video_url, products(name)')
         .eq('business_id', activeBusinessId)
         .order('name');
       if (error) return [];
@@ -233,7 +237,21 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
   const bannerUrl = form.watch("bannerUrl");
   const logoUrl = form.watch("logoUrl");
 
-  const selectedVariant = productVariants?.find((pv: any) => String(pv.id) === String(selectedVariantId));
+  // MULTI-PRODUCT SELECTION TOGGLE HANDLER
+  const toggleVariantSelection = (id: string) => {
+    setSelectedVariantIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllVariants = () => {
+    if (!productVariants) return;
+    if (selectedVariantIds.length === productVariants.length) {
+      setSelectedVariantIds([]);
+    } else {
+      setSelectedVariantIds(productVariants.map((pv: any) => String(pv.id)));
+    }
+  };
 
   // FAQ HANDLERS
   const addFaqItem = () => setFaqs(prev => [...prev, { id: String(Date.now()), question: 'New Question?', answer: 'Answer details...' }]);
@@ -278,28 +296,36 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
     }
   };
 
+  // MULTI-PRODUCT MEDIA ATTACHMENT UPLOADER (PHOTO AND/OR VIDEO WALKTHROUGH)
   const handleProductMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedVariantId) return toast.error("Select a product variant or property first.");
+    if (!file || selectedVariantIds.length === 0) {
+      return toast.error("Please select one or more products/properties first.");
+    }
 
     setIsUploadingProductMedia(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `${activeBusinessId}/media_${selectedVariantId}_${Date.now()}.${fileExt}`;
+      const filePath = `${activeBusinessId}/media_${Date.now()}.${fileExt}`;
 
       const { error: uploadErr } = await supabase.storage.from('inventory-assets').upload(filePath, file);
       if (uploadErr) throw uploadErr;
 
       const { data: { publicUrl } } = supabase.storage.from('inventory-assets').getPublicUrl(filePath);
 
+      const isVideo = isVideoUrl(publicUrl);
+      const updatePayload = isVideo 
+        ? { video_url: publicUrl, updated_at: new Date().toISOString() }
+        : { primary_media_url: publicUrl, updated_at: new Date().toISOString() };
+
       const { error: dbErr } = await supabase
         .from('product_variants')
-        .update({ primary_media_url: publicUrl, updated_at: new Date().toISOString() })
-        .eq('id', selectedVariantId);
+        .update(updatePayload)
+        .in('id', selectedVariantIds);
 
       if (dbErr) throw dbErr;
 
-      toast.success("Media Asset Linked to Selected Item!");
+      toast.success(`Media Asset Attached to ${selectedVariantIds.length} Selected Item(s)!`);
       queryClient.invalidateQueries({ queryKey: ['variants_for_media_attach'] });
     } catch (err: any) {
       toast.error(`Media Attachment Failed: ${err.message}`);
@@ -363,7 +389,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                   .eq('business_id', activeBusinessId);
             }
 
-            toast.success("Website Theme, Pages & Logistics Sealed!");
+            toast.success("Website Settings, Multi-Page Layout & Themes Sealed!");
             queryClient.invalidateQueries({ queryKey: ['saved_storefront_settings_deep'] });
             queryClient.invalidateQueries({ queryKey: ['public_store_config'] });
         } catch (err: any) {
@@ -407,7 +433,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                     </div>
                     <div>
                         <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Website Custom Design Theme</CardTitle>
-                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Select a native enterprise design theme to transform the entire visual appearance of your public site</CardDescription>
+                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Select a native enterprise design theme to transform the visual styling of your store</CardDescription>
                     </div>
                 </div>
             </CardHeader>
@@ -838,7 +864,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                                     />
                                 )}
                                 <Badge className="absolute top-3 left-3 bg-slate-900/80 text-white font-bold text-[9px] uppercase backdrop-blur-md border-none flex items-center gap-1">
-                                    {isVideoUrl(bannerUrl) ? <Film size={12} className="text-purple-400" /> : <Image size={12} className="text-blue-400" />}
+                                    {isVideoUrl(bannerUrl) ? <Film size={12} className="text-purple-400" /> : <ImageIcon size={12} className="text-blue-400" />}
                                     Live {isVideoUrl(bannerUrl) ? 'Video' : 'Image'} Preview
                                 </Badge>
 
@@ -872,7 +898,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                             <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 p-2 h-36 flex items-center justify-center group">
                                 <img src={logoUrl} className="max-h-full max-w-full object-contain rounded-xl" alt="Brand Logo Preview" />
                                 <Badge className="absolute top-3 left-3 bg-slate-900/80 text-white font-bold text-[9px] uppercase backdrop-blur-md border-none flex items-center gap-1">
-                                    <Image size={12} className="text-emerald-400" /> Live Logo
+                                    <ImageIcon size={12} className="text-emerald-400" /> Live Logo
                                 </Badge>
                                 <Button 
                                     type="button" 
@@ -961,7 +987,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
             </CardContent>
         </Card>
 
-        {/* 8. PRODUCT / PROPERTY SPECIFIC MEDIA ATTACHMENT WITH INSTANT LIVE PREVIEWS */}
+        {/* 8. MULTI-PRODUCT / PROPERTY SPECIFIC MEDIA ATTACHMENT WITH INSTANT LIVE PREVIEWS */}
         <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-8">
                 <div className="flex items-center gap-3">
@@ -969,86 +995,70 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                         <Video size={24} />
                     </div>
                     <div>
-                        <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Product / Property Media Linker</CardTitle>
-                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Select any product or property listing and attach a custom photo or short video walkthrough</CardDescription>
+                        <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Multi-Product / Property Media Linker</CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Select one or multiple product/property listings and attach custom photos or video walkthroughs in bulk</CardDescription>
                     </div>
                 </div>
             </CardHeader>
 
             <CardContent className="p-8 space-y-6">
-                {selectedVariant?.primary_media_url && (
-                    <div className="p-4 bg-purple-50/40 rounded-2xl border border-purple-100 flex items-center gap-4 animate-in fade-in duration-300">
-                        <div className="h-20 w-20 rounded-xl overflow-hidden border border-purple-200 shrink-0 bg-slate-900 flex items-center justify-center relative">
-                            {isVideoUrl(selectedVariant.primary_media_url) ? (
-                                <video 
-                                    src={selectedVariant.primary_media_url} 
-                                    autoPlay 
-                                    loop 
-                                    muted 
-                                    playsInline 
-                                    className="w-full h-full object-cover" 
-                                />
-                            ) : (
-                                <img 
-                                    src={selectedVariant.primary_media_url} 
-                                    className="w-full h-full object-cover" 
-                                    alt="Attached Item Media" 
-                                />
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Select Products / Listings for Media Attachment ({selectedVariantIds.length} Selected)</Label>
+                        <Button type="button" onClick={toggleSelectAllVariants} variant="ghost" size="sm" className="h-8 text-[10px] font-bold text-blue-600 uppercase">
+                            {productVariants && selectedVariantIds.length === productVariants.length ? 'Deselect All' : 'Select All Items'}
+                        </Button>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-2xl p-4 bg-slate-50 space-y-2">
+                        {productVariants?.map((pv: any) => {
+                            const isSelected = selectedVariantIds.includes(String(pv.id));
+                            return (
+                                <div 
+                                    key={pv.id}
+                                    onClick={() => toggleVariantSelection(String(pv.id))}
+                                    className={cn(
+                                        "p-2.5 rounded-xl border flex items-center justify-between cursor-pointer text-xs font-bold transition-all",
+                                        isSelected ? "bg-purple-600 text-white border-purple-600 shadow-sm" : "bg-white text-slate-700 border-slate-200 hover:border-purple-300"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {isSelected ? <CheckSquare size={16} /> : <Square size={16} className="text-slate-400" />}
+                                        <span>{pv.products?.name} ({pv.name})</span>
+                                    </div>
+                                    <span className={cn("font-mono text-[10px]", isSelected ? "text-purple-100" : "text-slate-400")}>
+                                        SKU: {pv.sku || 'N/A'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                    <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Attach Photo or Video Walkthrough Clip</Label>
+                    <div className="relative group">
+                        <Input 
+                            type="file" 
+                            accept="image/*,video/*" 
+                            onChange={handleProductMediaUpload} 
+                            disabled={selectedVariantIds.length === 0 || isUploadingProductMedia}
+                            className="hidden" 
+                            id="product-video-upload" 
+                        />
+                        <label 
+                            htmlFor="product-video-upload" 
+                            className={cn(
+                                "flex items-center justify-center gap-3 h-14 border-2 border-dashed rounded-2xl cursor-pointer transition-all",
+                                selectedVariantIds.length === 0 ? "opacity-50 pointer-events-none bg-slate-100 border-slate-200 text-slate-400" : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
                             )}
-                        </div>
-                        <div>
-                            <Badge className="bg-purple-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 border-none mb-1">
-                                {isVideoUrl(selectedVariant.primary_media_url) ? 'Video Clip Attached' : 'Photo Attached'}
-                            </Badge>
-                            <p className="text-xs font-black text-slate-900">{selectedVariant.products?.name} ({selectedVariant.name})</p>
-                            <p className="text-[10px] font-mono text-slate-400">SKU: {selectedVariant.sku || 'N/A'}</p>
-                        </div>
+                        >
+                            {isUploadingProductMedia ? <Loader2 className="animate-spin h-5 w-5" /> : <Camera size={20} />}
+                            <span className="text-xs font-bold uppercase tracking-wider">
+                                {isUploadingProductMedia ? "Attaching Media..." : `Attach Photo / Video to ${selectedVariantIds.length} Selected Item(s)`}
+                            </span>
+                        </label>
                     </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-                    <div className="md:col-span-7 space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Select Item / Property Listing *</Label>
-                        <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
-                            <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                                <SelectValue placeholder="Select Product Variant or Property..." />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-64 rounded-xl">
-                                {productVariants?.map((pv: any) => (
-                                    <SelectItem key={pv.id} value={String(pv.id)} className="font-bold py-2.5">
-                                        {pv.products?.name} ({pv.name}) • SKU: {pv.sku || 'N/A'}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="md:col-span-5 space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Attach Photo / Short Video Walkthrough</Label>
-                        <div className="relative group">
-                            <Input 
-                                type="file" 
-                                accept="image/*,video/*" 
-                                onChange={handleProductMediaUpload} 
-                                disabled={!selectedVariantId || isUploadingProductMedia}
-                                className="hidden" 
-                                id="product-video-upload" 
-                            />
-                            <label 
-                                htmlFor="product-video-upload" 
-                                className={cn(
-                                    "flex items-center justify-center gap-3 h-12 px-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all",
-                                    !selectedVariantId ? "opacity-50 pointer-events-none bg-slate-100 border-slate-200 text-slate-400" : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                                )}
-                            >
-                                {isUploadingProductMedia ? <Loader2 className="animate-spin h-5 w-5" /> : <Camera size={18} />}
-                                <span className="text-xs font-bold uppercase tracking-wider">
-                                    {isUploadingProductMedia ? "Uploading..." : "Upload Photo / Video Clip"}
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-
                 </div>
             </CardContent>
         </Card>

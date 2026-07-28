@@ -2,11 +2,11 @@
 
 /**
  * --- BBU1 SOVEREIGN GLOBAL NETWORK SUPER-APP ---
- * VERSION: v18.0 OMEGA (GLOVO-STYLE CATEGORY TILES, LOCATION DISCOVERY & B2B WHOLESALE)
+ * VERSION: v19.0 OMEGA (GPS GEOLOCATION, DYNAMIC LOCATION ENGINE & B2B WHOLESALE)
  * JURISDICTION: Supermarket, Restaurants, Real Estate, Hotels & Professional Services
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import toast, { Toaster } from 'react-hot-toast';
@@ -17,7 +17,8 @@ import {
   Hotel, Briefcase, ExternalLink, MessageSquare, 
   ShieldCheck, Loader2, Sparkles, Building2, Tag, 
   Layers, Zap, PackageCheck, ArrowRight, CheckCircle2, Lock,
-  MapPin, UtensilsCrossed, Stethoscope, ShoppingCart, User, ChevronDown
+  MapPin, UtensilsCrossed, Stethoscope, ShoppingCart, User, 
+  Navigation, Crosshair, Compass, Check
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -39,13 +40,18 @@ export default function GlobalNetworkSuperAppPage() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [industryFilter, setIndustryFilter] = useState('ALL');
+
+  // DYNAMIC LOCATION ENGINE STATE (GPS & DYNAMIC ADDRESS)
   const [selectedLocation, setSelectedLocation] = useState('ALL');
+  const [userLocationLabel, setUserLocationLabel] = useState('Global / All Locations');
+  const [isDetectingGps, setIsDetectingGps] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [customLocationSearch, setCustomLocationSearch] = useState('');
 
   // MODAL STATES
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [b2bOrderItem, setB2bOrderItem] = useState<any | null>(null);
   const [b2bQuantity, setB2bQuantity] = useState<number>(10);
-  const [isAccountOpen, setIsAccountOpen] = useState(false);
 
   // 1. DATA: Get Current User Profile & Business Context
   const { data: profile } = useQuery({
@@ -83,6 +89,52 @@ export default function GlobalNetworkSuperAppPage() {
       return data || [];
     }
   });
+
+  // DYNAMICALLY EXTRACT UNIQUE STORE LOCATIONS FROM DB RESULTS
+  const availableLocations = useMemo(() => {
+    if (!networkItems) return [];
+    const locs = new Set<string>();
+    networkItems.forEach((item: any) => {
+      if (item.business_location) locs.add(item.business_location.trim());
+    });
+    return Array.from(locs);
+  }, [networkItems]);
+
+  // DEVICE GPS SATELLITE GEOLOCATION HANDLER
+  const detectGpsLocation = () => {
+    if (!navigator.geolocation) {
+      return toast.error("Geolocation is not supported by your browser.");
+    }
+
+    setIsDetectingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+          const data = await res.json();
+          
+          const city = data.city || data.locality || data.principalSubdivision || "Current Location";
+          const country = data.countryName || "";
+          const detectedLoc = country ? `${city}, ${country}` : city;
+
+          setSelectedLocation(city);
+          setUserLocationLabel(detectedLoc);
+          toast.success(`GPS Location Locked: ${detectedLoc}`);
+          setIsLocationModalOpen(false);
+        } catch (e) {
+          setUserLocationLabel("GPS Location Detected");
+          toast.success("GPS Coordinates Locked!");
+        } finally {
+          setIsDetectingGps(false);
+        }
+      },
+      (error) => {
+        setIsDetectingGps(false);
+        toast.error("Location permission denied. Please search your city manually.");
+      }
+    );
+  };
 
   // 3. MUTATION: B2B IN-SYSTEM WHOLESALE TRADE EXECUTION
   const b2bTradeMutation = useMutation({
@@ -136,7 +188,7 @@ export default function GlobalNetworkSuperAppPage() {
     <div className="min-h-screen bg-slate-50 font-sans pb-24">
       <Toaster position="top-center" />
 
-      {/* GLOVO-STYLE HEADER BAR WITH LOCATION SELECTOR */}
+      {/* GLOVO-STYLE LOCATION-AWARE HEADER */}
       <header className="sticky top-0 z-50 bg-slate-900 text-white border-b border-slate-800 backdrop-blur-md bg-opacity-95">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between gap-4">
           
@@ -148,23 +200,14 @@ export default function GlobalNetworkSuperAppPage() {
             <div>
               <h1 className="text-lg font-black uppercase tracking-tight">BBU1 Network</h1>
               
-              {/* LOCATION SELECTOR */}
-              <div className="flex items-center gap-1.5 text-xs text-slate-300 font-bold">
-                <MapPin size={12} className="text-emerald-400 shrink-0" />
-                <span>Deliver to:</span>
-                <select 
-                  value={selectedLocation} 
-                  onChange={e => setSelectedLocation(e.target.value)}
-                  className="bg-slate-800 text-emerald-400 font-bold text-xs rounded-lg px-2 py-0.5 border border-slate-700 outline-none cursor-pointer"
-                >
-                  <option value="ALL">All Cities / Global</option>
-                  <option value="Kampala">Kampala, Uganda</option>
-                  <option value="Ntinda">Ntinda, Kampala</option>
-                  <option value="Entebbe">Entebbe, Uganda</option>
-                  <option value="Jinja">Jinja, Uganda</option>
-                  <option value="Nairobi">Nairobi, Kenya</option>
-                </select>
-              </div>
+              {/* DYNAMIC GPS LOCATION TRIGGER */}
+              <button 
+                onClick={() => setIsLocationModalOpen(true)}
+                className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold hover:underline cursor-pointer"
+              >
+                <MapPin size={12} className="shrink-0" />
+                <span>Deliver to: <strong>{userLocationLabel}</strong></span>
+              </button>
             </div>
           </div>
 
@@ -342,7 +385,6 @@ export default function GlobalNetworkSuperAppPage() {
                       </Button>
                     </div>
 
-                    {/* B2B WHOLESALE BUTTON FOR MERCHANTS */}
                     <Button
                       disabled={isOwnItem}
                       onClick={(e) => {
@@ -371,6 +413,106 @@ export default function GlobalNetworkSuperAppPage() {
         </div>
 
       </main>
+
+      {/* DYNAMIC GPS & CITY LOCATION PICKER MODAL */}
+      <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden bg-white border-none shadow-3xl text-slate-900">
+          <div className="bg-slate-900 p-8 text-white text-center relative">
+            <Compass size={40} className="mx-auto mb-2 text-emerald-400" />
+            <DialogTitle className="text-xl font-black uppercase tracking-wider">Select Delivery Location</DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs mt-1 uppercase font-medium">Detect GPS coordinates or type any city/country globally</DialogDescription>
+          </div>
+
+          <div className="p-8 space-y-6 bg-white">
+            {/* GPS DETECT BUTTON */}
+            <Button 
+              onClick={detectGpsLocation} 
+              disabled={isDetectingGps}
+              className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-xl uppercase text-xs flex items-center justify-center gap-2"
+            >
+              {isDetectingGps ? <Loader2 className="animate-spin h-5 w-5" /> : <Crosshair size={18} />}
+              {isDetectingGps ? "Locking Satellite GPS..." : "Detect My Current GPS Location"}
+            </Button>
+
+            <div className="relative flex items-center justify-center my-2">
+              <span className="bg-white px-3 text-[10px] font-black uppercase text-slate-400 z-10">Or Search Any City / Country</span>
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+            </div>
+
+            {/* CUSTOM LOCATION INPUT */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Type Destination Address / City</Label>
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="e.g. Kampala, London, Nairobi, Dubai..." 
+                  value={customLocationSearch}
+                  onChange={e => setCustomLocationSearch(e.target.value)}
+                  className="h-12 rounded-2xl font-bold border-slate-200 text-xs flex-1"
+                />
+                <Button 
+                  onClick={() => {
+                    if (!customLocationSearch.trim()) return;
+                    setSelectedLocation(customLocationSearch.trim());
+                    setUserLocationLabel(customLocationSearch.trim());
+                    setIsLocationModalOpen(false);
+                    toast.success(`Filter set to ${customLocationSearch}`);
+                  }}
+                  className="h-12 px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl text-xs uppercase"
+                >
+                  Set
+                </Button>
+              </div>
+            </div>
+
+            {/* DYNAMICALLY DISCOVERED CITIES FROM DB */}
+            {availableLocations.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Registered Merchant Hubs</Label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedLocation('ALL');
+                      setUserLocationLabel('Global / All Locations');
+                      setIsLocationModalOpen(false);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                      selectedLocation === 'ALL' ? "bg-slate-900 text-white border-slate-900" : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    )}
+                  >
+                    All Locations
+                  </button>
+
+                  {availableLocations.map(loc => (
+                    <button
+                      key={loc}
+                      onClick={() => {
+                        setSelectedLocation(loc);
+                        setUserLocationLabel(loc);
+                        setIsLocationModalOpen(false);
+                        toast.success(`Location set to ${loc}`);
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1",
+                        selectedLocation === loc ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                      )}
+                    >
+                      <MapPin size={10} />
+                      {loc}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="p-6 bg-slate-50 border-t justify-end">
+            <Button variant="ghost" onClick={() => setIsLocationModalOpen(false)} className="h-11 font-bold uppercase text-xs text-slate-400">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 1. DETAIL SPECS & DUAL MEDIA OVERLAY MODAL */}
       <Dialog open={!!selectedItem} onOpenChange={open => { if (!open) setSelectedItem(null); }}>

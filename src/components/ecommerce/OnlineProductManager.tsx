@@ -22,7 +22,7 @@ import {
 import { 
     ArrowUpDown, Edit, Search, PackageOpen, AlertCircle, 
     Copy, Globe, Loader2, Store, MessageSquare, Video, 
-    Image as ImageIcon, Film, Plus, CheckSquare, Square, 
+    Image as ImageIcon, Film, Plus, Camera, CheckSquare, Square, 
     Upload, Trash2, ShieldCheck, Zap, Eye, EyeOff
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
