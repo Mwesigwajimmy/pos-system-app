@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * --- BBU1 SOVEREIGN STOREFRONT & MULTI-INDUSTRY TEMPLATE MANAGER ---
- * VERSION: v15.0 OMEGA (WEB STUDIO BLOCK BUILDER, LIVE MEDIA PREVIEWS & METADATA WELD)
+ * --- BBU1 SOVEREIGN STOREFRONT & MULTI-PAGE WEBSITE STUDIO MANAGER ---
+ * VERSION: v18.0 OMEGA (CUSTOM THEME ENGINE, MULTI-PAGE BUILDER & GLOBAL SHIPPING)
  * JURISDICTION: Standard Retail, Real Estate, Hotel/Airbnb & Professional Services
  */
 
@@ -33,7 +33,8 @@ import {
     ShieldCheck, Upload, Home, Hotel, 
     Briefcase, Layers, ShoppingBag, Wifi,
     Car, Utensils, Tv, KeyRound, Check, Film, Image, 
-    Trash2, Sparkles, HelpCircle, Star, LayoutTemplate, Plus
+    Trash2, Sparkles, HelpCircle, Star, LayoutTemplate, Plus,
+    Truck, MapPin, Zap, FileText, Sliders, Moon, Sun, Crown, Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +42,6 @@ import { updateStoreSettings, StoreSettingsFormValues } from "@/lib/ecommerce/ac
 
 const supabase = createClient();
 
-// HELPER: DETECT IF URL IS A VIDEO FILE
 const isVideoUrl = (url?: string) => {
     if (!url) return false;
     const cleanUrl = url.split('?')[0].toLowerCase();
@@ -52,6 +52,7 @@ const formSchema = z.object({
     storeName: z.string().min(3, "Store name required"),
     storeSlug: z.string().min(2, "Store URL slug required"),
     storefrontTemplate: z.enum(["RETAIL", "REAL_ESTATE_RENTALS", "HOTEL_AIRBNB", "SERVICES_BOOKING"]),
+    websiteTheme: z.enum(["MODERN_MINIMALIST", "DARK_SOVEREIGN", "LUXURY_GOLD", "CORPORATE_ENTERPRISE"]),
     themeColor: z.string().regex(/^#/, "Must be hex"),
     currency: z.string().length(3, "Must be 3 chars"),
     seoTitle: z.string().max(80, "Too long"),
@@ -63,18 +64,24 @@ const formSchema = z.object({
     bannerUrl: z.string().optional(),
     logoUrl: z.string().optional(),
 
-    // REAL ESTATE FIELDS
+    // LOGISTICS & SHIPPING
+    businessLocation: z.string().optional(),
+    standardShippingFee: z.string().optional(),
+    vipShippingFee: z.string().optional(),
+    supportedDestinations: z.string().optional(),
+
+    // REAL ESTATE
     inspectionFee: z.string().optional(),
     agencyLicenseNo: z.string().optional(),
     inspectionTerms: z.string().optional(),
 
-    // HOTEL / AIRBNB FIELDS
+    // HOTEL
     checkInTime: z.string().optional(),
     checkOutTime: z.string().optional(),
     advanceDepositPct: z.string().optional(),
     cancellationPolicy: z.string().optional(),
 
-    // SERVICES FIELDS
+    // SERVICES
     consultationFee: z.string().optional(),
     defaultDuration: z.string().optional(),
     workingHours: z.string().optional(),
@@ -84,10 +91,6 @@ const formSchema = z.object({
     heroCtaLink: z.string().optional(),
     aboutUsTitle: z.string().optional(),
     aboutUsBody: z.string().optional(),
-    faqQuestion1: z.string().optional(),
-    faqAnswer1: z.string().optional(),
-    faqQuestion2: z.string().optional(),
-    faqAnswer2: z.string().optional(),
     testimonialQuote: z.string().optional(),
     testimonialAuthor: z.string().optional(),
 });
@@ -101,17 +104,23 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
   const [isUploadingProductMedia, setIsUploadingProductMedia] = useState(false);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
 
-  // HOTEL AMENITIES TOGGLES STATE
+  // 1. DYNAMIC CUSTOM MULTI-PAGE BUILDER STATE
+  const [customPages, setCustomPages] = useState<Array<{ id: string; title: string; slug: string; content: string }>>([
+    { id: '1', title: 'About Us & Quality Guarantee', slug: 'about', content: 'Learn more about our business history, quality standards, and customer guarantees.' }
+  ]);
+
+  // 2. DYNAMIC FAQ BUILDER STATE (+ PLUS BUTTON FOR UNLIMITED Q&A)
+  const [faqs, setFaqs] = useState<Array<{ id: string; question: string; answer: string }>>([
+    { id: '1', question: 'How do I place an order or book an inspection?', answer: 'You can add items to your shopping bag for direct Mobile Money checkout or click the WhatsApp button to chat directly with our agent.' },
+    { id: '2', question: 'What are your delivery or check-in terms?', answer: 'Orders are processed immediately upon payment confirmation. Delivery occurs within 24 hours.' }
+  ]);
+
+  // 3. HOTEL AMENITIES TOGGLES STATE
   const [hotelAmenities, setHotelAmenities] = useState<Record<string, boolean>>({
-    wifi: true,
-    ac: true,
-    breakfast: true,
-    parking: true,
-    pool: false,
-    tv: true
+    wifi: true, ac: true, breakfast: true, parking: true, pool: false, tv: true
   });
 
-  // 1. DATA: Fetch Profile
+  // DATA: Fetch Profile
   const { data: profile } = useQuery({
     queryKey: ['active_profile_storefront_settings'],
     queryFn: async () => {
@@ -128,7 +137,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
 
   const activeBusinessId = profile?.business_id;
 
-  // 2. DATA: Fetch Saved Storefront Settings from DB
+  // DATA: Fetch Saved Storefront Settings from DB
   const { data: savedConfig } = useQuery({
     queryKey: ['saved_storefront_settings_deep', activeBusinessId],
     enabled: !!activeBusinessId,
@@ -138,11 +147,18 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
         .select('*')
         .eq('business_id', activeBusinessId)
         .maybeSingle();
+
+      if (data?.metadata?.faqs && Array.isArray(data.metadata.faqs)) {
+        setFaqs(data.metadata.faqs);
+      }
+      if (data?.metadata?.custom_pages && Array.isArray(data.metadata.custom_pages)) {
+        setCustomPages(data.metadata.custom_pages);
+      }
       return data;
     }
   });
 
-  // 3. DATA: Fetch Variants for media linker
+  // DATA: Fetch Variants for media linker
   const { data: productVariants } = useQuery({
     queryKey: ['variants_for_media_attach', activeBusinessId],
     enabled: !!activeBusinessId,
@@ -165,6 +181,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
       storeName: savedConfig?.store_name || profile?.business_name || 'My Web Storefront',
       storeSlug: savedConfig?.store_slug || defaultSlug,
       storefrontTemplate: savedConfig?.storefront_template || savedConfig?.template_type || 'RETAIL',
+      websiteTheme: savedConfig?.metadata?.website_theme || 'MODERN_MINIMALIST',
       themeColor: savedConfig?.theme_color || '#2563eb',
       currency: savedConfig?.currency_code || profile?.currency || 'UGX',
       seoTitle: savedConfig?.seo_title || `${profile?.business_name || 'Store'} | Official Digital Storefront`,
@@ -176,10 +193,16 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
       bannerUrl: savedConfig?.banner_url || '',
       logoUrl: savedConfig?.logo_url || '',
 
+      // LOGISTICS
+      businessLocation: savedConfig?.metadata?.business_location || 'Kampala, Uganda',
+      standardShippingFee: savedConfig?.metadata?.standard_shipping_fee || '10000',
+      vipShippingFee: savedConfig?.metadata?.vip_shipping_fee || '25000',
+      supportedDestinations: savedConfig?.metadata?.supported_destinations || 'East Africa, Europe, Asia, Global',
+
       // REAL ESTATE
       inspectionFee: savedConfig?.metadata?.inspection_fee || '50000',
       agencyLicenseNo: savedConfig?.metadata?.agency_license_no || '',
-      inspectionTerms: savedConfig?.metadata?.inspection_terms || 'Inspection fee covers physical viewing guided by authorized site agent.',
+      inspectionTerms: savedConfig?.metadata?.inspection_terms || 'Inspection fee covers physical viewing guided by site agent.',
 
       // HOTEL
       checkInTime: savedConfig?.metadata?.check_in_time || '14:00',
@@ -196,11 +219,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
       heroCtaText: savedConfig?.metadata?.hero_cta_text || 'Explore Catalog',
       heroCtaLink: savedConfig?.metadata?.hero_cta_link || '#catalog',
       aboutUsTitle: savedConfig?.metadata?.about_us_title || 'About Our Business',
-      aboutUsBody: savedConfig?.metadata?.about_us_body || 'We are dedicated to offering top tier quality products, verified property listings, and professional services to our valued clients.',
-      faqQuestion1: savedConfig?.metadata?.faq_question_1 || 'How do I place an order or book an inspection?',
-      faqAnswer1: savedConfig?.metadata?.faq_answer_1 || 'You can add items to your shopping bag for direct Mobile Money checkout or click the WhatsApp button to chat directly with our agent.',
-      faqQuestion2: savedConfig?.metadata?.faq_question_2 || 'What are your delivery or check-in terms?',
-      faqAnswer2: savedConfig?.metadata?.faq_answer_2 || 'Orders are processed immediately upon payment confirmation. Delivery occurs within 24 hours.',
+      aboutUsBody: savedConfig?.metadata?.about_us_body || 'We offer top tier quality products, verified property listings, and professional services.',
       testimonialQuote: savedConfig?.metadata?.testimonial_quote || 'Excellent service and super fast delivery. Highly recommended!',
       testimonialAuthor: savedConfig?.metadata?.testimonial_author || 'Verified Client',
     }
@@ -209,18 +228,27 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
   const activeSlug = form.watch("storeSlug") || defaultSlug;
   const publicStoreUrl = typeof window !== 'undefined' ? `${window.location.origin}/store/${activeSlug}` : `https://www.bbu1.com/store/${activeSlug}`;
   const selectedTemplate = form.watch("storefrontTemplate") || 'RETAIL';
+  const selectedTheme = form.watch("websiteTheme") || 'MODERN_MINIMALIST';
 
   const bannerUrl = form.watch("bannerUrl");
   const logoUrl = form.watch("logoUrl");
 
   const selectedVariant = productVariants?.find((pv: any) => String(pv.id) === String(selectedVariantId));
 
+  // FAQ HANDLERS
+  const addFaqItem = () => setFaqs(prev => [...prev, { id: String(Date.now()), question: 'New Question?', answer: 'Answer details...' }]);
+  const removeFaqItem = (id: string) => setFaqs(prev => prev.filter(f => f.id !== id));
+  const handleFaqChange = (id: string, field: 'question' | 'answer', value: string) => setFaqs(prev => prev.map(f => f.id === id ? { ...f, [field]: value } : f));
+
+  // MULTI-PAGE HANDLERS
+  const addCustomPage = () => setCustomPages(prev => [...prev, { id: String(Date.now()), title: 'New Custom Page', slug: `page-${prev.length + 1}`, content: 'Enter custom page content here...' }]);
+  const removeCustomPage = (id: string) => setCustomPages(prev => prev.filter(p => p.id !== id));
+  const handleCustomPageChange = (id: string, field: 'title' | 'slug' | 'content', value: string) => setCustomPages(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+
   const copyStoreLink = () => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(publicStoreUrl);
-      toast.success("Public Storefront Link Copied!", {
-        description: "Share this link on WhatsApp, Instagram or TikTok for customers to order or view listings."
-      });
+      toast.success("Public Storefront Link Copied!");
     }
   };
 
@@ -235,15 +263,10 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
       const fileExt = file.name.split('.').pop();
       const filePath = `${activeBusinessId}/storefront_${targetField}_${Date.now()}.${fileExt}`;
 
-      const { error: uploadErr } = await supabase.storage
-        .from('inventory-assets')
-        .upload(filePath, file);
-
+      const { error: uploadErr } = await supabase.storage.from('inventory-assets').upload(filePath, file);
       if (uploadErr) throw uploadErr;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('inventory-assets')
-        .getPublicUrl(filePath);
+      const { data: { publicUrl } } = supabase.storage.from('inventory-assets').getPublicUrl(filePath);
 
       form.setValue(targetField as any, publicUrl);
       toast.success(`${targetField === 'bannerUrl' ? 'Store Hero Banner' : 'Store Logo'} Uploaded!`);
@@ -257,24 +280,17 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
 
   const handleProductMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedVariantId) {
-      return toast.error("Please select a product variant or property first.");
-    }
+    if (!file || !selectedVariantId) return toast.error("Select a product variant or property first.");
 
     setIsUploadingProductMedia(true);
     try {
       const fileExt = file.name.split('.').pop();
       const filePath = `${activeBusinessId}/media_${selectedVariantId}_${Date.now()}.${fileExt}`;
 
-      const { error: uploadErr } = await supabase.storage
-        .from('inventory-assets')
-        .upload(filePath, file);
-
+      const { error: uploadErr } = await supabase.storage.from('inventory-assets').upload(filePath, file);
       if (uploadErr) throw uploadErr;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('inventory-assets')
-        .getPublicUrl(filePath);
+      const { data: { publicUrl } } = supabase.storage.from('inventory-assets').getPublicUrl(filePath);
 
       const { error: dbErr } = await supabase
         .from('product_variants')
@@ -283,7 +299,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
 
       if (dbErr) throw dbErr;
 
-      toast.success("Media Asset Linked to Selected Product/Property!");
+      toast.success("Media Asset Linked to Selected Item!");
       queryClient.invalidateQueries({ queryKey: ['variants_for_media_attach'] });
     } catch (err: any) {
       toast.error(`Media Attachment Failed: ${err.message}`);
@@ -315,6 +331,12 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                   .from('storefront_settings')
                   .update({
                     metadata: {
+                      website_theme: data.websiteTheme,
+                      business_location: data.businessLocation,
+                      standard_shipping_fee: data.standardShippingFee,
+                      vip_shipping_fee: data.vipShippingFee,
+                      supported_destinations: data.supportedDestinations,
+
                       inspection_fee: data.inspectionFee,
                       agency_license_no: data.agencyLicenseNo,
                       inspection_terms: data.inspectionTerms,
@@ -327,24 +349,21 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                       working_hours: data.workingHours,
                       hotel_amenities: hotelAmenities,
 
-                      // WEB STUDIO BLOCKS
                       hero_cta_text: data.heroCtaText,
                       hero_cta_link: data.heroCtaLink,
                       about_us_title: data.aboutUsTitle,
                       about_us_body: data.aboutUsBody,
-                      faq_question_1: data.faqQuestion1,
-                      faq_answer_1: data.faqAnswer1,
-                      faq_question_2: data.faqQuestion2,
-                      faq_answer_2: data.faqAnswer2,
                       testimonial_quote: data.testimonialQuote,
                       testimonial_author: data.testimonialAuthor,
+                      faqs: faqs,
+                      custom_pages: customPages
                     },
                     updated_at: new Date().toISOString()
                   })
                   .eq('business_id', activeBusinessId);
             }
 
-            toast.success("Storefront Template, Web Studio Blocks & Custom Settings Sealed!");
+            toast.success("Website Theme, Pages & Logistics Sealed!");
             queryClient.invalidateQueries({ queryKey: ['saved_storefront_settings_deep'] });
             queryClient.invalidateQueries({ queryKey: ['public_store_config'] });
         } catch (err: any) {
@@ -379,7 +398,219 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
             </div>
         </Card>
 
-        {/* 1. MULTI-INDUSTRY STOREFRONT TEMPLATE SELECTOR */}
+        {/* 🎨 1. NATIVE BBU1 CUSTOM WEBSITE THEME SELECTOR */}
+        <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+            <CardHeader className="bg-slate-50/50 border-b p-8">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl border border-purple-100">
+                        <Palette size={24} />
+                    </div>
+                    <div>
+                        <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Website Custom Design Theme</CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Select a native enterprise design theme to transform the entire visual appearance of your public site</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    
+                    {/* THEME 1: MODERN MINIMALIST */}
+                    <button
+                        type="button"
+                        onClick={() => form.setValue("websiteTheme", "MODERN_MINIMALIST")}
+                        className={cn(
+                            "p-6 rounded-3xl border-2 text-left transition-all flex flex-col justify-between h-48 relative overflow-hidden",
+                            selectedTheme === 'MODERN_MINIMALIST' ? "bg-blue-50/80 border-blue-600 shadow-lg scale-105" : "bg-white border-slate-200 hover:border-blue-300"
+                        )}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div className="p-3 bg-blue-600 text-white rounded-2xl"><Sun size={20}/></div>
+                            {selectedTheme === 'MODERN_MINIMALIST' && <CheckCircle2 className="text-blue-600" size={20}/>}
+                        </div>
+                        <div>
+                            <h4 className="font-black text-slate-900 text-sm uppercase">Modern Minimalist</h4>
+                            <p className="text-[10px] text-slate-500 font-medium mt-1">Clean snow-white background, electric blue accents & modern cards.</p>
+                        </div>
+                    </button>
+
+                    {/* THEME 2: DARK SOVEREIGN */}
+                    <button
+                        type="button"
+                        onClick={() => form.setValue("websiteTheme", "DARK_SOVEREIGN")}
+                        className={cn(
+                            "p-6 rounded-3xl border-2 text-left transition-all flex flex-col justify-between h-48 relative overflow-hidden",
+                            selectedTheme === 'DARK_SOVEREIGN' ? "bg-slate-900 text-white border-emerald-500 shadow-lg scale-105" : "bg-slate-900 text-white border-slate-800 hover:border-emerald-500/50"
+                        )}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div className="p-3 bg-emerald-600 text-white rounded-2xl"><Moon size={20}/></div>
+                            {selectedTheme === 'DARK_SOVEREIGN' && <CheckCircle2 className="text-emerald-400" size={20}/>}
+                        </div>
+                        <div>
+                            <h4 className="font-black text-white text-sm uppercase">Dark Sovereign</h4>
+                            <p className="text-[10px] text-slate-400 font-medium mt-1">Deep OLED dark mode, emerald glow, and futuristic glass cards.</p>
+                        </div>
+                    </button>
+
+                    {/* THEME 3: LUXURY GOLD */}
+                    <button
+                        type="button"
+                        onClick={() => form.setValue("websiteTheme", "LUXURY_GOLD")}
+                        className={cn(
+                            "p-6 rounded-3xl border-2 text-left transition-all flex flex-col justify-between h-48 relative overflow-hidden",
+                            selectedTheme === 'LUXURY_GOLD' ? "bg-amber-950 text-amber-100 border-amber-500 shadow-lg scale-105" : "bg-amber-950 text-amber-100 border-amber-900 hover:border-amber-600"
+                        )}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div className="p-3 bg-amber-500 text-slate-950 rounded-2xl"><Crown size={20}/></div>
+                            {selectedTheme === 'LUXURY_GOLD' && <CheckCircle2 className="text-amber-400" size={20}/>}
+                        </div>
+                        <div>
+                            <h4 className="font-black text-amber-100 text-sm uppercase">Luxury Gold</h4>
+                            <p className="text-[10px] text-amber-300/80 font-medium mt-1">Obsidian black with warm champagne gold accents and gold badges.</p>
+                        </div>
+                    </button>
+
+                    {/* THEME 4: CORPORATE ENTERPRISE */}
+                    <button
+                        type="button"
+                        onClick={() => form.setValue("websiteTheme", "CORPORATE_ENTERPRISE")}
+                        className={cn(
+                            "p-6 rounded-3xl border-2 text-left transition-all flex flex-col justify-between h-48 relative overflow-hidden",
+                            selectedTheme === 'CORPORATE_ENTERPRISE' ? "bg-slate-100 border-slate-900 shadow-lg scale-105" : "bg-white border-slate-200 hover:border-slate-400"
+                        )}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div className="p-3 bg-slate-900 text-white rounded-2xl"><Building2 size={20}/></div>
+                            {selectedTheme === 'CORPORATE_ENTERPRISE' && <CheckCircle2 className="text-slate-900" size={20}/>}
+                        </div>
+                        <div>
+                            <h4 className="font-black text-slate-900 text-sm uppercase">Corporate Enterprise</h4>
+                            <p className="text-[10px] text-slate-500 font-medium mt-1">Navy blue & steel gray, crisp executive borders, and formal layout.</p>
+                        </div>
+                    </button>
+
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 📄 2. CUSTOM MULTI-PAGE WEBSITE BUILDER (+ ADD CUSTOM PAGE) */}
+        <Card className="border-blue-200 bg-blue-50/10 shadow-xl rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="bg-blue-900 text-white p-8">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-blue-600 text-white rounded-2xl">
+                            <FileText size={24} />
+                        </div>
+                        <div>
+                            <CardTitle className="text-xl font-black uppercase tracking-tight">Custom Website Multi-Page Manager</CardTitle>
+                            <CardDescription className="text-xs font-medium text-blue-200 mt-0.5">Create custom standalone pages for your public website (e.g. About, Shipping, Warranty)</CardDescription>
+                        </div>
+                    </div>
+
+                    <Button type="button" onClick={addCustomPage} className="h-11 px-5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg">
+                        <Plus size={16} className="mr-1.5" /> Add Custom Page
+                    </Button>
+                </div>
+            </CardHeader>
+
+            <CardContent className="p-8 space-y-6">
+                {customPages.map((page, idx) => (
+                    <div key={page.id} className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 relative group">
+                        <div className="flex items-center justify-between">
+                            <Badge className="bg-blue-100 text-blue-900 font-bold text-[10px] uppercase border-none">
+                                Custom Page #{idx + 1}
+                            </Badge>
+
+                            {customPages.length > 1 && (
+                                <Button type="button" onClick={() => removeCustomPage(page.id)} variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600">
+                                    <Trash2 size={16} />
+                                </Button>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-black uppercase text-slate-400">Page Title</Label>
+                                <Input 
+                                    value={page.title} 
+                                    onChange={e => handleCustomPageChange(page.id, 'title', e.target.value)} 
+                                    placeholder="e.g. About Our Quality Guarantee" 
+                                    className="h-11 rounded-xl font-bold border-slate-200 text-xs" 
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-black uppercase text-slate-400">Page URL Slug</Label>
+                                <Input 
+                                    value={page.slug} 
+                                    onChange={e => handleCustomPageChange(page.id, 'slug', e.target.value)} 
+                                    placeholder="e.g. quality-guarantee" 
+                                    className="h-11 rounded-xl font-mono text-xs border-slate-200" 
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-black uppercase text-slate-400">Page Content / Article Body</Label>
+                            <Textarea 
+                                value={page.content} 
+                                onChange={e => handleCustomPageChange(page.id, 'content', e.target.value)} 
+                                placeholder="Enter page text, policy details, or company history..." 
+                                className="rounded-xl border-slate-200 text-xs min-h-[90px]" 
+                            />
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+
+        {/* 🚚 3. GLOBAL LOGISTICS & CUSTOM SHIPPING COST MANAGER */}
+        <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+            <CardHeader className="bg-slate-50/50 border-b p-8">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
+                        <Truck size={24} />
+                    </div>
+                    <div>
+                        <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Global Logistics & Delivery Options</CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Define business physical location, supported shipping countries, Standard vs VIP Express rates</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="p-8 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-slate-400">Business Physical Address / Location</Label>
+                        <Input {...form.register("businessLocation")} placeholder="e.g. Plot 12 Kampala Road, Uganda" className="h-12 rounded-2xl font-bold border-slate-200" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-slate-400">Supported Shipping Regions / Countries</Label>
+                        <Input {...form.register("supportedDestinations")} placeholder="e.g. East Africa, Europe, Asia, Global" className="h-12 rounded-2xl font-bold border-slate-200" />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-6">
+                    <div className="space-y-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <Label className="text-[10px] font-black uppercase text-slate-600 flex items-center gap-1.5">
+                            <Truck size={14} className="text-blue-600" /> Standard Delivery Fee ({form.watch("currency")})
+                        </Label>
+                        <Input {...form.register("standardShippingFee")} placeholder="10000" className="h-12 rounded-xl font-black border-slate-200 bg-white" />
+                    </div>
+
+                    <div className="space-y-2 p-4 bg-purple-50/50 rounded-2xl border border-purple-100">
+                        <Label className="text-[10px] font-black uppercase text-purple-900 flex items-center gap-1.5">
+                            <Zap size={14} className="text-purple-600" /> VIP Express Same-Day Delivery Fee ({form.watch("currency")})
+                        </Label>
+                        <Input {...form.register("vipShippingFee")} placeholder="25000" className="h-12 rounded-xl font-black border-purple-200 bg-white text-purple-950" />
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 4. MULTI-INDUSTRY STOREFRONT TEMPLATE SELECTOR */}
         <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-8">
                 <div className="flex items-center gap-3">
@@ -395,8 +626,6 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
 
             <CardContent className="p-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    
-                    {/* TEMPLATE 1: RETAIL */}
                     <button
                         type="button"
                         onClick={() => form.setValue("storefrontTemplate", "RETAIL")}
@@ -415,7 +644,6 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                         </div>
                     </button>
 
-                    {/* TEMPLATE 2: REAL ESTATE & RENTALS */}
                     <button
                         type="button"
                         onClick={() => form.setValue("storefrontTemplate", "REAL_ESTATE_RENTALS")}
@@ -434,7 +662,6 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                         </div>
                     </button>
 
-                    {/* TEMPLATE 3: HOTEL & AIRBNB */}
                     <button
                         type="button"
                         onClick={() => form.setValue("storefrontTemplate", "HOTEL_AIRBNB")}
@@ -453,7 +680,6 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                         </div>
                     </button>
 
-                    {/* TEMPLATE 4: PROFESSIONAL SERVICES */}
                     <button
                         type="button"
                         onClick={() => form.setValue("storefrontTemplate", "SERVICES_BOOKING")}
@@ -471,456 +697,133 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                             <p className="text-[10px] text-slate-500 font-medium mt-1">Consultation fees, service packages, and appointment scheduling.</p>
                         </div>
                     </button>
-
                 </div>
             </CardContent>
         </Card>
 
-        {/* DYNAMIC INDUSTRY-SPECIFIC CUSTOM CONFIGURATION PANEL */}
-        {selectedTemplate === 'REAL_ESTATE_RENTALS' && (
-            <Card className="border-emerald-200 bg-emerald-50/20 shadow-xl rounded-[2.5rem] overflow-hidden animate-in fade-in duration-300">
-                <CardHeader className="bg-emerald-100/50 border-b border-emerald-200 p-8">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-emerald-600 text-white rounded-2xl">
-                            <Home size={24} />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl font-black text-emerald-950 uppercase tracking-tight">Real Estate & Rental Directory Config</CardTitle>
-                            <CardDescription className="text-xs font-medium text-emerald-800 mt-0.5">Customize inspection fees, agency licensing, and property booking disclaimers</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-8 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-emerald-900 tracking-widest ml-1">Property Inspection Booking Fee ({form.watch("currency")})</Label>
-                            <Input {...form.register("inspectionFee")} placeholder="50000" className="h-12 rounded-2xl font-black border-emerald-200 bg-white text-emerald-950" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-emerald-900 tracking-widest ml-1">Agency / Broker License No.</Label>
-                            <Input {...form.register("agencyLicenseNo")} placeholder="e.g. RE-UG-2026-99" className="h-12 rounded-2xl font-bold border-emerald-200 bg-white" />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-emerald-900 tracking-widest ml-1">Inspection Terms & Site Visit Disclaimer</Label>
-                        <Textarea {...form.register("inspectionTerms")} placeholder="Explain property visit terms..." className="rounded-2xl border-emerald-200 font-medium bg-white min-h-[90px]" />
-                    </div>
-                </CardContent>
-            </Card>
-        )}
-
-        {selectedTemplate === 'HOTEL_AIRBNB' && (
-            <Card className="border-purple-200 bg-purple-50/20 shadow-xl rounded-[2.5rem] overflow-hidden animate-in fade-in duration-300">
-                <CardHeader className="bg-purple-100/50 border-b border-purple-200 p-8">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-purple-600 text-white rounded-2xl">
-                            <Hotel size={24} />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl font-black text-purple-950 uppercase tracking-tight">Hotel & Guest House Reservation Config</CardTitle>
-                            <CardDescription className="text-xs font-medium text-purple-800 mt-0.5">Configure check-in times, deposit rules, and room amenity highlights</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-8 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Standard Check-In Time</Label>
-                            <Input {...form.register("checkInTime")} placeholder="14:00" className="h-12 rounded-2xl font-bold border-purple-200 bg-white text-purple-950" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Standard Check-Out Time</Label>
-                            <Input {...form.register("checkOutTime")} placeholder="10:00" className="h-12 rounded-2xl font-bold border-purple-200 bg-white text-purple-950" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Advance MoMo Deposit (%)</Label>
-                            <Input {...form.register("advanceDepositPct")} placeholder="50" className="h-12 rounded-2xl font-black border-purple-200 bg-white text-purple-950" />
-                        </div>
-                    </div>
-
-                    <div className="space-y-3 pt-2">
-                        <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Featured Amenities (Shown on Room Listings)</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                            {[
-                              { id: 'wifi', label: 'Free WiFi', icon: Wifi },
-                              { id: 'ac', label: 'Air Con', icon: Utensils },
-                              { id: 'breakfast', label: 'Breakfast', icon: Utensils },
-                              { id: 'parking', label: 'Parking', icon: Car },
-                              { id: 'tv', label: 'Smart TV', icon: Tv },
-                              { id: 'pool', label: 'Swimming Pool', icon: KeyRound },
-                            ].map(amenity => (
-                              <button
-                                key={amenity.id}
-                                type="button"
-                                onClick={() => setHotelAmenities(prev => ({ ...prev, [amenity.id]: !prev[amenity.id] }))}
-                                className={cn(
-                                  "p-3 rounded-2xl border flex items-center justify-between text-xs font-bold transition-all",
-                                  hotelAmenities[amenity.id] ? "bg-purple-600 text-white border-purple-600 shadow-md" : "bg-white text-slate-600 border-purple-200 hover:border-purple-400"
-                                )}
-                              >
-                                <span>{amenity.label}</span>
-                                {hotelAmenities[amenity.id] && <Check size={14} />}
-                              </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Reservation & Cancellation Policy</Label>
-                        <Textarea {...form.register("cancellationPolicy")} placeholder="Explain cancellation terms..." className="rounded-2xl border-purple-200 font-medium bg-white min-h-[80px]" />
-                    </div>
-                </CardContent>
-            </Card>
-        )}
-
-        {selectedTemplate === 'SERVICES_BOOKING' && (
-            <Card className="border-amber-200 bg-amber-50/20 shadow-xl rounded-[2.5rem] overflow-hidden animate-in fade-in duration-300">
-                <CardHeader className="bg-amber-100/50 border-b border-amber-200 p-8">
+        {/* 5. DYNAMIC FAQ BUILDER (+ PLUS BUTTON TO ADD UNLIMITED Q&A PAIRS) */}
+        <Card className="border-amber-200 bg-amber-50/10 shadow-xl rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="bg-amber-900 text-white p-8">
+                <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="p-3 bg-amber-600 text-white rounded-2xl">
-                            <Briefcase size={24} />
+                            <HelpCircle size={24} />
                         </div>
                         <div>
-                            <CardTitle className="text-xl font-black text-amber-950 uppercase tracking-tight">Services & Appointments Config</CardTitle>
-                            <CardDescription className="text-xs font-medium text-amber-800 mt-0.5">Configure consultation fees, default duration, and operating hours</CardDescription>
+                            <CardTitle className="text-xl font-black uppercase tracking-tight">Dynamic FAQ Builder</CardTitle>
+                            <CardDescription className="text-xs font-medium text-amber-200 mt-0.5">Add custom questions and answers for your customers</CardDescription>
                         </div>
                     </div>
-                </CardHeader>
-                <CardContent className="p-8 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-amber-900 tracking-widest ml-1">Consultation Base Fee ({form.watch("currency")})</Label>
-                            <Input {...form.register("consultationFee")} placeholder="100000" className="h-12 rounded-2xl font-black border-amber-200 bg-white text-amber-950" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-amber-900 tracking-widest ml-1">Default Service Duration</Label>
-                            <Input {...form.register("defaultDuration")} placeholder="e.g. 60 Mins" className="h-12 rounded-2xl font-bold border-amber-200 bg-white text-amber-950" />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-amber-900 tracking-widest ml-1">Operating Hours & Service Availability</Label>
-                        <Input {...form.register("workingHours")} placeholder="Mon - Sat: 8:00 AM - 6:00 PM" className="h-12 rounded-2xl font-medium border-amber-200 bg-white text-amber-950" />
-                    </div>
-                </CardContent>
-            </Card>
-        )}
 
-        {/* 🎨 SOVEREIGN WEB STUDIO BUILDER (DYNAMIC CONTENT BLOCKS) */}
-        <Card className="border-blue-200 bg-blue-50/10 shadow-xl rounded-[2.5rem] overflow-hidden">
-            <CardHeader className="bg-blue-900 text-white p-8">
+                    <Button type="button" onClick={addFaqItem} className="h-11 px-5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-lg">
+                        <Plus size={16} className="mr-1.5" /> Add FAQ
+                    </Button>
+                </div>
+            </CardHeader>
+
+            <CardContent className="p-8 space-y-6">
+                {faqs.map((faq, idx) => (
+                    <div key={faq.id} className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 relative group">
+                        <div className="flex items-center justify-between">
+                            <Badge className="bg-amber-100 text-amber-900 font-bold text-[10px] uppercase border-none">
+                                FAQ Item #{idx + 1}
+                            </Badge>
+
+                            {faqs.length > 1 && (
+                                <Button type="button" onClick={() => removeFaqItem(faq.id)} variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600">
+                                    <Trash2 size={16} />
+                                </Button>
+                            )}
+                        </div>
+
+                        <div className="space-y-3">
+                            <Input 
+                                value={faq.question} 
+                                onChange={e => handleFaqChange(faq.id, 'question', e.target.value)} 
+                                placeholder="e.g. What are your delivery terms?" 
+                                className="h-11 rounded-xl font-bold border-slate-200 text-xs" 
+                            />
+                            <Textarea 
+                                value={faq.answer} 
+                                onChange={e => handleFaqChange(faq.id, 'answer', e.target.value)} 
+                                placeholder="Explain terms..." 
+                                className="rounded-xl border-slate-200 text-xs min-h-[70px]" 
+                            />
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+
+        {/* 6. BRANDING & PUBLIC STORE SLUG */}
+        <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+            <CardHeader className="bg-slate-50/50 border-b p-8">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 bg-blue-600 rounded-2xl text-white">
-                        <LayoutTemplate size={24} />
+                    <div className="p-3 bg-blue-50 rounded-2xl text-blue-600 border border-blue-100">
+                        <Palette size={24} />
                     </div>
                     <div>
-                        <CardTitle className="text-xl font-black uppercase tracking-tight">Sovereign Web Studio Block Builder</CardTitle>
-                        <CardDescription className="text-xs font-medium text-blue-200 mt-0.5">Customize your public website sections, Call-to-Actions, About Us story, FAQs & Testimonials</CardDescription>
+                        <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Branding & Storefront URL</CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Customize your public URL slug, brand theme, banner, and store identity</CardDescription>
                     </div>
                 </div>
             </CardHeader>
 
             <CardContent className="p-8 space-y-8">
-                {/* 1. HERO CTA BUTTON BUILDER */}
-                <div className="space-y-4 border-b border-slate-100 pb-6">
-                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
-                        <Sparkles size={14} className="text-blue-600" /> Hero Section Call-To-Action (CTA)
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-500">CTA Button Text</Label>
-                            <Input {...form.register("heroCtaText")} placeholder="Explore Catalog" className="h-12 rounded-2xl font-bold border-slate-200" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-500">CTA Target Link</Label>
-                            <Input {...form.register("heroCtaLink")} placeholder="#catalog or https://..." className="h-12 rounded-2xl font-bold border-slate-200 font-mono" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* 2. ABOUT US & BRAND STORY BLOCK */}
-                <div className="space-y-4 border-b border-slate-100 pb-6">
-                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
-                        <Globe size={14} className="text-blue-600" /> Brand Story & About Us Section
-                    </h4>
-                    <div className="space-y-3">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-500">Section Title</Label>
-                            <Input {...form.register("aboutUsTitle")} placeholder="About Our Business" className="h-12 rounded-2xl font-bold border-slate-200" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-500">Section Content Body</Label>
-                            <Textarea {...form.register("aboutUsBody")} placeholder="Describe your business background and mission..." className="rounded-2xl border-slate-200 font-medium min-h-[90px]" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3. CUSTOM FAQ ACCORDION BUILDER */}
-                <div className="space-y-4 border-b border-slate-100 pb-6">
-                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
-                        <HelpCircle size={14} className="text-blue-600" /> Frequently Asked Questions (FAQ)
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                            <Label className="text-[10px] font-black uppercase text-blue-600">FAQ Item #1</Label>
-                            <Input {...form.register("faqQuestion1")} placeholder="Question 1..." className="h-10 rounded-xl font-bold bg-white" />
-                            <Textarea {...form.register("faqAnswer1")} placeholder="Answer 1..." className="rounded-xl bg-white font-medium text-xs min-h-[70px]" />
-                        </div>
-                        <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                            <Label className="text-[10px] font-black uppercase text-blue-600">FAQ Item #2</Label>
-                            <Input {...form.register("faqQuestion2")} placeholder="Question 2..." className="h-10 rounded-xl font-bold bg-white" />
-                            <Textarea {...form.register("faqAnswer2")} placeholder="Answer 2..." className="rounded-xl bg-white font-medium text-xs min-h-[70px]" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* 4. CLIENT TESTIMONIALS BLOCK */}
-                <div className="space-y-4">
-                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
-                        <Star size={14} className="text-amber-500 fill-amber-500" /> Client Testimonial Highlight
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-500">Client Quote</Label>
-                            <Input {...form.register("testimonialQuote")} placeholder="Excellent quality and fast service!" className="h-12 rounded-2xl font-bold border-slate-200" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-500">Client Name / Designation</Label>
-                            <Input {...form.register("testimonialAuthor")} placeholder="Verified Customer" className="h-12 rounded-2xl font-bold border-slate-200" />
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-
-        <div className="grid gap-8">
-            
-            {/* 2. BRANDING & PUBLIC STORE SLUG */}
-            <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-                <CardHeader className="bg-slate-50/50 border-b p-8">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-blue-50 rounded-2xl text-blue-600 border border-blue-100">
-                            <Palette size={24} />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Branding & Storefront URL</CardTitle>
-                            <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Customize your public URL slug, brand theme, banner, and store identity</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
-
-                <CardContent className="p-8 space-y-8">
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="storeName" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store / Business Title *</Label>
-                            <Input id="storeName" {...form.register("storeName")} className="h-12 rounded-2xl font-bold border-slate-200" />
-                            {form.formState.errors.storeName && (
-                                <p className="text-xs text-rose-600 font-bold ml-1">{form.formState.errors.storeName.message}</p>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="storeSlug" className="text-[10px] font-black uppercase text-blue-600 tracking-widest ml-1">Public Storefront URL Slug *</Label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-xs text-slate-400 font-bold">bbu1.com/store/</span>
-                                <Input id="storeSlug" {...form.register("storeSlug")} className="h-12 pl-36 rounded-2xl font-mono font-bold border-blue-200 bg-blue-50/20 text-blue-900" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="currency" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Currency Code (ISO)</Label>
-                            <Input id="currency" {...form.register("currency")} className="h-12 rounded-2xl font-black uppercase border-slate-200" />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="themeColor" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Brand Accent Color</Label>
-                            <div className="flex gap-3 items-center">
-                                <div className="relative h-12 w-20 overflow-hidden rounded-2xl border shadow-sm shrink-0">
-                                    <input
-                                        type="color"
-                                        id="themeColor"
-                                        className="absolute -top-2 -left-2 h-16 w-24 cursor-pointer p-0 border-0"
-                                        {...form.register("themeColor")}
-                                    />
-                                </div>
-                                <Input 
-                                    {...form.register("themeColor")} 
-                                    className="h-12 font-mono uppercase font-bold rounded-2xl border-slate-200 flex-1" 
-                                    placeholder="#000000"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-6">
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Hero Banner (Image or Short Video)</Label>
-                            
-                            {bannerUrl && (
-                                <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-900 h-36 flex items-center justify-center group">
-                                    {isVideoUrl(bannerUrl) ? (
-                                        <video 
-                                            src={bannerUrl} 
-                                            autoPlay 
-                                            loop 
-                                            muted 
-                                            playsInline 
-                                            className="w-full h-full object-cover" 
-                                        />
-                                    ) : (
-                                        <img 
-                                            src={bannerUrl} 
-                                            className="w-full h-full object-cover" 
-                                            alt="Hero Banner Preview" 
-                                        />
-                                    )}
-                                    <Badge className="absolute top-3 left-3 bg-slate-900/80 text-white font-bold text-[9px] uppercase backdrop-blur-md border-none flex items-center gap-1">
-                                        {isVideoUrl(bannerUrl) ? <Film size={12} className="text-purple-400" /> : <Image size={12} className="text-blue-400" />}
-                                        Live {isVideoUrl(bannerUrl) ? 'Video' : 'Image'} Preview
-                                    </Badge>
-
-                                    <Button 
-                                        type="button" 
-                                        onClick={() => form.setValue("bannerUrl", "")} 
-                                        variant="destructive" 
-                                        size="icon" 
-                                        className="absolute top-3 right-3 h-8 w-8 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                    >
-                                        <Trash2 size={14} />
-                                    </Button>
-                                </div>
-                            )}
-
-                            <div className="relative group">
-                                <Input type="file" accept="image/*,video/*" onChange={e => handleStoreAssetUpload(e, 'bannerUrl')} className="hidden" id="store-banner-upload" />
-                                <label htmlFor="store-banner-upload" className="flex items-center justify-center gap-3 h-14 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl cursor-pointer bg-slate-50 transition-all">
-                                    {isUploadingBanner ? <Loader2 className="animate-spin h-5 w-5 text-blue-600" /> : <Upload className="h-5 w-5 text-slate-400" />}
-                                    <span className="text-xs font-bold uppercase text-slate-600">
-                                        {bannerUrl ? "Replace Hero Banner (Photo / Video)" : "Upload Hero Banner (Photo / Short Video)"}
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Brand Logo</Label>
-                            
-                            {logoUrl && (
-                                <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 p-2 h-36 flex items-center justify-center group">
-                                    <img src={logoUrl} className="max-h-full max-w-full object-contain rounded-xl" alt="Brand Logo Preview" />
-                                    <Badge className="absolute top-3 left-3 bg-slate-900/80 text-white font-bold text-[9px] uppercase backdrop-blur-md border-none flex items-center gap-1">
-                                        <Image size={12} className="text-emerald-400" /> Live Logo
-                                    </Badge>
-                                    <Button 
-                                        type="button" 
-                                        onClick={() => form.setValue("logoUrl", "")} 
-                                        variant="destructive" 
-                                        size="icon" 
-                                        className="absolute top-3 right-3 h-8 w-8 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                    >
-                                        <Trash2 size={14} />
-                                    </Button>
-                                </div>
-                            )}
-
-                            <div className="relative group">
-                                <Input type="file" accept="image/*" onChange={e => handleStoreAssetUpload(e, 'logoUrl')} className="hidden" id="store-logo-upload" />
-                                <label htmlFor="store-logo-upload" className="flex items-center justify-center gap-3 h-14 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl cursor-pointer bg-slate-50 transition-all">
-                                    {isUploadingLogo ? <Loader2 className="animate-spin h-5 w-5 text-blue-600" /> : <ImagePlus className="h-5 w-5 text-slate-400" />}
-                                    <span className="text-xs font-bold uppercase text-slate-600">
-                                        {logoUrl ? "Replace Brand Logo" : "Upload Brand Logo"}
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="storeName" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store / Business Title *</Label>
+                        <Input id="storeName" {...form.register("storeName")} className="h-12 rounded-2xl font-bold border-slate-200" />
+                        {form.formState.errors.storeName && (
+                            <p className="text-xs text-rose-600 font-bold ml-1">{form.formState.errors.storeName.message}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="storeDescription" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Public Store Description & Brand Story</Label>
-                        <Textarea 
-                            id="storeDescription" 
-                            {...form.register("storeDescription")} 
-                            placeholder="Tell online customers about your business, quality guarantees, or rental booking policies..."
-                            className="rounded-2xl border-slate-200 font-medium min-h-[100px]"
-                        />
-                    </div>
-
-                </CardContent>
-            </Card>
-
-            {/* 3. WHATSAPP & CONTACT DISPATCH NODES */}
-            <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-                <CardHeader className="bg-slate-50/50 border-b p-8">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-100">
-                            <MessageSquare size={24} />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">WhatsApp Order Dispatch & Communication</CardTitle>
-                            <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Receive instant WhatsApp alerts whenever an online customer orders or requests a property inspection</CardDescription>
+                        <Label htmlFor="storeSlug" className="text-[10px] font-black uppercase text-blue-600 tracking-widest ml-1">Public Storefront URL Slug *</Label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-xs text-slate-400 font-bold">bbu1.com/store/</span>
+                            <Input id="storeSlug" {...form.register("storeSlug")} className="h-12 pl-36 rounded-2xl font-mono font-bold border-blue-200 bg-blue-50/20 text-blue-900" />
                         </div>
                     </div>
-                </CardHeader>
+                </div>
 
-                <CardContent className="p-8 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        
-                        <div className="space-y-2">
-                            <Label htmlFor="whatsappNumber" className="text-[10px] font-black uppercase text-emerald-600 tracking-widest ml-1">WhatsApp Order Phone Number *</Label>
-                            <div className="relative">
-                                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
-                                <Input 
-                                    id="whatsappNumber" 
-                                    {...form.register("whatsappNumber")} 
-                                    placeholder="e.g. +256700000000" 
-                                    className="pl-10 h-12 rounded-2xl font-bold border-emerald-200 bg-emerald-50/10 text-emerald-900" 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="currency" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Currency Code (ISO)</Label>
+                        <Input id="currency" {...form.register("currency")} className="h-12 rounded-2xl font-black uppercase border-slate-200" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="themeColor" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Brand Accent Color</Label>
+                        <div className="flex gap-3 items-center">
+                            <div className="relative h-12 w-20 overflow-hidden rounded-2xl border shadow-sm shrink-0">
+                                <input
+                                    type="color"
+                                    id="themeColor"
+                                    className="absolute -top-2 -left-2 h-16 w-24 cursor-pointer p-0 border-0"
+                                    {...form.register("themeColor")}
                                 />
                             </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="supportEmail" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Customer Support Email</Label>
-                            <div className="relative">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <Input id="supportEmail" {...form.register("supportEmail")} placeholder="orders@mybusiness.com" className="pl-10 h-12 rounded-2xl font-medium border-slate-200" />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="supportPhone" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Support Phone Helpline</Label>
-                            <div className="relative">
-                                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <Input id="supportPhone" {...form.register("supportPhone")} placeholder="+256..." className="pl-10 h-12 rounded-2xl font-bold border-slate-200" />
-                            </div>
-                        </div>
-
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* 4. PRODUCT / PROPERTY SPECIFIC MEDIA ATTACHMENT WITH INSTANT LIVE PREVIEWS */}
-            <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-                <CardHeader className="bg-slate-50/50 border-b p-8">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-purple-50 rounded-2xl text-purple-600 border border-purple-100">
-                            <Video size={24} />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Product / Property Media Linker</CardTitle>
-                            <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Select any product or property listing and attach a custom photo or short video walkthrough</CardDescription>
+                            <Input 
+                                {...form.register("themeColor")} 
+                                className="h-12 font-mono uppercase font-bold rounded-2xl border-slate-200 flex-1" 
+                                placeholder="#000000"
+                            />
                         </div>
                     </div>
-                </CardHeader>
+                </div>
 
-                <CardContent className="p-8 space-y-6">
-                    {selectedVariant?.primary_media_url && (
-                        <div className="p-4 bg-purple-50/40 rounded-2xl border border-purple-100 flex items-center gap-4 animate-in fade-in duration-300">
-                            <div className="h-20 w-20 rounded-xl overflow-hidden border border-purple-200 shrink-0 bg-slate-900 flex items-center justify-center relative">
-                                {isVideoUrl(selectedVariant.primary_media_url) ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-6">
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Hero Banner (Image or Short Video)</Label>
+                        
+                        {bannerUrl && (
+                            <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-900 h-36 flex items-center justify-center group">
+                                {isVideoUrl(bannerUrl) ? (
                                     <video 
-                                        src={selectedVariant.primary_media_url} 
+                                        src={bannerUrl} 
                                         autoPlay 
                                         loop 
                                         muted 
@@ -929,114 +832,271 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
                                     />
                                 ) : (
                                     <img 
-                                        src={selectedVariant.primary_media_url} 
+                                        src={bannerUrl} 
                                         className="w-full h-full object-cover" 
-                                        alt="Attached Item Media" 
+                                        alt="Hero Banner Preview" 
                                     />
                                 )}
-                            </div>
-                            <div>
-                                <Badge className="bg-purple-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 border-none mb-1">
-                                    {isVideoUrl(selectedVariant.primary_media_url) ? 'Video Clip Attached' : 'Photo Attached'}
+                                <Badge className="absolute top-3 left-3 bg-slate-900/80 text-white font-bold text-[9px] uppercase backdrop-blur-md border-none flex items-center gap-1">
+                                    {isVideoUrl(bannerUrl) ? <Film size={12} className="text-purple-400" /> : <Image size={12} className="text-blue-400" />}
+                                    Live {isVideoUrl(bannerUrl) ? 'Video' : 'Image'} Preview
                                 </Badge>
-                                <p className="text-xs font-black text-slate-900">{selectedVariant.products?.name} ({selectedVariant.name})</p>
-                                <p className="text-[10px] font-mono text-slate-400">SKU: {selectedVariant.sku || 'N/A'}</p>
-                            </div>
-                        </div>
-                    )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-                        <div className="md:col-span-7 space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Select Item / Property Listing *</Label>
-                            <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
-                                <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                                    <SelectValue placeholder="Select Product Variant or Property..." />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-64 rounded-xl">
-                                    {productVariants?.map((pv: any) => (
-                                        <SelectItem key={pv.id} value={String(pv.id)} className="font-bold py-2.5">
-                                            {pv.products?.name} ({pv.name}) • SKU: {pv.sku || 'N/A'}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="md:col-span-5 space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Attach Photo / Short Video Walkthrough</Label>
-                            <div className="relative group">
-                                <Input 
-                                    type="file" 
-                                    accept="image/*,video/*" 
-                                    onChange={handleProductMediaUpload} 
-                                    disabled={!selectedVariantId || isUploadingProductMedia}
-                                    className="hidden" 
-                                    id="product-video-upload" 
-                                />
-                                <label 
-                                    htmlFor="product-video-upload" 
-                                    className={cn(
-                                        "flex items-center justify-center gap-3 h-12 px-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all",
-                                        !selectedVariantId ? "opacity-50 pointer-events-none bg-slate-100 border-slate-200 text-slate-400" : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                                    )}
+                                <Button 
+                                    type="button" 
+                                    onClick={() => form.setValue("bannerUrl", "")} 
+                                    variant="destructive" 
+                                    size="icon" 
+                                    className="absolute top-3 right-3 h-8 w-8 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                                 >
-                                    {isUploadingProductMedia ? <Loader2 className="animate-spin h-5 w-5" /> : <Camera size={18} />}
-                                    <span className="text-xs font-bold uppercase tracking-wider">
-                                        {isUploadingProductMedia ? "Uploading..." : "Upload Photo / Video Clip"}
-                                    </span>
-                                </label>
+                                    <Trash2 size={14} />
+                                </Button>
                             </div>
-                        </div>
+                        )}
 
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* 5. SEO & METADATA CARD */}
-            <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-                 <CardHeader className="bg-slate-50/50 border-b p-8">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-amber-50 rounded-2xl text-amber-600 border border-amber-100">
-                            <Search size={24} />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">SEO & Search Engine Metadata</CardTitle>
-                            <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Optimize your web store for Google search indexing and social previews</CardDescription>
+                        <div className="relative group">
+                            <Input type="file" accept="image/*,video/*" onChange={e => handleStoreAssetUpload(e, 'bannerUrl')} className="hidden" id="store-banner-upload" />
+                            <label htmlFor="store-banner-upload" className="flex items-center justify-center gap-3 h-14 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl cursor-pointer bg-slate-50 transition-all">
+                                {isUploadingBanner ? <Loader2 className="animate-spin h-5 w-5 text-blue-600" /> : <Upload className="h-5 w-5 text-slate-400" />}
+                                <span className="text-xs font-bold uppercase text-slate-600">
+                                    {bannerUrl ? "Replace Hero Banner (Photo / Video)" : "Upload Hero Banner (Photo / Short Video)"}
+                                </span>
+                            </label>
                         </div>
                     </div>
-                </CardHeader>
 
-                <CardContent className="p-8 space-y-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="seoTitle" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Meta Title</Label>
-                        <Input id="seoTitle" {...form.register("seoTitle")} className="h-12 rounded-2xl font-bold border-slate-200" />
-                        <p className="text-[10px] font-bold text-slate-400 text-right">
-                            {form.watch("seoTitle")?.length || 0} / 80 characters
-                        </p>
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Brand Logo</Label>
+                        
+                        {logoUrl && (
+                            <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 p-2 h-36 flex items-center justify-center group">
+                                <img src={logoUrl} className="max-h-full max-w-full object-contain rounded-xl" alt="Brand Logo Preview" />
+                                <Badge className="absolute top-3 left-3 bg-slate-900/80 text-white font-bold text-[9px] uppercase backdrop-blur-md border-none flex items-center gap-1">
+                                    <Image size={12} className="text-emerald-400" /> Live Logo
+                                </Badge>
+                                <Button 
+                                    type="button" 
+                                    onClick={() => form.setValue("logoUrl", "")} 
+                                    variant="destructive" 
+                                    size="icon" 
+                                    className="absolute top-3 right-3 h-8 w-8 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                >
+                                    <Trash2 size={14} />
+                                </Button>
+                            </div>
+                        )}
+
+                        <div className="relative group">
+                            <Input type="file" accept="image/*" onChange={e => handleStoreAssetUpload(e, 'logoUrl')} className="hidden" id="store-logo-upload" />
+                            <label htmlFor="store-logo-upload" className="flex items-center justify-center gap-3 h-14 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl cursor-pointer bg-slate-50 transition-all">
+                                {isUploadingLogo ? <Loader2 className="animate-spin h-5 w-5 text-blue-600" /> : <ImagePlus className="h-5 w-5 text-slate-400" />}
+                                <span className="text-xs font-bold uppercase text-slate-600">
+                                    {logoUrl ? "Replace Brand Logo" : "Upload Brand Logo"}
+                                </span>
+                            </label>
+                        </div>
                     </div>
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="storeDescription" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Public Store Description & Brand Story</Label>
+                    <Textarea 
+                        id="storeDescription" 
+                        {...form.register("storeDescription")} 
+                        placeholder="Tell online customers about your business, quality guarantees, or rental booking policies..."
+                        className="rounded-2xl border-slate-200 font-medium min-h-[100px]"
+                    />
+                </div>
+
+            </CardContent>
+        </Card>
+
+        {/* 7. WHATSAPP & CONTACT DISPATCH NODES */}
+        <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+            <CardHeader className="bg-slate-50/50 border-b p-8">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-100">
+                        <MessageSquare size={24} />
+                    </div>
+                    <div>
+                        <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">WhatsApp Order Dispatch & Communication</CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Receive instant WhatsApp alerts whenever an online customer orders or requests a property inspection</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="p-8 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     
                     <div className="space-y-2">
-                        <Label htmlFor="seoDesc" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Meta Description</Label>
-                        <Textarea 
-                            id="seoDesc" 
-                            {...form.register("seoDesc")} 
-                            className="resize-none min-h-[100px] rounded-2xl border-slate-200 font-medium"
-                        />
-                         <p className="text-[10px] font-bold text-slate-400 text-right">
-                            {form.watch("seoDesc")?.length || 0} / 200 characters
-                        </p>
+                        <Label htmlFor="whatsappNumber" className="text-[10px] font-black uppercase text-emerald-600 tracking-widest ml-1">WhatsApp Order Phone Number *</Label>
+                        <div className="relative">
+                            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
+                            <Input 
+                                id="whatsappNumber" 
+                                {...form.register("whatsappNumber")} 
+                                placeholder="e.g. +256700000000" 
+                                className="pl-10 h-12 rounded-2xl font-bold border-emerald-200 bg-emerald-50/10 text-emerald-900" 
+                            />
+                        </div>
                     </div>
-                </CardContent>
 
-                <CardFooter className="bg-slate-50 p-8 border-t flex justify-end">
-                    <Button type="submit" disabled={isPending} className="h-14 px-12 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl shadow-blue-200 active:scale-95 transition-all">
-                        {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
-                        {isPending ? "Sealing Settings..." : "Save Storefront Settings"}
-                    </Button>
-                </CardFooter>
-            </Card>
+                    <div className="space-y-2">
+                        <Label htmlFor="supportEmail" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Customer Support Email</Label>
+                        <div className="relative">
+                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input id="supportEmail" {...form.register("supportEmail")} placeholder="orders@mybusiness.com" className="pl-10 h-12 rounded-2xl font-medium border-slate-200" />
+                        </div>
+                    </div>
 
-        </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="supportPhone" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Support Phone Helpline</Label>
+                        <div className="relative">
+                            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input id="supportPhone" {...form.register("supportPhone")} placeholder="+256..." className="pl-10 h-12 rounded-2xl font-bold border-slate-200" />
+                        </div>
+                    </div>
+
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 8. PRODUCT / PROPERTY SPECIFIC MEDIA ATTACHMENT WITH INSTANT LIVE PREVIEWS */}
+        <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+            <CardHeader className="bg-slate-50/50 border-b p-8">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-purple-50 rounded-2xl text-purple-600 border border-purple-100">
+                        <Video size={24} />
+                    </div>
+                    <div>
+                        <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Product / Property Media Linker</CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Select any product or property listing and attach a custom photo or short video walkthrough</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="p-8 space-y-6">
+                {selectedVariant?.primary_media_url && (
+                    <div className="p-4 bg-purple-50/40 rounded-2xl border border-purple-100 flex items-center gap-4 animate-in fade-in duration-300">
+                        <div className="h-20 w-20 rounded-xl overflow-hidden border border-purple-200 shrink-0 bg-slate-900 flex items-center justify-center relative">
+                            {isVideoUrl(selectedVariant.primary_media_url) ? (
+                                <video 
+                                    src={selectedVariant.primary_media_url} 
+                                    autoPlay 
+                                    loop 
+                                    muted 
+                                    playsInline 
+                                    className="w-full h-full object-cover" 
+                                />
+                            ) : (
+                                <img 
+                                    src={selectedVariant.primary_media_url} 
+                                    className="w-full h-full object-cover" 
+                                    alt="Attached Item Media" 
+                                />
+                            )}
+                        </div>
+                        <div>
+                            <Badge className="bg-purple-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 border-none mb-1">
+                                {isVideoUrl(selectedVariant.primary_media_url) ? 'Video Clip Attached' : 'Photo Attached'}
+                            </Badge>
+                            <p className="text-xs font-black text-slate-900">{selectedVariant.products?.name} ({selectedVariant.name})</p>
+                            <p className="text-[10px] font-mono text-slate-400">SKU: {selectedVariant.sku || 'N/A'}</p>
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                    <div className="md:col-span-7 space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Select Item / Property Listing *</Label>
+                        <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
+                            <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
+                                <SelectValue placeholder="Select Product Variant or Property..." />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-64 rounded-xl">
+                                {productVariants?.map((pv: any) => (
+                                    <SelectItem key={pv.id} value={String(pv.id)} className="font-bold py-2.5">
+                                        {pv.products?.name} ({pv.name}) • SKU: {pv.sku || 'N/A'}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="md:col-span-5 space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Attach Photo / Short Video Walkthrough</Label>
+                        <div className="relative group">
+                            <Input 
+                                type="file" 
+                                accept="image/*,video/*" 
+                                onChange={handleProductMediaUpload} 
+                                disabled={!selectedVariantId || isUploadingProductMedia}
+                                className="hidden" 
+                                id="product-video-upload" 
+                            />
+                            <label 
+                                htmlFor="product-video-upload" 
+                                className={cn(
+                                    "flex items-center justify-center gap-3 h-12 px-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all",
+                                    !selectedVariantId ? "opacity-50 pointer-events-none bg-slate-100 border-slate-200 text-slate-400" : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                                )}
+                            >
+                                {isUploadingProductMedia ? <Loader2 className="animate-spin h-5 w-5" /> : <Camera size={18} />}
+                                <span className="text-xs font-bold uppercase tracking-wider">
+                                    {isUploadingProductMedia ? "Uploading..." : "Upload Photo / Video Clip"}
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 9. SEO & METADATA CARD */}
+        <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+             <CardHeader className="bg-slate-50/50 border-b p-8">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-amber-50 rounded-2xl text-amber-600 border border-amber-100">
+                        <Search size={24} />
+                    </div>
+                    <div>
+                        <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">SEO & Search Engine Metadata</CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-500 mt-0.5">Optimize your web store for Google search indexing and social previews</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="p-8 space-y-6">
+                <div className="space-y-2">
+                    <Label htmlFor="seoTitle" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Meta Title</Label>
+                    <Input id="seoTitle" {...form.register("seoTitle")} className="h-12 rounded-2xl font-bold border-slate-200" />
+                    <p className="text-[10px] font-bold text-slate-400 text-right">
+                        {form.watch("seoTitle")?.length || 0} / 80 characters
+                    </p>
+                </div>
+                
+                <div className="space-y-2">
+                    <Label htmlFor="seoDesc" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Meta Description</Label>
+                    <Textarea 
+                        id="seoDesc" 
+                        {...form.register("seoDesc")} 
+                        className="resize-none min-h-[100px] rounded-2xl border-slate-200 font-medium"
+                    />
+                     <p className="text-[10px] font-bold text-slate-400 text-right">
+                        {form.watch("seoDesc")?.length || 0} / 200 characters
+                    </p>
+                </div>
+            </CardContent>
+
+            <CardFooter className="bg-slate-50 p-8 border-t flex justify-end">
+                <Button type="submit" disabled={isPending} className="h-14 px-12 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl shadow-blue-200 active:scale-95 transition-all">
+                    {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
+                    {isPending ? "Sealing Settings..." : "Save Storefront Settings"}
+                </Button>
+            </CardFooter>
+        </Card>
+
     </form>
   );
 }
