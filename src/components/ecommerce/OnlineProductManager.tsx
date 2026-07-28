@@ -2,12 +2,12 @@
 
 /**
  * --- BBU1 SOVEREIGN E-COMMERCE PRODUCT MANAGER ---
- * VERSION: v11.0 OMEGA (1:1 PHYSICAL STOCK LINK & SHAREABLE STOREFRONT WELD)
+ * VERSION: v12.0 OMEGA (STOREFRONT SETTINGS SYNC & MULTI-TENANT FILTER)
  * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Digital Commerce
  */
 
 import * as React from "react";
-import { useState, useEffect, useMemo, useTransition } from "react";
+import { useState, useMemo, useTransition } from "react";
 import {
     ColumnDef,
     ColumnFiltersState,
@@ -21,8 +21,7 @@ import {
 } from "@tanstack/react-table";
 import { 
     ArrowUpDown, Edit, Search, PackageOpen, AlertCircle, 
-    Share2, Copy, Globe, ExternalLink, Loader2, Sparkles, 
-    Store, CheckCircle2, ShoppingBag, Eye, EyeOff, MessageSquare
+    Copy, Globe, Loader2, Store, MessageSquare
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -55,7 +54,6 @@ import { cn } from "@/lib/utils";
 
 const supabase = createClient();
 
-// --- TYPES ---
 export interface ManagedProduct {
     id: string | number;
     product_id?: number;
@@ -64,22 +62,21 @@ export interface ManagedProduct {
     price: number;
     online_price?: number;
     stock_quantity: number;
-    is_online: boolean; // Setup Status
-    is_visible: boolean; // Live on public web store
+    is_online: boolean;
+    is_visible: boolean;
     category: string | null;
     primary_media_url?: string | null;
     online_description?: string;
 }
 
 // --- SUB-COMPONENT: REALTIME VISIBILITY TOGGLE ---
-const VisibilityToggle = ({ product, currency }: { product: ManagedProduct; currency: string }) => {
+const VisibilityToggle = ({ product }: { product: ManagedProduct }) => {
     const queryClient = useQueryClient();
     const [isPending, startTransition] = useTransition();
 
     const handleToggle = (checked: boolean) => {
         startTransition(async () => {
             try {
-                // Call RPC or Direct Supabase Update to toggle online visibility
                 const { error } = await supabase
                     .from('product_variants')
                     .update({ 
@@ -95,7 +92,7 @@ const VisibilityToggle = ({ product, currency }: { product: ManagedProduct; curr
                 });
 
                 queryClient.invalidateQueries({ queryKey: ['online_products_managed'] });
-                queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
+                queryClient.invalidateQueries({ queryKey: ['public_store_catalog'] });
             } catch (err: any) {
                 toast.error(`Visibility Update Failed: ${err.message}`);
             }
@@ -121,16 +118,20 @@ export function OnlineProductManager({ products: propProducts }: { products?: Ma
     const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-    // EDIT MODAL STATE
     const [editingProduct, setEditingProduct] = useState<ManagedProduct | null>(null);
     const [editForm, setEditForm] = useState({ online_price: 0, description: '' });
 
-    // 1. DATA: Identity & Currency Resolution
+    // 1. DATA: Identity Context
     const { data: profile } = useQuery({
         queryKey: ['active_profile_ecom_manager'],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
-            const { data } = await supabase.from('profiles').select('*, business_name, currency, business_id, active_organization_slug').eq('id', user?.id).limit(1).single();
+            const { data } = await supabase
+                .from('profiles')
+                .select('*, business_name, currency, business_id, active_organization_slug')
+                .eq('id', user?.id)
+                .limit(1)
+                .single();
             return data;
         }
     });
@@ -138,9 +139,24 @@ export function OnlineProductManager({ products: propProducts }: { products?: Ma
     const businessCurrency = profile?.currency || 'UGX';
     const activeBusinessId = profile?.business_id;
 
-    // 2. DATA: Live Physical Inventory Products (With E-Commerce Status)
+    // 2. DATA: Fetch Saved Storefront Settings (To get exact store_slug)
+    const { data: storeConfig } = useQuery({
+        queryKey: ['storefront_config_for_product_manager', activeBusinessId],
+        enabled: !!activeBusinessId,
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('storefront_settings')
+                .select('store_slug, store_name')
+                .eq('business_id', activeBusinessId)
+                .maybeSingle();
+            return data;
+        }
+    });
+
+    // 3. DATA: Live Inventory Products (Filtered by Business ID)
     const { data: liveProducts, isLoading } = useQuery({
         queryKey: ['online_products_managed', activeBusinessId],
+        enabled: !!activeBusinessId && !propProducts,
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('product_variants')
@@ -150,7 +166,9 @@ export function OnlineProductManager({ products: propProducts }: { products?: Ma
                     online_price, primary_media_url,
                     products ( id, name, categories ( name ) )
                 `)
+                .eq('business_id', activeBusinessId)
                 .order('name');
+
             if (error) throw error;
 
             return (data || []).map((pv: any) => ({
@@ -165,16 +183,14 @@ export function OnlineProductManager({ products: propProducts }: { products?: Ma
                 category: pv.products?.categories?.name || 'General',
                 primary_media_url: pv.primary_media_url
             })) as ManagedProduct[];
-        },
-        enabled: !propProducts
+        }
     });
 
-    // Use fetched live products or fallback to props
     const displayedProducts = useMemo(() => {
         return propProducts || liveProducts || [];
     }, [propProducts, liveProducts]);
 
-    // MUTATION: Update Online Product Price & Description
+    // UPDATE ONLINE PRICE MUTATION
     const updateProductMutation = useMutation({
         mutationFn: async () => {
             if (!editingProduct) return;
@@ -194,12 +210,13 @@ export function OnlineProductManager({ products: propProducts }: { products?: Ma
             toast.success("Online Store Product Updated!");
             setEditingProduct(null);
             queryClient.invalidateQueries({ queryKey: ['online_products_managed'] });
+            queryClient.invalidateQueries({ queryKey: ['public_store_catalog'] });
         },
         onError: (err: any) => toast.error(`Update failed: ${err.message}`)
     });
 
-    // PUBLIC STOREFRONT LINK GENERATOR
-    const storeSlug = profile?.active_organization_slug || profile?.business_name?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'store';
+    // UNIFIED STOREFRONT URL GENERATOR (Uses exact storefront_settings store_slug)
+    const storeSlug = storeConfig?.store_slug || profile?.active_organization_slug || profile?.business_name?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'my-store';
     const publicStoreUrl = typeof window !== 'undefined' ? `${window.location.origin}/store/${storeSlug}` : `https://www.bbu1.com/store/${storeSlug}`;
 
     const copyStoreLink = () => {
@@ -216,7 +233,6 @@ export function OnlineProductManager({ products: propProducts }: { products?: Ma
         window.open(`https://wa.me/?text=${text}`, '_blank');
     };
 
-    // COLUMN DEFINITIONS
     const columns = useMemo<ColumnDef<ManagedProduct>[]>(() => [
         {
             accessorKey: "name",
@@ -281,7 +297,7 @@ export function OnlineProductManager({ products: propProducts }: { products?: Ma
         {
             accessorKey: "is_visible",
             header: () => <span className="font-bold text-xs uppercase text-slate-500">Published Online</span>,
-            cell: ({ row }) => <VisibilityToggle product={row.original} currency={businessCurrency} />,
+            cell: ({ row }) => <VisibilityToggle product={row.original} />,
         },
         {
             id: "actions",
@@ -327,7 +343,7 @@ export function OnlineProductManager({ products: propProducts }: { products?: Ma
                         <div className="flex items-center gap-2 text-blue-400 font-bold text-[10px] uppercase tracking-widest">
                             <Globe size={14} /> Public Digital Storefront Node
                         </div>
-                        <h3 className="text-xl font-black uppercase tracking-tight">{profile?.business_name || 'My Web Store'}</h3>
+                        <h3 className="text-xl font-black uppercase tracking-tight">{storeConfig?.store_name || profile?.business_name || 'My Web Store'}</h3>
                         <p className="text-xs text-slate-400 font-mono">{publicStoreUrl}</p>
                     </div>
 
