@@ -2,7 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v28.1 OMEGA-ULTIMATUM (THE APEX TYPING RESTORATION)
+ * VERSION: v28.2 OMEGA-ULTIMATUM (THE LIVE TOKEN SYNC WELD)
  * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED)
  * JURISDICTION: Global ERP / Multi-Tenant / Multi-Country
  * 
@@ -13,6 +13,11 @@
  *    the 'handleInputChange' function is active immediately upon ID resolution.
  * 3. WIDE-SYSTEM COMPATIBILITY: Hard-coded mapping to 'id' and 'is_active' 
  *    per the forensic database audit.
+ * 4. LIVE TOKEN SYNC: Token is no longer fetched once on mount. It now 
+ *    subscribes to onAuthStateChange, so a refreshed, expired, or 
+ *    cleared session is picked up immediately instead of leaving the 
+ *    panel stuck on a stale token (which was collapsing the whole 
+ *    Copilot into its no-op fallback branch and disabling typing).
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -146,13 +151,31 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   const { profile } = useBusiness();
 
+  /**
+   * ✅ LIVE TOKEN SYNC (v28.2 FIX)
+   * Previously this only fetched the token ONCE on mount via getSession().
+   * If the session later refreshed, expired, or was cleared (e.g. the
+   * refresh_token network call failing), 'token' here went stale and
+   * never recovered — which fed into activeUserId/activeBusinessId below,
+   * flipped isHandshakeValid to false, and collapsed the whole panel into
+   * its no-op fallback branch (handleInputChange: () => {}), disabling
+   * typing until a full page reload. Subscribing to onAuthStateChange
+   * (matching BusinessContext's existing pattern) keeps 'token' correct
+   * for the lifetime of the session, including refreshes and sign-outs.
+   */
   useEffect(() => { 
     setMounted(true); 
-    const finalizeToken = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        setToken(session?.access_token ?? null);
+    });
+
+    // Initial fetch for the first render, before any auth event fires.
+    supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.access_token) setToken(session.access_token);
-    };
-    finalizeToken();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   /**
