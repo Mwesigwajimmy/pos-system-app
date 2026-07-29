@@ -100,15 +100,15 @@ const siteConfig = {
     },
     featureSets: [
         {
-            icon: Users, title: "Human Resources", description: "Manage your most valuable asset—your people—from recruitment to retirement.",
+            icon: Users, title: "Human Resources", description: "Manage your most valuable asset, your people, from recruitment to retirement.",
             backgroundImage: "/images/showcase/modern-office-bbU1.jpg",
             details: [
                 { name: "Leave Management", detail: "Automate leave requests, approvals, and balance tracking with configurable policies for any country." },
                 { name: "Recruitment", detail: "Streamline your hiring process from job posting to onboarding with a collaborative recruitment pipeline." },
                 { name: "Performance Management", detail: "Set goals, conduct reviews, and foster growth with integrated performance management tools." },
-                { name: "Onboarding & Offboarding", detail: "Create structured onboarding plans to ensure new hires are productive from day one, and manage offboarding seamlessly." },
+                { name: "Onboarding & Offboarding", detail: "Create structured onboarding plans to ensure new hires are productive from day one, and handle offboarding cleanly." },
                 { name: "Payroll Automation", detail: "Automate salary calculations, tax deductions, and payslip generation, fully compliant with local regulations and multi-currency support." },
-                { name: "Employee Self-Service", detail: "Empower employees to manage their profiles, request leave, and access payslips, reducing HR administrative burden." },
+                { name: "Employee Self-Service", detail: "Let employees manage their profiles, request leave, and access payslips, taking load off your HR team." },
             ]
         },
         {
@@ -127,12 +127,12 @@ const siteConfig = {
             backgroundImage: "/images/showcase/office-admin-bbU1.jpg",
             details: [
                 { name: "Financial Reporting & Analytics", detail: "Generate real-time Profit & Loss, Balance Sheets, Cash Flow statements, and custom reports with a single click for insightful decision-making." },
-                { name: "Expense Management", detail: "Capture, approve, and reimburse employee expenses seamlessly, eliminating manual paperwork and ensuring compliance." },
+                { name: "Expense Management", detail: "Capture, approve, and reimburse employee expenses without the manual paperwork, while staying compliant." },
                 { name: "General Ledger & Chart of Accounts", detail: "Maintain a complete, auditable record of every transaction with an automated double-entry accounting core, fully configurable for your business." },
                 { name: "Advanced Invoicing & Billing", detail: "Create and send professional, customized invoices with automated reminders to get paid faster. Supports recurring billing, multi-currency, and credit notes." },
                 { name: "Bank Reconciliation", detail: "Automate bank reconciliations, matching transactions to your ledger to ensure accuracy and save time." },
                 { name: "Accounts Payable & Receivable", detail: "Efficiently manage bills, vendor payments, and track customer invoices, ensuring timely payments and collections." },
-                { name: "Budgeting & Forecasting", detail: "Create detailed budgets, track performance against them in real-time, and leverage AI for accurate financial forecasting." },
+                { name: "Budgeting & Forecasting", detail: "Create detailed budgets, track performance against them in real time, and use AI for accurate financial forecasting." },
             ]
         },
         {
@@ -152,7 +152,7 @@ const siteConfig = {
             backgroundImage: "/images/showcase/bakery-pos-system.jpg",
             details: [
                 { name: "Point of Sale (POS)", detail: "Intuitive and fast POS system for retail operations, supporting multiple payment methods and integrated with inventory." },
-                { name: "E-commerce Integration", detail: "Seamlessly connect with popular e-commerce platforms to sync products, orders, autoate sales and boost growth, and customer data in real-time." },
+                { name: "E-commerce Integration", detail: "Connect with popular e-commerce platforms to sync products, orders, sales and customer data in real time." },
                 { name: "Order Management", detail: "Process sales orders efficiently, from creation to fulfillment, smart delivery fully automated, with status tracking and automated workflows." },
                 { name: "Pricing & Discounts", detail: "Manage complex pricing strategies, promotional discounts, and customer-specific pricing rules." },
                 { name: "Sales Analytics", detail: "Gain insights into sales performance, popular products, BI Analytics, and customer buying patterns with powerful dashboards fully automated." },
@@ -198,7 +198,7 @@ const siteConfig = {
             details: [
                 { name: "AI Copilot & Smart Insights", detail: "Aura, our AI copilot, automates bookkeeping, detects anomalies, and provides strategic insights like 'Cash flow projected to be low in 3 weeks.'" },
                 { name: "Custom Dashboards & Reporting", detail: "Create personalized dashboards and reports with drag-and-drop functionality to visualize key performance indicators (KPIs)." },
-                { name: "Predictive Analytics", detail: "Leverage AI to forecast sales, demand, and financial trends, helping you make proactive business decisions." },
+                { name: "Predictive Analytics", detail: "Use AI to forecast sales, demand, and financial trends, so you can plan ahead with confidence." },
                 { name: "Data Integration Hub", detail: "Consolidate data from various modules within BBU1 and external sources for a holistic view of your business." },
                 { name: "Anomaly Detection", detail: "Automatically detect unusual patterns or outliers in your data, alerting you to potential issues or opportunities." },
             ]
@@ -224,7 +224,7 @@ const siteConfig = {
             icon: BrainCircuit, 
             title: "Aura Does The Work", 
             description: "Our AI, Aura, automates bookkeeping, automates tax returns, automates reports, executive reports, invoices, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions.", 
-            fullDescription: "Aura isn't just a chatbot; Aura is a customly built Ai that fully grows with your business, it's an integrated intelligence layer running across your entire operation. Aura continuously scans your general ledger for errors, predicts cash flow gaps before they happen, and automates mundane tasks like invoice matching and expense categorization. It turns your historical data into a roadmap for future profitability.",
+            fullDescription: "Aura is more than a chatbot. It is a custom-built AI that grows with your business, an integrated intelligence layer running across your entire operation. Aura continuously scans your general ledger for errors, predicts cash flow gaps before they happen, and automates mundane tasks like invoice matching and expense categorization. It turns your past data into a clear plan for future profitability.",
             technicalSpecs: [
                 "Automated Bookkeeping: AI categorizes 90% of transactions automatically.",
                 "Anomaly Detection: Flags duplicate payments or unusual spending in real-time.",
@@ -239,7 +239,7 @@ const siteConfig = {
             description: "Your business is always ahead of time. Core functions work perfectly offline, syncing instantly when you're back online, ensuring continuous operation.", 
             fullDescription: "In many regions, internet connectivity can be unpredictable. BBU1 utilizes a 'Local-First' database architecture. This means your Point of Sale, Inventory scanners, and Field Service apps run primarily on the device's local storage. You can continue to sell, receive stock, and manage operations for days without internet. The second a connection is detected, data synchronizes securely to the cloud in the background.",
             technicalSpecs: [
-                "Local-First DB: PouchDB/CouchDB protocol for robust local data storage.",
+                "Local-First DB: PouchDB/CouchDB protocol for reliable local data storage.",
                 "Conflict Resolution: Intelligent merging algorithms handle data changes from multiple offline devices.",
                 "Background Sync: Data uploads automatically without interrupting user workflows.",
                 "Zero Data Loss: Transactions are encrypted and stored locally until confirmed by the server."
@@ -250,7 +250,7 @@ const siteConfig = {
             icon: Globe, 
             title: "Truly Global & Localized", 
             description: "Full multi-currency support, adaptable tax systems, dynamic tax setings, and localized compliance for any country in Africa and across the world.", 
-            fullDescription: "Going global requires more than just translating text. BBU1 handles the complexities of international business natively and localy. We support multi-currency transactions with real-time exchange rate updates, distinct tax rules for different regions (e.g., VAT, GST, Sales Tax), and compliance with local statutory reporting requirements across Africa, Asia, and the Americas worldwide.",
+            fullDescription: "Going global takes more than translating text. BBU1 handles the complexities of international business natively and localy. We support multi-currency transactions with real-time exchange rate updates, distinct tax rules for different regions (e.g., VAT, GST, Sales Tax), and compliance with local statutory reporting requirements across Africa, Asia, and the Americas worldwide.",
             technicalSpecs: [
                 "Multi-Currency Core: Transact, report, and consolidate in over 160 currencies.",
                 "Tax Engine: Configurable tax layers for complex regional requirements.",
@@ -275,7 +275,7 @@ const siteConfig = {
         { 
             icon: Settings, 
             title: "Deep Customization & Integration", 
-            description: "With bbu1 every business has the privilage to Tailor the system with custom fields, workflows, and robust custom API integrations to match your unique business processes.", 
+            description: "With bbu1 every business has the privilage to Tailor the system with custom fields, workflows, and full custom API integrations to match how your business runs.", 
             fullDescription: "No two businesses are exactly alike. BBU1 provides a low-code environment allowing you to add custom fields to any form, design custom approval workflows, and build unique reports. For developers, our REST and GraphQL APIs provide full programmatic access to the platform, enabling deep integration with your legacy systems or third-party tools.",
             technicalSpecs: [
                 "Custom Fields & Forms: Add data points specific to your industry without coding.",
@@ -377,7 +377,7 @@ const siteConfig = {
             name: "SACCO / Co-operative", 
             icon: Users, 
             description: "Member management and dividend calculation, smart sacco and co-oparative initiative.", 
-            fullDescription: "Empower your cooperative with transparency and efficiency. Manage member shares, savings accounts, and loan products while automating dividend calculations and regulatory reporting.",
+            fullDescription: "Run your cooperative with transparency and less overhead. Manage member shares, savings accounts, and loan products while automating dividend calculations and regulatory reporting.",
             keyFeatures: ["Member registry & KYC", "Share capital management", "Savings & deposit tracking", "Dividend calculation engine"],
             category: 'Specialized', 
             backgroundImage: "/images/showcase/community-group-meeting.jpg" 
@@ -404,7 +404,7 @@ const siteConfig = {
             name: "Healthcare & Clinics", 
             icon: ClipboardList, 
             description: "Patient management and medical inventory.", 
-            fullDescription: "Modernize your clinic with an integrated practice management system. Handle patient registration, appointments, electronic medical records, and pharmacy inventory seamlessly.",
+            fullDescription: "Bring your clinic up to date with an integrated practice management system. Handle patient registration, appointments, electronic medical records, and pharmacy inventory in one place.",
             keyFeatures: ["Patient EMR/EHR", "Appointment scheduling & reminders", "Pharmacy inventory & expiry tracking", "Insurance billing integration"],
             category: 'Specialized', 
             backgroundImage: "/images/showcase/healthcare-team.jpg" 
@@ -449,8 +449,8 @@ const siteConfig = {
     faqItems: [
         { q: 'What is BBU1?', a: 'BBU1 (Business Base Universe) is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-powered insights into a single, intelligent platform, designed for growth.' },
         { q: 'How does the AI Copilot Aura work?', a: 'Aura, our AI Copilot, securely analyzes your company-wide data in real-time to find patterns, automate routine tasks, and provide simple, actionable insights. For example, it can suggest "Consider bundling Product A and B" or alert you to a "Cash flow projected to be low in 3 weeks," helping you make proactive, data-driven decisions.' },
-        { q: 'Is my enterprise data secure with BBU1?', a: 'Absolutely. BBU1 employs a robust multi-tenant architecture with PostgreSQL\'s Row-Level Security, ensuring your data is completely isolated from other clients. We use bank-level, end-to-end encryption for all data in transit and at rest, along with multi-factor authentication and continuous security monitoring to protect your information.' },
-        { q: 'Can BBU1 be customized to fit my specific business workflows?', a: 'Yes, BBU1 is designed for extensive customization. While powerful out-of-the-box, we offer comprehensive customization services including custom fields, tailored workflows, and robust API access for enterprise clients. This allows you to integrate BBU1 seamlessly with your existing tools and adapt it precisely to your unique operational processes.' },
+        { q: 'Is my enterprise data secure with BBU1?', a: 'Absolutely. BBU1 runs on a hardened multi-tenant architecture with PostgreSQL\'s Row-Level Security, ensuring your data is completely isolated from other clients. We use bank-level, end-to-end encryption for all data in transit and at rest, along with multi-factor authentication and continuous security monitoring to protect your information.' },
+        { q: 'Can BBU1 be customized to fit my specific business workflows?', a: 'Yes, BBU1 is designed for extensive customization. While powerful out-of-the-box, we offer comprehensive customization services including custom fields, tailored workflows, and full API access for enterprise clients. That lets you connect BBU1 with your existing tools and adapt it to the way your business actually works.' },
         { q: 'What kind of customer support is included with BBU1?', a: 'Enterprise plans include dedicated onboarding specialists, an assigned account manager, and priority technical support available via WhatsApp, phone, and email. We also provide a Service Level Agreement (SLA) guaranteeing uptime and rapid response times, ensuring you always have the support you need.' },
         { q: 'Does BBU1 support multiple currencies and international operations?', a: 'Yes, BBU1 offers comprehensive multi-currency support, allowing you to manage transactions, invoicing, and reporting in various currencies. It also includes adaptable tax systems and localized compliance features to operate effectively across different countries, particularly throughout Africa and globally.' },
         { q: 'What happens if my internet connection is lost?', a: 'BBU1 features an unbreakable offline mode. Key business functions, such as POS transactions, inventory updates, and HR processes, continue to work perfectly even without an internet connection. All data is securely stored locally and automatically syncs with the cloud the moment you\'re back online, ensuring uninterrupted business operations.' },
@@ -767,7 +767,7 @@ const MegaMenuHeader = () => {
         )}>
             <div className="max-w-7xl mx-auto flex flex-row flex-nowrap h-full items-center px-4 gap-2">
 
-                {/* Logo — visible on all screens, animates on mount */}
+                {/* Logo: visible on all screens, animates on mount */}
                 <motion.div
                     initial={{ opacity: 0, x: -18 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -827,7 +827,7 @@ const MegaMenuHeader = () => {
                         )}
                     </div>
 
-                    {/* Industries — plain link */}
+                    {/* Industries: plain link */}
                     <Link href="/industries" className={navLinkClass}>
                         Industries
                     </Link>
@@ -901,7 +901,7 @@ const MegaMenuHeader = () => {
             </div>
         </header>
 
-        {/* Mobile full-screen menu — outside <header> so backdrop-filter doesn't trap it */}
+        {/* Mobile full-screen menu, kept outside <header> so backdrop-filter does not trap it */}
         <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div
@@ -1274,7 +1274,7 @@ const DynamicPricingSection = () => {
                     {loading && <p className="text-xs text-muted-foreground animate-pulse">Detecting your local currency...</p>}
                 </div>
 
-                {/* --- PRICING GRID (desktop/tablet only — mobile gets a single CTA below) --- */}
+                {/* --- PRICING GRID (desktop/tablet only; mobile gets a single CTA below) --- */}
                 <motion.div
                     className="hidden md:grid md:grid-cols-3 gap-8 max-w-7xl mx-auto"
                     initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.05 }}
@@ -1354,7 +1354,7 @@ const DynamicPricingSection = () => {
                             <div className="flex items-center gap-2 text-blue-400 font-black text-[10px] uppercase tracking-[0.2em] mb-3">
                                 <Sparkles className="h-4 w-4" /> The "No-Addons" Promise
                             </div>
-                            <h3 className="text-2xl font-bold text-white tracking-tight">Complete Ecosystem Unlocked</h3>
+                            <h3 className="text-2xl font-bold text-white tracking-tight">The Complete Ecosystem</h3>
                             <p className="text-slate-400 text-sm mt-1">Every enterprise engine is included in your subscription.</p>
                         </div>
 
@@ -1646,7 +1646,7 @@ const PartnerWithUsSection = () => {
                     <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6">Partner with BBU1</h2>
                     <p className="text-lg text-muted-foreground">
                         We are building the operating system for the future of your smart business commerce. 
-                        Whether you want to earn, invest, or build—there is a place for you in our ecosystem.
+                        Whether you want to earn, invest, or build, there is a place for you in our ecosystem.
                     </p>
                 </div>
 
@@ -1829,7 +1829,7 @@ const AboutCompanyExecutiveSection = () => {
 
                         <motion.div {...fadeInUp} transition={{ delay: 0.2 }} className="max-w-xl space-y-6">
                             <p className="text-xl md:text-2xl font-medium text-slate-500 leading-relaxed border-l-4 border-blue-600 pl-6">
-                                BBU1 is the architect of the Business Operating System (BOS)—a unified digital environment where commerce is empowered by a central operating core.
+                                BBU1 is the architect of the Business Operating System (BOS): a unified digital environment where commerce runs on a central operating core.
                             </p>
                             <p className="text-slate-500 text-lg leading-relaxed">
                                 we bridge the gap between advanced technology and global business utility. Our purpose is to provide a secure foundation for the next generation of digital commerce.
@@ -1941,7 +1941,7 @@ const AboutCompanyExecutiveSection = () => {
                                 "My journey began with a focus on foundations. Supported by the pillars of my family and my community in Uganda, I realized that growth is only possible when your base is unbreakable."
                             </p>
                             <p>
-                                "With a background in Computer Science, I initiated BBU1 to pay that support forward. My mission is to ensure that businesses everywhere—from local markets to high-rise offices—can operate with identical digital power."
+                                "With a background in Computer Science, I initiated BBU1 to pay that support forward. My mission is to ensure that businesses everywhere, from local markets to high-rise offices, can operate with the same digital power."
                             </p>
                         </div>
 
@@ -1999,7 +1999,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
             alt: "BBU1 Inventory Demo" 
         },
         { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers" },
-        { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Empower agents with a fast, secure system for transactions.", alt: "Mobile money agent" },
+        { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Give agents a fast, secure system for transactions.", alt: "Mobile money agent" },
         { src: "/images/showcase/local-shop-owner.jpg", title: "Local & Retail Commerce", description: "A complete enterprise powerful POS and inventory system to manage sales and stock.", alt: "Shop owner" },
         { src: "/images/showcase/healthcare-team.jpg", title: "Healthcare & Clinic Management", description: "Digitize patient records, manage appointments, and track medical supplies.", alt: "Medical professionals" },
         { src: "/images/showcase/farmers-learning.jpg", title: "Agriculture & Agribusiness", description: "Bring modern management to the field to track crops.", alt: "Farmers" },
@@ -2115,7 +2115,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
             <MegaMenuHeader />
             <main className="flex-grow">
 
-               {/* HERO SECTION — Paradigm-inspired dark tech design */}
+               {/* HERO SECTION */}
 <section id="hero" className="relative overflow-hidden text-center flex items-center justify-center" style={{ minHeight: '100svh' }}>
 
     {/* ── Background layers ── */}
@@ -2142,7 +2142,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
         <span className="text-[28vw] sm:text-[22vw] font-black text-white/[0.025] tracking-tighter leading-none">BBU1</span>
     </div>
 
-    {/* Central spotlight card — the Paradigm signature element */}
+    {/* Central spotlight card */}
     <div className="absolute inset-x-4 sm:inset-x-12 lg:inset-x-24 top-16 bottom-0 rounded-t-3xl border border-white/[0.06] bg-white/[0.015] pointer-events-none" />
 
     {/* ── Content ── */}
@@ -2156,7 +2156,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                 </span>
             </motion.div>
 
-            {/* Main headline — 2 lines, very large */}
+            {/* Main headline: 2 lines, very large */}
             <motion.h1 variants={itemVariants}
                 className="text-[2.6rem] leading-[1.1] sm:text-6xl lg:text-8xl font-black tracking-tight text-white mb-4 sm:mb-6">
                 Your business,
@@ -2181,7 +2181,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
             {/* Subtitle */}
             <motion.p variants={itemVariants}
                 className="text-sm sm:text-lg lg:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed font-medium mb-10 sm:mb-12 px-2 sm:px-0">
-                From Accounting to HR. From CRM to Inventory. BBU1 is the single platform that runs every corner of your business — from a single kiosk to a global enterprise.
+                From Accounting to HR. From CRM to Inventory. BBU1 is the single platform that runs every corner of your business, from a single kiosk to a global enterprise.
             </motion.p>
 
             {/* CTAs */}
