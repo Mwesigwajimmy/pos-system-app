@@ -18,10 +18,10 @@
  *    cleared session is picked up immediately instead of leaving the 
  *    panel stuck on a stale token (which was collapsing the whole 
  *    Copilot into its no-op fallback branch and disabling typing).
- * 5. 🔍 TEMPORARY DIAGNOSTIC: Mount/unmount logger added to NeuralSanctuary
- *    to test whether it's being torn down and rebuilt on every keystroke,
- *    which would explain the input value resetting to '' after each
- *    character. REMOVE once the typing bug is fully diagnosed and fixed.
+ * 5. 🔍 TEMPORARY DIAGNOSTIC: Logs the chat 'id' on every render to test
+ *    whether businessId is flickering between values while typing, which
+ *    would cause useChat() to silently reset its internal input state
+ *    even without a full unmount. REMOVE once the typing bug is fixed.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -50,11 +50,8 @@ function NeuralSanctuary({
   const pathname = usePathname();
   const isSyncing = useRef(false);
 
-  // 🔍 TEMPORARY DIAGNOSTIC — remove after testing
-  useEffect(() => {
-    console.log('%c[DIAGNOSTIC] NeuralSanctuary MOUNTED', 'color: lime; font-weight: bold;');
-    return () => console.log('%c[DIAGNOSTIC] NeuralSanctuary UNMOUNTED', 'color: red; font-weight: bold;');
-  }, []);
+  // 🔍 TEMPORARY DIAGNOSTIC — fires on every render, remove after testing
+  console.log('%c[DIAGNOSTIC] chat id this render:', 'color: orange; font-weight: bold;', `aura-vault-${businessId}`, '| businessId:', businessId);
 
   const { 
     messages, 
