@@ -8,9 +8,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 
-import {
-  Card, CardHeader, CardTitle, CardDescription, CardContent,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,7 +23,7 @@ import {
   Film, HelpCircle, Plus,
   Truck, Zap, FileText, Moon, Sun, Crown, Building2,
   CheckSquare, Square, Image as ImageIcon, Trash2,
-  Clock, Percent, Key, ClipboardList, MapPin,
+  Clock, Percent, Key, MapPin,
   CalendarClock, DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -88,103 +85,295 @@ const formSchema = z.object({
   testimonialAuthor: z.string().optional(),
 });
 
-// ── Shared section header component ──────────────────────────────────────────
-function SectionHeader({
+/* ═══════════════════════════════════════════════════════════════════════════
+   Presentation primitives
+   Uniform spacing, one type scale, no absolute overlays over text.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SECTION_TONE: Record<string, string> = {
+  blue:    "bg-blue-50 text-blue-600 ring-blue-100",
+  emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+  purple:  "bg-purple-50 text-purple-600 ring-purple-100",
+  amber:   "bg-amber-50 text-amber-600 ring-amber-100",
+  slate:   "bg-slate-100 text-slate-600 ring-slate-200",
+};
+
+/** Card shell for one settings section. */
+function SectionCard({
   icon: Icon,
-  iconClass,
+  tone = "slate",
   title,
   description,
   action,
+  children,
 }: {
   icon: React.ElementType;
-  iconClass: string;
+  tone?: keyof typeof SECTION_TONE | string;
   title: string;
   description: string;
   action?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
-    <CardHeader className="border-b bg-white px-8 py-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className={cn("p-2.5 rounded-xl border", iconClass)}>
-            <Icon size={20} />
-          </div>
-          <div>
-            <CardTitle className="text-base font-semibold text-slate-900 tracking-normal">
-              {title}
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500 mt-0.5 font-normal">
-              {description}
-            </CardDescription>
+    <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <header className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-5">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className={cn(
+              "mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1",
+              SECTION_TONE[tone] ?? SECTION_TONE.slate
+            )}
+          >
+            <Icon size={17} strokeWidth={2} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold text-slate-900">{title}</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{description}</p>
           </div>
         </div>
-        {action && <div className="shrink-0">{action}</div>}
-      </div>
-    </CardHeader>
+        {action ? <div className="shrink-0 sm:ml-4">{action}</div> : null}
+      </header>
+      <div className="px-4 py-5 sm:px-6 sm:py-6">{children}</div>
+    </section>
   );
 }
 
-// ── Shared field label ────────────────────────────────────────────────────────
-function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
+/** Label + control + optional hint / error, in a consistent vertical rhythm. */
+function Field({
+  label,
+  htmlFor,
+  required,
+  hint,
+  error,
+  trailing,
+  children,
+  className,
+}: {
+  label: string;
+  htmlFor?: string;
+  required?: boolean;
+  hint?: string;
+  error?: string;
+  trailing?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <Label htmlFor={htmlFor} className="text-xs font-medium text-slate-600 mb-1 block">
+    <div className={cn("space-y-1.5", className)}>
+      <div className="flex min-h-[18px] items-baseline justify-between gap-3">
+        <Label htmlFor={htmlFor} className="text-xs font-medium text-slate-700">
+          {label}
+          {required && <span className="ml-0.5 text-rose-500">*</span>}
+        </Label>
+        {trailing}
+      </div>
       {children}
-    </Label>
+      {error ? (
+        <p className="text-xs text-rose-600">{error}</p>
+      ) : hint ? (
+        <p className="text-xs text-slate-400">{hint}</p>
+      ) : null}
+    </div>
   );
 }
 
-// ── Template option card ──────────────────────────────────────────────────────
-function TemplateCard({
+/** Text input with a leading icon. Padding is matched to the icon box so
+ *  the caret and placeholder never sit under the glyph. */
+const IconInput = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement> & { icon: React.ElementType; iconClass?: string }
+>(function IconInput({ icon: Icon, iconClass, className, ...props }, ref) {
+  return (
+    <div className="relative">
+      <Icon
+        size={15}
+        className={cn(
+          "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400",
+          iconClass
+        )}
+      />
+      <Input
+        ref={ref}
+        {...props}
+        className={cn("h-10 rounded-lg border-slate-200 pl-9 text-sm", className)}
+      />
+    </div>
+  );
+});
+
+/** Selectable option tile. All colour classes arrive as complete strings so
+ *  Tailwind can see them at build time. */
+function OptionCard({
   selected,
   onClick,
   icon: Icon,
   iconBg,
-  checkColor,
-  cardClass,
   title,
   description,
-  titleClass,
-  descClass,
-  borderActive,
-  borderIdle,
+  surface = "bg-white",
+  borderIdle = "border-slate-200",
+  borderActive = "border-slate-900",
+  hoverBorder = "hover:border-slate-300",
+  titleClass = "text-slate-900",
+  descClass = "text-slate-500",
+  checkClass = "text-slate-900",
 }: {
   selected: boolean;
   onClick: () => void;
   icon: React.ElementType;
   iconBg: string;
-  checkColor: string;
-  cardClass: string;
   title: string;
   description: string;
+  surface?: string;
+  borderIdle?: string;
+  borderActive?: string;
+  hoverBorder?: string;
   titleClass?: string;
   descClass?: string;
-  borderActive: string;
-  borderIdle: string;
+  checkClass?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={selected}
       className={cn(
-        "p-5 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col justify-between h-44 relative overflow-hidden",
-        selected ? `${cardClass} ${borderActive} shadow-md` : `bg-white ${borderIdle} hover:${borderActive}`
+        "flex w-full flex-col gap-3 rounded-xl border p-4 text-left transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 focus-visible:ring-offset-2",
+        selected ? cn(surface, borderActive, "ring-1 ring-inset", borderActive.replace("border-", "ring-"))
+                 : cn("bg-white", borderIdle, hoverBorder)
       )}
     >
-      <div className="flex justify-between items-start">
-        <div className={cn("p-2.5 rounded-xl text-white", iconBg)}>
-          <Icon size={18} />
-        </div>
-        {selected && <CheckCircle2 className={checkColor} size={18} />}
+      <div className="flex items-start justify-between gap-2">
+        <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg text-white", iconBg)}>
+          <Icon size={16} strokeWidth={2} />
+        </span>
+        <CheckCircle2
+          size={16}
+          className={cn(checkClass, "shrink-0 transition-opacity", selected ? "opacity-100" : "opacity-0")}
+        />
       </div>
       <div className="space-y-1">
-        <h4 className={cn("font-semibold text-sm", titleClass || "text-slate-900")}>{title}</h4>
-        <p className={cn("text-[11px] leading-relaxed", descClass || "text-slate-500")}>{description}</p>
+        <h3 className={cn("text-xs font-semibold leading-tight", selected ? titleClass : "text-slate-900")}>
+          {title}
+        </h3>
+        <p className={cn("text-xs leading-relaxed", selected ? descClass : "text-slate-500")}>
+          {description}
+        </p>
       </div>
     </button>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+/** Grey panel used by the FAQ and custom-page repeaters. */
+function RepeaterItem({
+  label,
+  onRemove,
+  children,
+}: {
+  label: string;
+  onRemove?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`Remove ${label}`}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Media preview frame with a remove control that never covers the image centre. */
+function MediaFrame({
+  children,
+  badge,
+  onRemove,
+}: {
+  children: React.ReactNode;
+  badge: React.ReactNode;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="group relative h-36 overflow-hidden rounded-lg border border-slate-200 bg-slate-900">
+      {children}
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
+        {badge}
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove media"
+        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-900/70 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-rose-600 focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100"
+      >
+        <Trash2 size={13} />
+      </button>
+    </div>
+  );
+}
+
+/** Dashed upload target. */
+function UploadTarget({
+  id,
+  busy,
+  icon: Icon,
+  label,
+  disabled,
+  tone = "slate",
+}: {
+  id: string;
+  busy: boolean;
+  icon: React.ElementType;
+  label: string;
+  disabled?: boolean;
+  tone?: "slate" | "purple";
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className={cn(
+        "flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 text-xs font-medium transition-colors",
+        disabled
+          ? "pointer-events-none border-slate-200 bg-slate-50 text-slate-400"
+          : tone === "purple"
+            ? "border-purple-200 bg-purple-50/60 text-purple-700 hover:bg-purple-50"
+            : "border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100"
+      )}
+    >
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+      <span className="truncate">{label}</span>
+    </label>
+  );
+}
+
+/* ── Section registry driving the side / tab navigation ──────────────────── */
+const SECTIONS = [
+  { id: "brand",     label: "Branding",   icon: Palette },
+  { id: "contact",   label: "Contact",    icon: MessageSquare },
+  { id: "theme",     label: "Appearance", icon: Sun },
+  { id: "template",  label: "Template",   icon: Layers },
+  { id: "logistics", label: "Delivery",   icon: Truck },
+  { id: "pages",     label: "Pages",      icon: FileText },
+  { id: "faq",       label: "FAQs",       icon: HelpCircle },
+  { id: "media",     label: "Media",      icon: Video },
+  { id: "seo",       label: "SEO",        icon: Search },
+] as const;
+
+type SectionId = (typeof SECTIONS)[number]["id"];
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
 export function StorefrontSettings({ initialData }: { initialData?: any }) {
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
@@ -207,6 +396,9 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
   const [hotelAmenities, setHotelAmenities] = useState<Record<string, boolean>>({
     wifi: true, ac: true, breakfast: true, parking: true, pool: false, tv: true,
   });
+
+  // UI-only: which settings section is on screen.
+  const [activeSection, setActiveSection] = useState<SectionId>("brand");
 
   // ── Data fetching ───────────────────────────────────────────────────────────
   const { data: profile } = useQuery({
@@ -311,6 +503,7 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
   const selectedTheme = form.watch("websiteTheme") || 'MODERN_MINIMALIST';
   const bannerUrl = form.watch("bannerUrl");
   const logoUrl = form.watch("logoUrl");
+  const currency = form.watch("currency");
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const toggleVariantSelection = (id: string) =>
@@ -459,864 +652,923 @@ export function StorefrontSettings({ initialData }: { initialData?: any }) {
     });
   };
 
+  const errors = form.formState.errors as Record<string, any>;
+  const err = (name: string) => errors?.[name]?.message as string | undefined;
+
+  const inputBase = "h-10 rounded-lg border-slate-200 text-sm";
+  const textareaBase = "rounded-lg border-slate-200 text-sm resize-none";
+
+  const isVisible = (id: SectionId) => activeSection === id;
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-28 animate-in fade-in duration-300">
-
-      {/* ── Live storefront link banner ────────────────────────────────────── */}
-      <div className="bg-slate-900 rounded-2xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative overflow-hidden shadow-xl">
-        <Store className="absolute -right-6 -bottom-6 w-36 h-36 text-white/5 rotate-12 pointer-events-none" />
-        <div className="space-y-1 relative z-10">
-          <p className="text-xs font-medium text-blue-400 flex items-center gap-1.5">
-            <Globe size={13} /> Public storefront link
-          </p>
-          <h3 className="text-xl font-bold text-white">{form.watch("storeName") || 'My Store'}</h3>
-          <p className="text-xs font-mono text-slate-400 select-all">{publicStoreUrl}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 relative z-10 shrink-0">
-          <Button type="button" onClick={copyStoreLink} variant="outline"
-            className="h-10 px-5 bg-slate-800 border-slate-700 text-white hover:bg-slate-700 text-xs rounded-xl font-medium">
-            <Copy size={14} className="mr-2 text-blue-400" /> Copy link
-          </Button>
-          <Button type="button" onClick={() => window.open(publicStoreUrl, '_blank')}
-            className="h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-xl font-medium shadow-lg shadow-blue-900/30">
-            <ExternalLink size={14} className="mr-2" /> Preview store
-          </Button>
-        </div>
-      </div>
-
-      {/* ── 1. Branding & identity ─────────────────────────────────────────── */}
-      <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <SectionHeader
-          icon={Palette}
-          iconClass="bg-blue-50 text-blue-600 border-blue-100"
-          title="Branding & store identity"
-          description="Set your store name, public URL, logo, hero banner, and brand colours."
-        />
-        <CardContent className="p-8 space-y-8">
-
-          {/* Store name + slug */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="storeName">Store / business name <span className="text-rose-500">*</span></FieldLabel>
-              <Input id="storeName" {...form.register("storeName")} className="h-11 rounded-xl border-slate-200 font-medium" />
-              {form.formState.errors.storeName && (
-                <p className="text-xs text-rose-600">{form.formState.errors.storeName.message as string}</p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="storeSlug">
-                Public URL slug <span className="text-rose-500">*</span>
-              </FieldLabel>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono pointer-events-none select-none">
-                  bbu1.com/store/
-                </span>
-                <Input
-                  id="storeSlug"
-                  {...form.register("storeSlug")}
-                  className="h-11 pl-[7.5rem] rounded-xl font-mono border-blue-200 bg-blue-50/30 text-blue-900 text-sm"
-                />
+    <form onSubmit={form.handleSubmit(onSubmit)} className="mx-auto w-full max-w-[1400px]">
+      {/* ── Page header ─────────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white">
+              <Store size={18} strokeWidth={2} />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate text-sm font-semibold text-slate-900">
+                  {form.watch("storeName") || "My Store"}
+                </h1>
+                <Badge className="border-0 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                  Live
+                </Badge>
               </div>
-              {form.formState.errors.storeSlug && (
-                <p className="text-xs text-rose-600">{form.formState.errors.storeSlug.message as string}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Currency + accent colour */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="currency">Currency code (ISO 4217)</FieldLabel>
-              <Input
-                id="currency"
-                {...form.register("currency")}
-                maxLength={3}
-                className="h-11 rounded-xl border-slate-200 font-mono font-bold uppercase tracking-widest"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="themeColor">Brand accent colour</FieldLabel>
-              <div className="flex gap-3 items-center">
-                <div className="relative h-11 w-16 rounded-xl border border-slate-200 overflow-hidden shadow-sm shrink-0">
-                  <input
-                    type="color"
-                    id="themeColor"
-                    className="absolute -top-2 -left-2 h-16 w-20 cursor-pointer border-0 p-0"
-                    {...form.register("themeColor")}
-                  />
-                </div>
-                <Input
-                  {...form.register("themeColor")}
-                  placeholder="#2563eb"
-                  className="h-11 font-mono uppercase rounded-xl border-slate-200 flex-1"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Hero banner + logo */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-slate-100">
-
-            {/* Banner */}
-            <div className="space-y-3">
-              <FieldLabel>Hero banner — image or short video</FieldLabel>
-              {bannerUrl && (
-                <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-900 h-36 group">
-                  {isVideoUrl(bannerUrl) ? (
-                    <video src={bannerUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={bannerUrl} className="w-full h-full object-cover" alt="Hero banner preview" />
-                  )}
-                  <Badge className="absolute top-2.5 left-2.5 bg-black/60 text-white text-[10px] border-none backdrop-blur-sm flex items-center gap-1">
-                    {isVideoUrl(bannerUrl) ? <Film size={11} className="text-purple-300" /> : <ImageIcon size={11} className="text-blue-300" />}
-                    {isVideoUrl(bannerUrl) ? 'Video preview' : 'Image preview'}
-                  </Badge>
-                  <Button
-                    type="button"
-                    onClick={() => form.setValue("bannerUrl", "")}
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2.5 right-2.5 h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 size={13} />
-                  </Button>
-                </div>
-              )}
-              <input type="file" accept="image/*,video/*" onChange={e => handleStoreAssetUpload(e, 'bannerUrl')} className="hidden" id="store-banner-upload" />
-              <label htmlFor="store-banner-upload"
-                className="flex items-center justify-center gap-2.5 h-12 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl cursor-pointer bg-slate-50 hover:bg-blue-50/30 transition-all text-xs font-medium text-slate-600 hover:text-blue-700">
-                {isUploadingBanner ? <Loader2 className="animate-spin h-4 w-4 text-blue-500" /> : <Upload className="h-4 w-4 text-slate-400" />}
-                {bannerUrl ? "Replace hero banner" : "Upload hero banner (photo or video)"}
-              </label>
-            </div>
-
-            {/* Logo */}
-            <div className="space-y-3">
-              <FieldLabel>Store logo</FieldLabel>
-              {logoUrl && (
-                <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 p-2 h-36 flex items-center justify-center group">
-                  <img src={logoUrl} className="max-h-full max-w-full object-contain rounded-lg" alt="Brand logo preview" />
-                  <Badge className="absolute top-2.5 left-2.5 bg-black/60 text-white text-[10px] border-none backdrop-blur-sm flex items-center gap-1">
-                    <ImageIcon size={11} className="text-emerald-300" /> Logo preview
-                  </Badge>
-                  <Button
-                    type="button"
-                    onClick={() => form.setValue("logoUrl", "")}
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2.5 right-2.5 h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 size={13} />
-                  </Button>
-                </div>
-              )}
-              <input type="file" accept="image/*" onChange={e => handleStoreAssetUpload(e, 'logoUrl')} className="hidden" id="store-logo-upload" />
-              <label htmlFor="store-logo-upload"
-                className="flex items-center justify-center gap-2.5 h-12 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl cursor-pointer bg-slate-50 hover:bg-blue-50/30 transition-all text-xs font-medium text-slate-600 hover:text-blue-700">
-                {isUploadingLogo ? <Loader2 className="animate-spin h-4 w-4 text-blue-500" /> : <ImagePlus className="h-4 w-4 text-slate-400" />}
-                {logoUrl ? "Replace logo" : "Upload brand logo"}
-              </label>
-            </div>
-          </div>
-
-          {/* Store description */}
-          <div className="space-y-1.5">
-            <FieldLabel htmlFor="storeDescription">Public store description & brand story</FieldLabel>
-            <Textarea
-              id="storeDescription"
-              {...form.register("storeDescription")}
-              placeholder="Tell customers about your business, quality guarantees, or booking policies..."
-              className="rounded-xl border-slate-200 text-sm min-h-[100px] resize-none"
-            />
-          </div>
-
-          {/* Website CTA block */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-slate-100">
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="heroCtaText">Hero banner button label</FieldLabel>
-              <Input id="heroCtaText" {...form.register("heroCtaText")} placeholder="e.g. Explore Catalog" className="h-11 rounded-xl border-slate-200" />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="heroCtaLink">Hero banner button link</FieldLabel>
-              <Input id="heroCtaLink" {...form.register("heroCtaLink")} placeholder="e.g. #catalog or https://..." className="h-11 rounded-xl border-slate-200 font-mono text-sm" />
-            </div>
-          </div>
-
-          {/* About us block */}
-          <div className="space-y-4 pt-2 border-t border-slate-100">
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="aboutUsTitle">About us section — heading</FieldLabel>
-              <Input id="aboutUsTitle" {...form.register("aboutUsTitle")} placeholder="e.g. About Our Business" className="h-11 rounded-xl border-slate-200" />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="aboutUsBody">About us section — body text</FieldLabel>
-              <Textarea
-                id="aboutUsBody"
-                {...form.register("aboutUsBody")}
-                placeholder="Describe your story, mission, and what sets you apart..."
-                className="rounded-xl border-slate-200 text-sm min-h-[90px] resize-none"
-              />
-            </div>
-          </div>
-
-          {/* Testimonial */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-slate-100">
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="testimonialQuote">Featured testimonial</FieldLabel>
-              <Textarea
-                id="testimonialQuote"
-                {...form.register("testimonialQuote")}
-                placeholder="e.g. Excellent service and super fast delivery..."
-                className="rounded-xl border-slate-200 text-sm min-h-[80px] resize-none"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="testimonialAuthor">Testimonial author</FieldLabel>
-              <Input id="testimonialAuthor" {...form.register("testimonialAuthor")} placeholder="e.g. Verified Client" className="h-11 rounded-xl border-slate-200" />
-            </div>
-          </div>
-
-        </CardContent>
-      </Card>
-
-      {/* ── 2. Contact & WhatsApp dispatch ────────────────────────────────── */}
-      <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <SectionHeader
-          icon={MessageSquare}
-          iconClass="bg-emerald-50 text-emerald-600 border-emerald-100"
-          title="WhatsApp & contact dispatch"
-          description="Receive instant WhatsApp alerts when customers place orders or request inspections."
-        />
-        <CardContent className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="whatsappNumber">WhatsApp order number <span className="text-rose-500">*</span></FieldLabel>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 pointer-events-none" />
-                <Input
-                  id="whatsappNumber"
-                  {...form.register("whatsappNumber")}
-                  placeholder="+256700000000"
-                  className="pl-9 h-11 rounded-xl border-emerald-200 bg-emerald-50/20 text-emerald-900 font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="supportEmail">Support email address</FieldLabel>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <Input
-                  id="supportEmail"
-                  {...form.register("supportEmail")}
-                  type="email"
-                  placeholder="orders@mybusiness.com"
-                  className="pl-9 h-11 rounded-xl border-slate-200"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="supportPhone">Support phone helpline</FieldLabel>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <Input
-                  id="supportPhone"
-                  {...form.register("supportPhone")}
-                  placeholder="+256..."
-                  className="pl-9 h-11 rounded-xl border-slate-200"
-                />
-              </div>
-            </div>
-
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── 3. Website design theme ───────────────────────────────────────── */}
-      <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <SectionHeader
-          icon={Palette}
-          iconClass="bg-purple-50 text-purple-600 border-purple-100"
-          title="Website design theme"
-          description="Choose a visual theme that transforms the look and feel of your public storefront."
-        />
-        <CardContent className="p-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-            <TemplateCard
-              selected={selectedTheme === 'MODERN_MINIMALIST'}
-              onClick={() => form.setValue("websiteTheme", "MODERN_MINIMALIST")}
-              icon={Sun}
-              iconBg="bg-blue-600"
-              checkColor="text-blue-600"
-              cardClass="bg-blue-50/70"
-              borderActive="border-blue-600"
-              borderIdle="border-slate-200 hover:border-blue-300"
-              title="Modern Minimalist"
-              description="Clean white canvas, electric blue accents, and modern card layouts."
-            />
-
-            <TemplateCard
-              selected={selectedTheme === 'DARK_SOVEREIGN'}
-              onClick={() => form.setValue("websiteTheme", "DARK_SOVEREIGN")}
-              icon={Moon}
-              iconBg="bg-emerald-600"
-              checkColor="text-emerald-400"
-              cardClass="bg-slate-900"
-              borderActive="border-emerald-500"
-              borderIdle="border-slate-800 hover:border-emerald-500/50"
-              title="Dark Sovereign"
-              description="Deep OLED dark mode, emerald glow accents, and futuristic glass cards."
-              titleClass="text-white"
-              descClass="text-slate-400"
-            />
-
-            <TemplateCard
-              selected={selectedTheme === 'LUXURY_GOLD'}
-              onClick={() => form.setValue("websiteTheme", "LUXURY_GOLD")}
-              icon={Crown}
-              iconBg="bg-amber-500"
-              checkColor="text-amber-400"
-              cardClass="bg-amber-950"
-              borderActive="border-amber-500"
-              borderIdle="border-amber-900 hover:border-amber-600"
-              title="Luxury Gold"
-              description="Obsidian black with champagne gold accents and premium badge styling."
-              titleClass="text-amber-100"
-              descClass="text-amber-300/80"
-            />
-
-            <TemplateCard
-              selected={selectedTheme === 'CORPORATE_ENTERPRISE'}
-              onClick={() => form.setValue("websiteTheme", "CORPORATE_ENTERPRISE")}
-              icon={Building2}
-              iconBg="bg-slate-900"
-              checkColor="text-slate-900"
-              cardClass="bg-slate-100"
-              borderActive="border-slate-900"
-              borderIdle="border-slate-200 hover:border-slate-400"
-              title="Corporate Enterprise"
-              description="Navy and steel grey, crisp executive borders, and a structured formal layout."
-            />
-
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── 4. Industry storefront template ──────────────────────────────── */}
-      <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <SectionHeader
-          icon={Layers}
-          iconClass="bg-blue-50 text-blue-600 border-blue-100"
-          title="Industry storefront template"
-          description="Switch your public site between a retail shop, property directory, hotel booking page, or professional services studio."
-        />
-        <CardContent className="p-8 space-y-8">
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-            <TemplateCard
-              selected={selectedTemplate === 'RETAIL'}
-              onClick={() => form.setValue("storefrontTemplate", "RETAIL")}
-              icon={ShoppingBag}
-              iconBg="bg-blue-600"
-              checkColor="text-blue-600"
-              cardClass="bg-blue-50/60"
-              borderActive="border-blue-600"
-              borderIdle="border-slate-200 hover:border-blue-300"
-              title="Standard retail"
-              description="E-commerce cart checkout, POS stock sync, and instant digital receipts."
-            />
-
-            <TemplateCard
-              selected={selectedTemplate === 'REAL_ESTATE_RENTALS'}
-              onClick={() => form.setValue("storefrontTemplate", "REAL_ESTATE_RENTALS")}
-              icon={Home}
-              iconBg="bg-emerald-600"
-              checkColor="text-emerald-600"
-              cardClass="bg-emerald-50/60"
-              borderActive="border-emerald-600"
-              borderIdle="border-slate-200 hover:border-emerald-300"
-              title="Real estate & rentals"
-              description="Property listings, inspection fee Mobile Money booking, and WhatsApp chat."
-            />
-
-            <TemplateCard
-              selected={selectedTemplate === 'HOTEL_AIRBNB'}
-              onClick={() => form.setValue("storefrontTemplate", "HOTEL_AIRBNB")}
-              icon={Hotel}
-              iconBg="bg-purple-600"
-              checkColor="text-purple-600"
-              cardClass="bg-purple-50/60"
-              borderActive="border-purple-600"
-              borderIdle="border-slate-200 hover:border-purple-300"
-              title="Hotel & guest house"
-              description="Nightly room rates, date reservations, amenity showcase, and MoMo deposits."
-            />
-
-            <TemplateCard
-              selected={selectedTemplate === 'SERVICES_BOOKING'}
-              onClick={() => form.setValue("storefrontTemplate", "SERVICES_BOOKING")}
-              icon={Briefcase}
-              iconBg="bg-amber-600"
-              checkColor="text-amber-600"
-              cardClass="bg-amber-50/60"
-              borderActive="border-amber-600"
-              borderIdle="border-slate-200 hover:border-amber-300"
-              title="Services & appointments"
-              description="Consultation fees, service packages, and appointment scheduling."
-            />
-
-          </div>
-
-          {/* ── Conditional: Real estate fields ── */}
-          {selectedTemplate === 'REAL_ESTATE_RENTALS' && (
-            <div className="border-t border-slate-100 pt-6 space-y-5">
-              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Home size={15} className="text-emerald-600" /> Real estate configuration
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                <Globe size={12} className="shrink-0" />
+                <span className="truncate font-mono">{publicStoreUrl}</span>
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor="inspectionFee">Inspection fee ({form.watch("currency")})</FieldLabel>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input id="inspectionFee" {...form.register("inspectionFee")} placeholder="50000" className="pl-9 h-11 rounded-xl border-slate-200" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor="agencyLicenseNo">Agency license number</FieldLabel>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input id="agencyLicenseNo" {...form.register("agencyLicenseNo")} placeholder="e.g. RE-UG-2024-001" className="pl-9 h-11 rounded-xl border-slate-200 font-mono" />
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <FieldLabel htmlFor="inspectionTerms">Inspection terms & conditions</FieldLabel>
-                <Textarea
-                  id="inspectionTerms"
-                  {...form.register("inspectionTerms")}
-                  placeholder="Describe what the inspection fee covers, viewing policies, and agent contact terms..."
-                  className="rounded-xl border-slate-200 text-sm min-h-[90px] resize-none"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* ── Conditional: Hotel fields ── */}
-          {selectedTemplate === 'HOTEL_AIRBNB' && (
-            <div className="border-t border-slate-100 pt-6 space-y-5">
-              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Hotel size={15} className="text-purple-600" /> Hotel & accommodation settings
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor="checkInTime">Check-in time</FieldLabel>
-                  <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input id="checkInTime" {...form.register("checkInTime")} type="time" className="pl-9 h-11 rounded-xl border-slate-200 font-mono" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor="checkOutTime">Check-out time</FieldLabel>
-                  <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input id="checkOutTime" {...form.register("checkOutTime")} type="time" className="pl-9 h-11 rounded-xl border-slate-200 font-mono" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor="advanceDepositPct">Advance deposit (%)</FieldLabel>
-                  <div className="relative">
-                    <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input id="advanceDepositPct" {...form.register("advanceDepositPct")} placeholder="50" className="pl-9 h-11 rounded-xl border-slate-200 font-mono" />
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <FieldLabel htmlFor="cancellationPolicy">Cancellation policy</FieldLabel>
-                <Textarea
-                  id="cancellationPolicy"
-                  {...form.register("cancellationPolicy")}
-                  placeholder="Describe your refund and cancellation policy..."
-                  className="rounded-xl border-slate-200 text-sm min-h-[80px] resize-none"
-                />
-              </div>
-
-              {/* Amenity toggles */}
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-slate-600">Available amenities</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {[
-                    { key: 'wifi', label: 'Wi-Fi' },
-                    { key: 'ac', label: 'Air conditioning' },
-                    { key: 'breakfast', label: 'Breakfast included' },
-                    { key: 'parking', label: 'Parking' },
-                    { key: 'pool', label: 'Swimming pool' },
-                    { key: 'tv', label: 'Television' },
-                  ].map(({ key, label }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setHotelAmenities(prev => ({ ...prev, [key]: !prev[key] }))}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-medium transition-all",
-                        hotelAmenities[key]
-                          ? "bg-purple-600 border-purple-600 text-white"
-                          : "bg-white border-slate-200 text-slate-600 hover:border-purple-300"
-                      )}
-                    >
-                      {hotelAmenities[key] ? <CheckCircle2 size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-current opacity-40" />}
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── Conditional: Services fields ── */}
-          {selectedTemplate === 'SERVICES_BOOKING' && (
-            <div className="border-t border-slate-100 pt-6 space-y-5">
-              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Briefcase size={15} className="text-amber-600" /> Services & booking configuration
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor="consultationFee">Consultation fee ({form.watch("currency")})</FieldLabel>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input id="consultationFee" {...form.register("consultationFee")} placeholder="100000" className="pl-9 h-11 rounded-xl border-slate-200" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor="defaultDuration">Default session duration</FieldLabel>
-                  <div className="relative">
-                    <CalendarClock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input id="defaultDuration" {...form.register("defaultDuration")} placeholder="60 minutes" className="pl-9 h-11 rounded-xl border-slate-200" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor="workingHours">Working hours</FieldLabel>
-                  <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input id="workingHours" {...form.register("workingHours")} placeholder="Mon – Sat: 8:00 AM – 6:00 PM" className="pl-9 h-11 rounded-xl border-slate-200" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-        </CardContent>
-      </Card>
-
-      {/* ── 5. Logistics & delivery ───────────────────────────────────────── */}
-      <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <SectionHeader
-          icon={Truck}
-          iconClass="bg-emerald-50 text-emerald-600 border-emerald-100"
-          title="Logistics & delivery options"
-          description="Set your business location, supported regions, and standard versus express shipping rates."
-        />
-        <CardContent className="p-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="businessLocation">Business physical address</FieldLabel>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <Input id="businessLocation" {...form.register("businessLocation")} placeholder="e.g. Plot 12 Kampala Road, Uganda" className="pl-9 h-11 rounded-xl border-slate-200" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="supportedDestinations">Supported shipping regions</FieldLabel>
-              <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <Input id="supportedDestinations" {...form.register("supportedDestinations")} placeholder="e.g. East Africa, Europe, Global" className="pl-9 h-11 rounded-xl border-slate-200" />
-              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-5 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
-              <FieldLabel htmlFor="standardShippingFee">
-                <span className="flex items-center gap-1.5">
-                  <Truck size={13} className="text-blue-500" /> Standard delivery fee ({form.watch("currency")})
-                </span>
-              </FieldLabel>
-              <Input id="standardShippingFee" {...form.register("standardShippingFee")} placeholder="10000" className="h-11 rounded-xl border-slate-200 bg-white font-mono font-semibold" />
-            </div>
-            <div className="p-5 bg-purple-50/50 rounded-xl border border-purple-100 space-y-1.5">
-              <FieldLabel htmlFor="vipShippingFee">
-                <span className="flex items-center gap-1.5 text-purple-700">
-                  <Zap size={13} className="text-purple-500" /> VIP express same-day fee ({form.watch("currency")})
-                </span>
-              </FieldLabel>
-              <Input id="vipShippingFee" {...form.register("vipShippingFee")} placeholder="25000" className="h-11 rounded-xl border-purple-200 bg-white font-mono font-semibold text-purple-900" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── 6. Custom multi-page website builder ─────────────────────────── */}
-      <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <SectionHeader
-          icon={FileText}
-          iconClass="bg-blue-50 text-blue-600 border-blue-100"
-          title="Custom website pages"
-          description="Create standalone pages on your public website such as About, Shipping Policy, or Warranty."
-          action={
-            <Button type="button" onClick={addCustomPage}
-              className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-xl font-medium shadow-sm">
-              <Plus size={14} className="mr-1.5" /> Add page
-            </Button>
-          }
-        />
-        <CardContent className="p-8 space-y-5">
-          {customPages.map((page, idx) => (
-            <div key={page.id} className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">Page {idx + 1}</span>
-                {customPages.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeCustomPage(page.id)}
-                    className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <FieldLabel>Page title</FieldLabel>
-                  <Input
-                    value={page.title}
-                    onChange={e => handleCustomPageChange(page.id, 'title', e.target.value)}
-                    placeholder="e.g. Quality Guarantee"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <FieldLabel>URL slug</FieldLabel>
-                  <Input
-                    value={page.slug}
-                    onChange={e => handleCustomPageChange(page.id, 'slug', e.target.value)}
-                    placeholder="e.g. quality-guarantee"
-                    className="h-10 rounded-xl border-slate-200 bg-white font-mono text-sm"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <FieldLabel>Page content / article body</FieldLabel>
-                <Textarea
-                  value={page.content}
-                  onChange={e => handleCustomPageChange(page.id, 'content', e.target.value)}
-                  placeholder="Enter page text, policy details, or company history..."
-                  className="rounded-xl border-slate-200 bg-white text-sm min-h-[90px] resize-none"
-                />
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* ── 7. FAQ builder ────────────────────────────────────────────────── */}
-      <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <SectionHeader
-          icon={HelpCircle}
-          iconClass="bg-amber-50 text-amber-600 border-amber-100"
-          title="Frequently asked questions"
-          description="Add custom questions and answers displayed on your public storefront."
-          action={
-            <Button type="button" onClick={addFaqItem}
-              className="h-9 px-4 bg-amber-500 hover:bg-amber-600 text-white text-xs rounded-xl font-medium shadow-sm">
-              <Plus size={14} className="mr-1.5" /> Add FAQ
-            </Button>
-          }
-        />
-        <CardContent className="p-8 space-y-5">
-          {faqs.map((faq, idx) => (
-            <div key={faq.id} className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">FAQ {idx + 1}</span>
-                {faqs.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeFaqItem(faq.id)}
-                    className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <FieldLabel>Question</FieldLabel>
-                <Input
-                  value={faq.question}
-                  onChange={e => handleFaqChange(faq.id, 'question', e.target.value)}
-                  placeholder="e.g. What are your delivery terms?"
-                  className="h-10 rounded-xl border-slate-200 bg-white text-sm font-medium"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <FieldLabel>Answer</FieldLabel>
-                <Textarea
-                  value={faq.answer}
-                  onChange={e => handleFaqChange(faq.id, 'answer', e.target.value)}
-                  placeholder="Explain your policy or process clearly..."
-                  className="rounded-xl border-slate-200 bg-white text-sm min-h-[70px] resize-none"
-                />
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* ── 8. Product / property media linker ───────────────────────────── */}
-      <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <SectionHeader
-          icon={Video}
-          iconClass="bg-purple-50 text-purple-600 border-purple-100"
-          title="Product & property media linker"
-          description="Select one or more listings and attach photos or video walkthroughs in bulk."
-        />
-        <CardContent className="p-8 space-y-6">
-
-          {/* Selection list */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <FieldLabel>{selectedVariantIds.length} item(s) selected</FieldLabel>
-              <button
-                type="button"
-                onClick={toggleSelectAllVariants}
-                className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                {productVariants && selectedVariantIds.length === productVariants.length ? 'Deselect all' : 'Select all'}
-              </button>
-            </div>
-
-            <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50 p-3 space-y-1.5">
-              {productVariants && productVariants.length > 0 ? (
-                productVariants.map((pv: any) => {
-                  const isSelected = selectedVariantIds.includes(String(pv.id));
-                  return (
-                    <div
-                      key={pv.id}
-                      onClick={() => toggleVariantSelection(String(pv.id))}
-                      className={cn(
-                        "px-3 py-2.5 rounded-lg border flex items-center justify-between cursor-pointer text-xs font-medium transition-all",
-                        isSelected
-                          ? "bg-purple-600 text-white border-purple-600"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-purple-300"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        {isSelected ? <CheckSquare size={14} /> : <Square size={14} className="text-slate-400" />}
-                        <span>{pv.products?.name} — {pv.name}</span>
-                      </div>
-                      <span className={cn("font-mono text-[11px]", isSelected ? "text-purple-100" : "text-slate-400")}>
-                        {pv.sku || 'No SKU'}
-                      </span>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-xs text-slate-400 text-center py-6">No product variants found for this business.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Upload trigger */}
-          <div className="space-y-1.5">
-            <FieldLabel>Attach photo or video walkthrough</FieldLabel>
-            <input
-              type="file"
-              accept="image/*,video/*"
-              onChange={handleProductMediaUpload}
-              disabled={selectedVariantIds.length === 0 || isUploadingProductMedia}
-              className="hidden"
-              id="product-video-upload"
-            />
-            <label
-              htmlFor="product-video-upload"
-              className={cn(
-                "flex items-center justify-center gap-3 h-12 border-2 border-dashed rounded-xl cursor-pointer transition-all text-xs font-medium",
-                selectedVariantIds.length === 0
-                  ? "opacity-50 pointer-events-none bg-slate-100 border-slate-200 text-slate-400"
-                  : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-              )}
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={copyStoreLink}
+              className="h-9 flex-1 rounded-lg border-slate-200 px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 lg:flex-none"
             >
-              {isUploadingProductMedia ? (
-                <Loader2 className="animate-spin h-4 w-4" />
-              ) : (
-                <Camera size={16} />
-              )}
-              {isUploadingProductMedia
-                ? "Attaching media..."
-                : selectedVariantIds.length === 0
-                ? "Select items above to enable upload"
-                : `Attach photo or video to ${selectedVariantIds.length} selected item(s)`}
-            </label>
+              <Copy size={14} className="mr-1.5" /> Copy link
+            </Button>
+            <Button
+              type="button"
+              onClick={() => window.open(publicStoreUrl, '_blank', 'noopener,noreferrer')}
+              className="h-9 flex-1 rounded-lg bg-slate-900 px-3 text-xs font-medium text-white hover:bg-slate-800 lg:flex-none"
+            >
+              <ExternalLink size={14} className="mr-1.5" /> Preview store
+            </Button>
           </div>
-
-        </CardContent>
-      </Card>
-
-      {/* ── 9. SEO & metadata ─────────────────────────────────────────────── */}
-      <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <SectionHeader
-          icon={Search}
-          iconClass="bg-amber-50 text-amber-600 border-amber-100"
-          title="SEO & search engine metadata"
-          description="Optimise your storefront for Google search indexing and social media link previews."
-        />
-        <CardContent className="p-8 space-y-6">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <FieldLabel htmlFor="seoTitle">Meta title</FieldLabel>
-              <span className={cn("text-xs font-mono", (form.watch("seoTitle")?.length || 0) > 70 ? "text-amber-600" : "text-slate-400")}>
-                {form.watch("seoTitle")?.length || 0} / 80
-              </span>
-            </div>
-            <Input id="seoTitle" {...form.register("seoTitle")} className="h-11 rounded-xl border-slate-200 font-medium" />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <FieldLabel htmlFor="seoDesc">Meta description</FieldLabel>
-              <span className={cn("text-xs font-mono", (form.watch("seoDesc")?.length || 0) > 160 ? "text-amber-600" : "text-slate-400")}>
-                {form.watch("seoDesc")?.length || 0} / 200
-              </span>
-            </div>
-            <Textarea
-              id="seoDesc"
-              {...form.register("seoDesc")}
-              className="rounded-xl border-slate-200 text-sm min-h-[100px] resize-none"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── Sticky save footer ────────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-t border-slate-200 px-6 py-4 flex items-center justify-between shadow-2xl">
-        <div className="text-xs text-slate-500 hidden sm:block">
-          Changes are saved to your storefront immediately upon confirmation.
         </div>
-        <Button
-          type="submit"
-          disabled={isPending}
-          className="h-11 px-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-all ml-auto"
-        >
-          {isPending ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
-          ) : (
-            <><ShieldCheck className="mr-2 h-4 w-4" /> Save storefront settings</>
-          )}
-        </Button>
       </div>
 
+      {/* ── Body: nav + content ─────────────────────────────────────────────── */}
+      <div className="mt-4 lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:items-start lg:gap-5">
+        {/* Mobile / tablet: horizontal tabs */}
+        <nav
+          aria-label="Settings sections"
+          className="-mx-4 mb-4 overflow-x-auto px-4 pb-1 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <ul className="flex w-max gap-1.5">
+            {SECTIONS.map(({ id, label, icon: Icon }) => (
+              <li key={id}>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection(id)}
+                  aria-current={isVisible(id) ? "page" : undefined}
+                  className={cn(
+                    "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-xs font-medium transition-colors",
+                    isVisible(id)
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  )}
+                >
+                  <Icon size={14} />
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* Desktop: sticky sidebar */}
+        <nav aria-label="Settings sections" className="hidden lg:sticky lg:top-4 lg:block">
+          <ul className="space-y-0.5 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+            {SECTIONS.map(({ id, label, icon: Icon }) => (
+              <li key={id}>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection(id)}
+                  aria-current={isVisible(id) ? "page" : undefined}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
+                    isVisible(id)
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  )}
+                >
+                  <Icon size={15} className="shrink-0" />
+                  <span className="truncate">{label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* ── Content column ────────────────────────────────────────────────── */}
+        <div className="min-w-0 space-y-4">
+
+          {/* ── 1. Branding & identity ──────────────────────────────────────── */}
+          {isVisible("brand") && (
+            <>
+              <SectionCard
+                icon={Palette}
+                tone="blue"
+                title="Branding and store identity"
+                description="Store name, public address, logo, hero banner and brand colour."
+              >
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                    <Field label="Store name" htmlFor="storeName" required error={err("storeName")}>
+                      <Input id="storeName" {...form.register("storeName")} className={inputBase} />
+                    </Field>
+
+                    <Field
+                      label="Public address"
+                      htmlFor="storeSlug"
+                      required
+                      error={err("storeSlug")}
+                      hint="Lowercase letters, numbers and hyphens."
+                    >
+                      {/* Prefix sits in its own box — it can never overlap the input text. */}
+                      <div className="flex h-10 items-stretch overflow-hidden rounded-lg border border-slate-200 focus-within:ring-2 focus-within:ring-slate-900/10">
+                        <span className="hidden select-none items-center border-r border-slate-200 bg-slate-50 px-3 font-mono text-xs text-slate-500 sm:inline-flex">
+                          bbu1.com/store/
+                        </span>
+                        <Input
+                          id="storeSlug"
+                          {...form.register("storeSlug")}
+                          className="h-full flex-1 rounded-none border-0 bg-white font-mono text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
+                        />
+                      </div>
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                    <Field label="Currency code" htmlFor="currency" hint="Three-letter ISO 4217 code." error={err("currency")}>
+                      <Input
+                        id="currency"
+                        {...form.register("currency")}
+                        maxLength={3}
+                        className={cn(inputBase, "font-mono uppercase tracking-widest")}
+                      />
+                    </Field>
+
+                    <Field label="Brand colour" htmlFor="themeColorText" error={err("themeColor")}>
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="themeColor"
+                          className="relative h-10 w-12 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200"
+                          style={{ backgroundColor: form.watch("themeColor") || "#2563eb" }}
+                        >
+                          <input
+                            type="color"
+                            id="themeColor"
+                            aria-label="Pick brand colour"
+                            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                            {...form.register("themeColor")}
+                          />
+                        </label>
+                        <Input
+                          id="themeColorText"
+                          {...form.register("themeColor")}
+                          placeholder="#2563eb"
+                          className={cn(inputBase, "flex-1 font-mono uppercase")}
+                        />
+                      </div>
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-5 border-t border-slate-100 pt-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-slate-700">Hero banner</Label>
+                      {bannerUrl && (
+                        <MediaFrame
+                          onRemove={() => form.setValue("bannerUrl", "")}
+                          badge={
+                            <Badge className="pointer-events-none border-0 bg-slate-900/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+                              {isVideoUrl(bannerUrl) ? (
+                                <><Film size={11} className="mr-1" /> Video</>
+                              ) : (
+                                <><ImageIcon size={11} className="mr-1" /> Image</>
+                              )}
+                            </Badge>
+                          }
+                        >
+                          {isVideoUrl(bannerUrl) ? (
+                            <video src={bannerUrl} autoPlay loop muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                          ) : (
+                            <img src={bannerUrl} alt="Hero banner preview" className="h-full w-full object-cover" />
+                          )}
+                        </MediaFrame>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        onChange={e => handleStoreAssetUpload(e, 'bannerUrl')}
+                        className="hidden"
+                        id="store-banner-upload"
+                      />
+                      <UploadTarget
+                        id="store-banner-upload"
+                        busy={isUploadingBanner}
+                        icon={Upload}
+                        label={bannerUrl ? "Replace banner" : "Upload banner — image or video"}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-slate-700">Store logo</Label>
+                      {logoUrl && (
+                        <div className="group relative flex h-36 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-4">
+                          <img src={logoUrl} alt="Brand logo preview" className="max-h-full max-w-full object-contain" />
+                          <button
+                            type="button"
+                            onClick={() => form.setValue("logoUrl", "")}
+                            aria-label="Remove logo"
+                            className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-900/70 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-rose-600 focus-visible:opacity-100 group-hover:opacity-100"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => handleStoreAssetUpload(e, 'logoUrl')}
+                        className="hidden"
+                        id="store-logo-upload"
+                      />
+                      <UploadTarget
+                        id="store-logo-upload"
+                        busy={isUploadingLogo}
+                        icon={ImagePlus}
+                        label={logoUrl ? "Replace logo" : "Upload logo"}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-6">
+                    <Field label="Store description" htmlFor="storeDescription" hint="Shown near the top of your public storefront.">
+                      <Textarea
+                        id="storeDescription"
+                        {...form.register("storeDescription")}
+                        placeholder="Tell customers about your business, quality guarantees or booking policies."
+                        className={cn(textareaBase, "min-h-[96px]")}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                icon={FileText}
+                tone="blue"
+                title="Homepage content"
+                description="The call to action, about section and featured quote on your storefront."
+              >
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                    <Field label="Button label" htmlFor="heroCtaText">
+                      <Input id="heroCtaText" {...form.register("heroCtaText")} placeholder="Explore catalog" className={inputBase} />
+                    </Field>
+                    <Field label="Button link" htmlFor="heroCtaLink">
+                      <Input id="heroCtaLink" {...form.register("heroCtaLink")} placeholder="#catalog" className={cn(inputBase, "font-mono")} />
+                    </Field>
+                  </div>
+
+                  <div className="space-y-4 border-t border-slate-100 pt-6">
+                    <Field label="About section heading" htmlFor="aboutUsTitle">
+                      <Input id="aboutUsTitle" {...form.register("aboutUsTitle")} placeholder="About our business" className={inputBase} />
+                    </Field>
+                    <Field label="About section body" htmlFor="aboutUsBody">
+                      <Textarea
+                        id="aboutUsBody"
+                        {...form.register("aboutUsBody")}
+                        placeholder="Describe your story, mission and what sets you apart."
+                        className={cn(textareaBase, "min-h-[88px]")}
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2 sm:gap-5">
+                    <Field label="Featured quote" htmlFor="testimonialQuote">
+                      <Textarea
+                        id="testimonialQuote"
+                        {...form.register("testimonialQuote")}
+                        placeholder="A short line from a real customer."
+                        className={cn(textareaBase, "min-h-[80px]")}
+                      />
+                    </Field>
+                    <Field label="Attributed to" htmlFor="testimonialAuthor">
+                      <Input id="testimonialAuthor" {...form.register("testimonialAuthor")} placeholder="Customer name" className={inputBase} />
+                    </Field>
+                  </div>
+                </div>
+              </SectionCard>
+            </>
+          )}
+
+          {/* ── 2. Contact ──────────────────────────────────────────────────── */}
+          {isVisible("contact") && (
+            <SectionCard
+              icon={MessageSquare}
+              tone="emerald"
+              title="Contact and order alerts"
+              description="Where order and inspection notifications reach you."
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
+                <Field label="WhatsApp number" htmlFor="whatsappNumber" required hint="Order alerts are sent here.">
+                  <IconInput
+                    id="whatsappNumber"
+                    icon={Phone}
+                    iconClass="text-emerald-500"
+                    placeholder="+256700000000"
+                    {...form.register("whatsappNumber")}
+                  />
+                </Field>
+
+                <Field label="Support email" htmlFor="supportEmail">
+                  <IconInput
+                    id="supportEmail"
+                    icon={Mail}
+                    type="email"
+                    placeholder="orders@mybusiness.com"
+                    {...form.register("supportEmail")}
+                  />
+                </Field>
+
+                <Field label="Support phone" htmlFor="supportPhone">
+                  <IconInput
+                    id="supportPhone"
+                    icon={Phone}
+                    placeholder="+256..."
+                    {...form.register("supportPhone")}
+                  />
+                </Field>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── 3. Appearance ───────────────────────────────────────────────── */}
+          {isVisible("theme") && (
+            <SectionCard
+              icon={Sun}
+              tone="purple"
+              title="Appearance"
+              description="The visual theme applied to your public storefront."
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <OptionCard
+                  selected={selectedTheme === 'MODERN_MINIMALIST'}
+                  onClick={() => form.setValue("websiteTheme", "MODERN_MINIMALIST")}
+                  icon={Sun}
+                  iconBg="bg-blue-600"
+                  surface="bg-blue-50/70"
+                  borderActive="border-blue-600"
+                  borderIdle="border-slate-200"
+                  hoverBorder="hover:border-blue-300"
+                  checkClass="text-blue-600"
+                  title="Modern minimalist"
+                  description="Clean white canvas with blue accents and card layouts."
+                />
+                <OptionCard
+                  selected={selectedTheme === 'DARK_SOVEREIGN'}
+                  onClick={() => form.setValue("websiteTheme", "DARK_SOVEREIGN")}
+                  icon={Moon}
+                  iconBg="bg-emerald-600"
+                  surface="bg-slate-900"
+                  borderActive="border-emerald-500"
+                  borderIdle="border-slate-200"
+                  hoverBorder="hover:border-emerald-300"
+                  checkClass="text-emerald-400"
+                  titleClass="text-white"
+                  descClass="text-slate-400"
+                  title="Dark"
+                  description="Deep dark mode with emerald accents and glass cards."
+                />
+                <OptionCard
+                  selected={selectedTheme === 'LUXURY_GOLD'}
+                  onClick={() => form.setValue("websiteTheme", "LUXURY_GOLD")}
+                  icon={Crown}
+                  iconBg="bg-amber-500"
+                  surface="bg-amber-950"
+                  borderActive="border-amber-500"
+                  borderIdle="border-slate-200"
+                  hoverBorder="hover:border-amber-300"
+                  checkClass="text-amber-400"
+                  titleClass="text-amber-100"
+                  descClass="text-amber-200/80"
+                  title="Luxury gold"
+                  description="Obsidian black with champagne gold and premium badges."
+                />
+                <OptionCard
+                  selected={selectedTheme === 'CORPORATE_ENTERPRISE'}
+                  onClick={() => form.setValue("websiteTheme", "CORPORATE_ENTERPRISE")}
+                  icon={Building2}
+                  iconBg="bg-slate-900"
+                  surface="bg-slate-100"
+                  borderActive="border-slate-900"
+                  borderIdle="border-slate-200"
+                  hoverBorder="hover:border-slate-400"
+                  checkClass="text-slate-900"
+                  title="Corporate"
+                  description="Navy and steel grey with a structured formal layout."
+                />
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── 4. Industry template ────────────────────────────────────────── */}
+          {isVisible("template") && (
+            <>
+              <SectionCard
+                icon={Layers}
+                tone="blue"
+                title="Industry template"
+                description="Switch between a retail shop, property directory, hotel page or services studio."
+              >
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <OptionCard
+                    selected={selectedTemplate === 'RETAIL'}
+                    onClick={() => form.setValue("storefrontTemplate", "RETAIL")}
+                    icon={ShoppingBag}
+                    iconBg="bg-blue-600"
+                    surface="bg-blue-50/70"
+                    borderActive="border-blue-600"
+                    hoverBorder="hover:border-blue-300"
+                    checkClass="text-blue-600"
+                    title="Retail"
+                    description="Cart checkout, stock sync and digital receipts."
+                  />
+                  <OptionCard
+                    selected={selectedTemplate === 'REAL_ESTATE_RENTALS'}
+                    onClick={() => form.setValue("storefrontTemplate", "REAL_ESTATE_RENTALS")}
+                    icon={Home}
+                    iconBg="bg-emerald-600"
+                    surface="bg-emerald-50/70"
+                    borderActive="border-emerald-600"
+                    hoverBorder="hover:border-emerald-300"
+                    checkClass="text-emerald-600"
+                    title="Real estate"
+                    description="Listings, inspection fees and WhatsApp enquiries."
+                  />
+                  <OptionCard
+                    selected={selectedTemplate === 'HOTEL_AIRBNB'}
+                    onClick={() => form.setValue("storefrontTemplate", "HOTEL_AIRBNB")}
+                    icon={Hotel}
+                    iconBg="bg-purple-600"
+                    surface="bg-purple-50/70"
+                    borderActive="border-purple-600"
+                    hoverBorder="hover:border-purple-300"
+                    checkClass="text-purple-600"
+                    title="Hotel"
+                    description="Nightly rates, date reservations and deposits."
+                  />
+                  <OptionCard
+                    selected={selectedTemplate === 'SERVICES_BOOKING'}
+                    onClick={() => form.setValue("storefrontTemplate", "SERVICES_BOOKING")}
+                    icon={Briefcase}
+                    iconBg="bg-amber-600"
+                    surface="bg-amber-50/70"
+                    borderActive="border-amber-600"
+                    hoverBorder="hover:border-amber-300"
+                    checkClass="text-amber-600"
+                    title="Services"
+                    description="Consultation fees, packages and appointments."
+                  />
+                </div>
+              </SectionCard>
+
+              {selectedTemplate === 'REAL_ESTATE_RENTALS' && (
+                <SectionCard
+                  icon={Home}
+                  tone="emerald"
+                  title="Real estate settings"
+                  description="Applies to the property directory template."
+                >
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                      <Field label={`Inspection fee (${currency || 'UGX'})`} htmlFor="inspectionFee">
+                        <IconInput id="inspectionFee" icon={DollarSign} placeholder="50000" {...form.register("inspectionFee")} />
+                      </Field>
+                      <Field label="Agency licence number" htmlFor="agencyLicenseNo">
+                        <IconInput id="agencyLicenseNo" icon={Key} placeholder="RE-UG-2024-001" className="font-mono" {...form.register("agencyLicenseNo")} />
+                      </Field>
+                    </div>
+                    <Field label="Inspection terms" htmlFor="inspectionTerms">
+                      <Textarea
+                        id="inspectionTerms"
+                        {...form.register("inspectionTerms")}
+                        placeholder="What the inspection fee covers, viewing policy and agent contact terms."
+                        className={cn(textareaBase, "min-h-[88px]")}
+                      />
+                    </Field>
+                  </div>
+                </SectionCard>
+              )}
+
+              {selectedTemplate === 'HOTEL_AIRBNB' && (
+                <SectionCard
+                  icon={Hotel}
+                  tone="purple"
+                  title="Hotel settings"
+                  description="Applies to the hotel and guest house template."
+                >
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+                      <Field label="Check-in time" htmlFor="checkInTime">
+                        <IconInput id="checkInTime" icon={Clock} type="time" className="font-mono" {...form.register("checkInTime")} />
+                      </Field>
+                      <Field label="Check-out time" htmlFor="checkOutTime">
+                        <IconInput id="checkOutTime" icon={Clock} type="time" className="font-mono" {...form.register("checkOutTime")} />
+                      </Field>
+                      <Field label="Advance deposit (%)" htmlFor="advanceDepositPct">
+                        <IconInput id="advanceDepositPct" icon={Percent} placeholder="50" className="font-mono" {...form.register("advanceDepositPct")} />
+                      </Field>
+                    </div>
+
+                    <Field label="Cancellation policy" htmlFor="cancellationPolicy">
+                      <Textarea
+                        id="cancellationPolicy"
+                        {...form.register("cancellationPolicy")}
+                        placeholder="Your refund and cancellation terms."
+                        className={cn(textareaBase, "min-h-[80px]")}
+                      />
+                    </Field>
+
+                    <div className="space-y-2 border-t border-slate-100 pt-5">
+                      <Label className="text-xs font-medium text-slate-700">Available amenities</Label>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                        {[
+                          { key: 'wifi', label: 'Wi-Fi' },
+                          { key: 'ac', label: 'Air conditioning' },
+                          { key: 'breakfast', label: 'Breakfast included' },
+                          { key: 'parking', label: 'Parking' },
+                          { key: 'pool', label: 'Swimming pool' },
+                          { key: 'tv', label: 'Television' },
+                        ].map(({ key, label }) => (
+                          <button
+                            key={key}
+                            type="button"
+                            aria-pressed={!!hotelAmenities[key]}
+                            onClick={() => setHotelAmenities(prev => ({ ...prev, [key]: !prev[key] }))}
+                            className={cn(
+                              "flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors",
+                              hotelAmenities[key]
+                                ? "border-purple-600 bg-purple-600 text-white"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-purple-300"
+                            )}
+                          >
+                            {hotelAmenities[key]
+                              ? <CheckCircle2 size={14} className="shrink-0" />
+                              : <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-current opacity-40" />}
+                            <span className="truncate">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </SectionCard>
+              )}
+
+              {selectedTemplate === 'SERVICES_BOOKING' && (
+                <SectionCard
+                  icon={Briefcase}
+                  tone="amber"
+                  title="Services settings"
+                  description="Applies to the services and appointments template."
+                >
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+                    <Field label={`Consultation fee (${currency || 'UGX'})`} htmlFor="consultationFee">
+                      <IconInput id="consultationFee" icon={DollarSign} placeholder="100000" {...form.register("consultationFee")} />
+                    </Field>
+                    <Field label="Session duration" htmlFor="defaultDuration">
+                      <IconInput id="defaultDuration" icon={CalendarClock} placeholder="60 minutes" {...form.register("defaultDuration")} />
+                    </Field>
+                    <Field label="Working hours" htmlFor="workingHours">
+                      <IconInput id="workingHours" icon={Clock} placeholder="Mon – Sat, 8:00 – 18:00" {...form.register("workingHours")} />
+                    </Field>
+                  </div>
+                </SectionCard>
+              )}
+            </>
+          )}
+
+          {/* ── 5. Delivery ─────────────────────────────────────────────────── */}
+          {isVisible("logistics") && (
+            <SectionCard
+              icon={Truck}
+              tone="emerald"
+              title="Delivery"
+              description="Your location, the regions you serve and your shipping rates."
+            >
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                  <Field label="Business address" htmlFor="businessLocation">
+                    <IconInput id="businessLocation" icon={MapPin} placeholder="Plot 12 Kampala Road, Uganda" {...form.register("businessLocation")} />
+                  </Field>
+                  <Field label="Regions served" htmlFor="supportedDestinations">
+                    <IconInput id="supportedDestinations" icon={Globe} placeholder="East Africa, Europe, Global" {...form.register("supportedDestinations")} />
+                  </Field>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2 sm:gap-5">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                    <Field
+                      label="Standard delivery"
+                      htmlFor="standardShippingFee"
+                      hint={`Amount in ${currency || 'UGX'}.`}
+                      trailing={<Truck size={13} className="text-slate-400" />}
+                    >
+                      <Input
+                        id="standardShippingFee"
+                        {...form.register("standardShippingFee")}
+                        placeholder="10000"
+                        className={cn(inputBase, "bg-white font-mono")}
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-4">
+                    <Field
+                      label="Express same-day"
+                      htmlFor="vipShippingFee"
+                      hint={`Amount in ${currency || 'UGX'}.`}
+                      trailing={<Zap size={13} className="text-purple-500" />}
+                    >
+                      <Input
+                        id="vipShippingFee"
+                        {...form.register("vipShippingFee")}
+                        placeholder="25000"
+                        className={cn(inputBase, "bg-white font-mono")}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── 6. Custom pages ─────────────────────────────────────────────── */}
+          {isVisible("pages") && (
+            <SectionCard
+              icon={FileText}
+              tone="blue"
+              title="Custom pages"
+              description="Standalone pages such as About, Shipping policy or Warranty."
+              action={
+                <Button
+                  type="button"
+                  onClick={addCustomPage}
+                  className="h-9 w-full rounded-lg bg-slate-900 px-3 text-xs font-medium text-white hover:bg-slate-800 sm:w-auto"
+                >
+                  <Plus size={14} className="mr-1.5" /> Add page
+                </Button>
+              }
+            >
+              <div className="space-y-3">
+                {customPages.map((page, idx) => (
+                  <RepeaterItem
+                    key={page.id}
+                    label={`Page ${idx + 1}`}
+                    onRemove={customPages.length > 1 ? () => removeCustomPage(page.id) : undefined}
+                  >
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <Field label="Page title">
+                          <Input
+                            value={page.title}
+                            onChange={e => handleCustomPageChange(page.id, 'title', e.target.value)}
+                            placeholder="Quality guarantee"
+                            className={cn(inputBase, "bg-white")}
+                          />
+                        </Field>
+                        <Field label="Page address">
+                          <Input
+                            value={page.slug}
+                            onChange={e => handleCustomPageChange(page.id, 'slug', e.target.value)}
+                            placeholder="quality-guarantee"
+                            className={cn(inputBase, "bg-white font-mono")}
+                          />
+                        </Field>
+                      </div>
+                      <Field label="Page content">
+                        <Textarea
+                          value={page.content}
+                          onChange={e => handleCustomPageChange(page.id, 'content', e.target.value)}
+                          placeholder="Page text, policy details or company history."
+                          className={cn(textareaBase, "min-h-[88px] bg-white")}
+                        />
+                      </Field>
+                    </div>
+                  </RepeaterItem>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── 7. FAQs ─────────────────────────────────────────────────────── */}
+          {isVisible("faq") && (
+            <SectionCard
+              icon={HelpCircle}
+              tone="amber"
+              title="Frequently asked questions"
+              description="Questions and answers shown on your public storefront."
+              action={
+                <Button
+                  type="button"
+                  onClick={addFaqItem}
+                  className="h-9 w-full rounded-lg bg-slate-900 px-3 text-xs font-medium text-white hover:bg-slate-800 sm:w-auto"
+                >
+                  <Plus size={14} className="mr-1.5" /> Add question
+                </Button>
+              }
+            >
+              <div className="space-y-3">
+                {faqs.map((faq, idx) => (
+                  <RepeaterItem
+                    key={faq.id}
+                    label={`Question ${idx + 1}`}
+                    onRemove={faqs.length > 1 ? () => removeFaqItem(faq.id) : undefined}
+                  >
+                    <div className="space-y-4">
+                      <Field label="Question">
+                        <Input
+                          value={faq.question}
+                          onChange={e => handleFaqChange(faq.id, 'question', e.target.value)}
+                          placeholder="What are your delivery terms?"
+                          className={cn(inputBase, "bg-white")}
+                        />
+                      </Field>
+                      <Field label="Answer">
+                        <Textarea
+                          value={faq.answer}
+                          onChange={e => handleFaqChange(faq.id, 'answer', e.target.value)}
+                          placeholder="Explain your policy or process clearly."
+                          className={cn(textareaBase, "min-h-[76px] bg-white")}
+                        />
+                      </Field>
+                    </div>
+                  </RepeaterItem>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── 8. Media ────────────────────────────────────────────────────── */}
+          {isVisible("media") && (
+            <SectionCard
+              icon={Video}
+              tone="purple"
+              title="Product media"
+              description="Select listings and attach photos or video walkthroughs in bulk."
+            >
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label className="text-xs font-medium text-slate-700">
+                      {selectedVariantIds.length} selected
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={toggleSelectAllVariants}
+                      className="text-xs font-medium text-slate-600 underline-offset-2 transition-colors hover:text-slate-900 hover:underline"
+                    >
+                      {productVariants && selectedVariantIds.length === productVariants.length ? 'Clear selection' : 'Select all'}
+                    </button>
+                  </div>
+
+                  <div className="max-h-64 space-y-1.5 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+                    {productVariants && productVariants.length > 0 ? (
+                      productVariants.map((pv: any) => {
+                        const isSelected = selectedVariantIds.includes(String(pv.id));
+                        return (
+                          <button
+                            key={pv.id}
+                            type="button"
+                            aria-pressed={isSelected}
+                            onClick={() => toggleVariantSelection(String(pv.id))}
+                            className={cn(
+                              "flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2.5 text-left text-xs font-medium transition-colors",
+                              isSelected
+                                ? "border-purple-600 bg-purple-600 text-white"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-purple-300"
+                            )}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              {isSelected
+                                ? <CheckSquare size={14} className="shrink-0" />
+                                : <Square size={14} className="shrink-0 text-slate-400" />}
+                              <span className="truncate">{pv.products?.name} — {pv.name}</span>
+                            </span>
+                            <span className={cn("shrink-0 font-mono text-[11px]", isSelected ? "text-purple-100" : "text-slate-400")}>
+                              {pv.sku || 'No SKU'}
+                            </span>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="py-8 text-center text-xs text-slate-400">
+                        No products found for this business.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-slate-700">Attach media</Label>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={handleProductMediaUpload}
+                    disabled={selectedVariantIds.length === 0 || isUploadingProductMedia}
+                    className="hidden"
+                    id="product-video-upload"
+                  />
+                  <UploadTarget
+                    id="product-video-upload"
+                    busy={isUploadingProductMedia}
+                    icon={Camera}
+                    tone="purple"
+                    disabled={selectedVariantIds.length === 0}
+                    label={
+                      isUploadingProductMedia
+                        ? "Attaching media…"
+                        : selectedVariantIds.length === 0
+                          ? "Select items above to enable upload"
+                          : `Attach to ${selectedVariantIds.length} selected item(s)`
+                    }
+                  />
+                </div>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── 9. SEO ──────────────────────────────────────────────────────── */}
+          {isVisible("seo") && (
+            <SectionCard
+              icon={Search}
+              tone="amber"
+              title="Search and sharing"
+              description="How your storefront appears in search results and shared links."
+            >
+              <div className="space-y-5">
+                <Field
+                  label="Page title"
+                  htmlFor="seoTitle"
+                  error={err("seoTitle")}
+                  trailing={
+                    <span className={cn(
+                      "font-mono text-xs tabular-nums",
+                      (form.watch("seoTitle")?.length || 0) > 70 ? "text-amber-600" : "text-slate-400"
+                    )}>
+                      {form.watch("seoTitle")?.length || 0}/80
+                    </span>
+                  }
+                >
+                  <Input id="seoTitle" {...form.register("seoTitle")} className={inputBase} />
+                </Field>
+
+                <Field
+                  label="Page description"
+                  htmlFor="seoDesc"
+                  error={err("seoDesc")}
+                  trailing={
+                    <span className={cn(
+                      "font-mono text-xs tabular-nums",
+                      (form.watch("seoDesc")?.length || 0) > 160 ? "text-amber-600" : "text-slate-400"
+                    )}>
+                      {form.watch("seoDesc")?.length || 0}/200
+                    </span>
+                  }
+                >
+                  <Textarea
+                    id="seoDesc"
+                    {...form.register("seoDesc")}
+                    className={cn(textareaBase, "min-h-[96px]")}
+                  />
+                </Field>
+              </div>
+            </SectionCard>
+          )}
+        </div>
+      </div>
+
+      {/* ── Action bar ──────────────────────────────────────────────────────── */}
+      {/* sticky, not fixed: it stays in flow, so it can never sit on top of content */}
+      <div className="sticky bottom-0 z-30 mt-4 border-t border-slate-200 bg-white/95 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]">
+        <div className="flex flex-col gap-2 px-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <p className="hidden text-xs text-slate-500 sm:block">
+            Changes go live on your storefront as soon as you save.
+          </p>
+          <Button
+            type="submit"
+            disabled={isPending}
+            className="h-10 w-full rounded-lg bg-slate-900 px-6 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
+          >
+            {isPending ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
+            ) : (
+              <><ShieldCheck className="mr-2 h-4 w-4" /> Save changes</>
+            )}
+          </Button>
+        </div>
+      </div>
     </form>
   );
 }
