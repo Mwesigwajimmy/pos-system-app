@@ -122,9 +122,10 @@ class CashFlowCalculator {
   }
 }
 
+const supabase = createClient();
+
 // --- MAIN COMPONENT ---
 export default function CashFlowReportClient() {
-  const supabase = createClient();
   const { businessId, userId } = useCopilot();
   const router = useRouter();
   const pathname = usePathname();
@@ -148,7 +149,7 @@ export default function CashFlowReportClient() {
       }
     };
     resolveSovereignContext();
-  }, [businessId, supabase]);
+  }, [businessId]);
 
   // --- TEMPORAL RANGE STATE ---
   const [searchQuery, setSearchQuery] = useState("");

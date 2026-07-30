@@ -22,8 +22,9 @@ interface RevolutionaryProfitAndLossStatementProps {
   reportPeriod: string;
 }
 
+const supabase = createClient();
+
 export function RevolutionaryProfitAndLossStatement({ data, prevData = [], reportPeriod }: RevolutionaryProfitAndLossStatementProps) {
-  const supabase = createClient();
   const [drillDownAccount, setDrillDownAccount] = useState<string | null>(null);
   const [ledgerDetails, setLedgerDetails] = useState<any[]>([]);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
@@ -58,7 +59,7 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
       }
     };
     resolveSovereignCurrency();
-  }, [supabase]);
+  }, []);
 
   // DEEP AUDIT FIX: Maps database 'COGS' and 'Expense' types to correct UI buckets
   const getMappedData = (items: PnlItem[]) => items.map(item => {
@@ -118,7 +119,7 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
     };
 
     fetchLedgerData();
-  }, [drillDownAccount, reportPeriod, supabase]);
+  }, [drillDownAccount, reportPeriod]);
 
   const calculateTotal = (category: string) =>
     processedData.filter(item => item.category === category).reduce((sum, item) => sum + item.amount, 0);

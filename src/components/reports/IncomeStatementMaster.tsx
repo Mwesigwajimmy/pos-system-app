@@ -418,8 +418,3 @@ export default function IncomeStatementMaster() {
         </div>
     );
 }
-
-// Sub-component for dynamic icons
-function Receipt({ className, size }: { className?: string, size?: number }) {
-    return <FileText className={className} size={size} />;
-}

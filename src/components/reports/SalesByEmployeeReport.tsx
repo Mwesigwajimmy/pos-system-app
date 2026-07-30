@@ -27,6 +27,7 @@ import { DownloadIcon, AlertTriangleIcon, ArrowUpDown, Calendar as CalendarIcon,
 
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';

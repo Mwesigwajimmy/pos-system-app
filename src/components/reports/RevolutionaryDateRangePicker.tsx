@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalendarIcon } from "@radix-ui/react-icons"
+import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { DateRange } from "react-day-picker"
 
@@ -55,7 +55,7 @@ export function RevolutionaryDateRangePicker({ className, date, setDate }: DateP
         */}
         <PopoverContent className="w-auto p-0 z-50" align="start">
           <Calendar
-            initialFocus
+            autoFocus
             mode="range"
             defaultMonth={date?.from}
             selected={date}

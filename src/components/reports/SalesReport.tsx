@@ -85,9 +85,10 @@ async function fetchReportData(dateRange: DateRange, businessId: string): Promis
     return data;
 }
 
+const supabase = createClient();
+
 export default function SalesReportClient() {
-  const supabase = createClient();
-  const [date, setDate] = useState<DateRange | undefined>({ 
+  const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29), 
     to: new Date() 
   });
@@ -110,7 +111,7 @@ export default function SalesReportClient() {
         }
     }
     resolveIdentity();
-  }, [supabase]);
+  }, []);
 
   // --- ANALYTICS ENGINE: Dependent on Time and Identity ---
   const { data, isLoading, isError, refetch, isRefetching } = useQuery<ReportData>({ 
@@ -120,8 +121,8 @@ export default function SalesReportClient() {
     staleTime: 0 
   });
 
-  const handlePrint = useReactToPrint({ 
-    content: () => printRef.current,
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
     documentTitle: `Sales_Audit_Report_${format(new Date(), 'yyyy-MM-dd')}`,
   });
 

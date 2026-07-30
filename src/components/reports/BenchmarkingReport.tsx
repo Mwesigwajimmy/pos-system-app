@@ -73,7 +73,7 @@ export default function BenchmarkingReportClient({ data, reportDate }: Props) {
                 </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="single" selected={date} onSelect={handleDateSelect} initialFocus />
+                <Calendar mode="single" selected={date} onSelect={handleDateSelect} autoFocus />
                 </PopoverContent>
             </Popover>
         </div>

@@ -65,11 +65,11 @@ export default function ManufacturingReportCenter() {
     // --- ANALYTICS CALCULATIONS ---
     const summary = useMemo(() => {
         if (!auditData) return { totalValue: 0, totalWastage: 0, avgEfficiency: 0, vatInput: 0 };
-        const totalValue = auditData.reduce((s, i) => s + i.total_batch_expenditure, 0);
-        const totalWastage = auditData.reduce((s, i) => s + i.wastage, 0);
-        const vatInput = auditData.reduce((s, i) => s + (i.estimated_vat_input || 0), 0);
-        const efficiency = auditData.length > 0 
-            ? (auditData.reduce((s, i) => s + (i.yield / i.planned_quantity), 0) / auditData.length) * 100 
+        const totalValue = auditData.reduce((s: number, i: any) => s + i.total_batch_expenditure, 0);
+        const totalWastage = auditData.reduce((s: number, i: any) => s + i.wastage, 0);
+        const vatInput = auditData.reduce((s: number, i: any) => s + (i.estimated_vat_input || 0), 0);
+        const efficiency = auditData.length > 0
+            ? (auditData.reduce((s: number, i: any) => s + (i.yield / i.planned_quantity), 0) / auditData.length) * 100
             : 0;
         
         return { totalValue, totalWastage, avgEfficiency: efficiency.toFixed(1), vatInput };
@@ -108,7 +108,7 @@ export default function ManufacturingReportCenter() {
         autoTable(doc, {
             startY: 70,
             head: [['Batch No.', 'Product Name', 'Yield', 'Wasted', 'Cost/Unit', 'Total Cost', 'Production Date']],
-            body: auditData.map(r => [
+            body: auditData.map((r: any) => [
                 r.batch_number,
                 r.finished_product,
                 r.yield,

@@ -166,7 +166,7 @@ export default function DailyForensicAudit() {
 
     const exportCSV = () => {
         const headers = ["Time", "Type", "Recorded By", "Party", "Phone", "Account", "Description", "Income", "Expense"];
-        const rows = records?.map(r => [
+        const rows = records?.map((r: any) => [
             format(new Date(r.timestamp), 'HH:mm'), r.activity_type, r.sales_agent, 
             r.customer_name, r.customer_telephone, r.ledger_account, r.operational_details, r.cash_inflow, r.cash_outflow
         ]);
@@ -267,7 +267,7 @@ export default function DailyForensicAudit() {
                                 {isLoading ? (
                                     <TableRow><TableCell colSpan={6} className="h-64 text-center text-slate-300 font-bold uppercase text-xs animate-pulse">Loading daily data...</TableCell></TableRow>
                                 ) : (
-                                    records?.filter(r => r.customer_name.toLowerCase().includes(search.toLowerCase()) || r.sales_agent.toLowerCase().includes(search.toLowerCase())).map((r: any) => (
+                                    records?.filter((r: any) => r.customer_name.toLowerCase().includes(search.toLowerCase()) || r.sales_agent.toLowerCase().includes(search.toLowerCase())).map((r: any) => (
                                         <TableRow key={r.unique_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
                                             <TableCell className="px-10 py-6">
                                                 <div className="font-mono text-sm font-bold text-slate-900">{format(new Date(r.timestamp), 'HH:mm')}</div>
@@ -412,7 +412,7 @@ export default function DailyForensicAudit() {
                             <Select onValueChange={(val) => setEntry({...entry, account_id: val})}>
                                 <SelectTrigger className="h-14 font-bold border-slate-100 bg-slate-50/50 text-[12px] uppercase rounded-xl shadow-inner"><SelectValue placeholder="SELECT CATEGORY" /></SelectTrigger>
                                 <SelectContent className="rounded-2xl border-none shadow-2xl max-h-[300px]">
-                                    {accounts?.map(acc => <SelectItem key={acc.id} value={acc.id} className="font-bold text-xs uppercase py-4">{acc.name} <span className="text-[10px] text-blue-500 ml-2 opacity-60">[{acc.subtype}]</span></SelectItem>)}
+                                    {accounts?.map((acc: any) => <SelectItem key={acc.id} value={acc.id} className="font-bold text-xs uppercase py-4">{acc.name} <span className="text-[10px] text-blue-500 ml-2 opacity-60">[{acc.subtype}]</span></SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
