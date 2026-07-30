@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * --- BBU1 SOVEREIGN GLOBAL NETWORK SUPER-APP ---
- * VERSION: v20.0 OMEGA (GPS GEOLOCATION, DYNAMIC LOCATION ENGINE & B2B WHOLESALE)
- * JURISDICTION: Supermarket, Restaurants, Real Estate, Hotels & Professional Services
- *
- * LAYOUT / UI PASS NOTES:
- * - All data logic (Supabase queries, mutations, RPC calls, WhatsApp deep link) is untouched.
- * - Two small additive pieces of state were introduced ONLY to support the new map preview
- *   you asked for (precise pin instead of a plain "Kampala, Uganda" label):
- *     1. `coords` — captures { lat, lng } inside the existing GPS success callback.
- *     2. `geocodeCustomLocation()` — a new, separate helper that resolves a typed address
- *        to coordinates via OpenStreetMap's free Nominatim API, so the "Set" button can also
- *        drop an accurate pin. Your original detectGpsLocation/B2B/query logic is unchanged.
- */
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import toast, { Toaster } from 'react-hot-toast';
@@ -23,59 +8,348 @@ import Link from 'next/link';
 
 import {
   Search, Globe, Store, ShoppingBag, Home,
-  Hotel, Briefcase, ExternalLink, MessageSquare,
-  ShieldCheck, Loader2, Sparkles, Building2, Tag,
-  Layers, Zap, PackageCheck, ArrowRight, CheckCircle2, Lock,
-  MapPin, UtensilsCrossed, Stethoscope, ShoppingCart, User,
-  Navigation, Crosshair, Compass, Check, X, ChevronRight
+  Hotel, ExternalLink, MessageSquare,
+  ShieldCheck, Loader2, Building2,
+  Layers, Zap, MapPin, UtensilsCrossed, Stethoscope, ShoppingCart, User,
+  Crosshair, X, ChevronRight, Minus, Plus
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 const supabase = createClient();
 
 const isVideoUrl = (url?: string) => {
-    if (!url) return false;
-    const cleanUrl = url.split('?')[0].toLowerCase();
-    return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.ogg');
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.ogg');
 };
 
 const CATEGORY_TABS = [
-  { id: 'ALL', label: 'All items', icon: Layers },
-  { id: 'RETAIL', label: 'Supermarkets & retail', icon: ShoppingCart },
-  { id: 'SERVICES_BOOKING', label: 'Kitchens & services', icon: UtensilsCrossed },
-  { id: 'REAL_ESTATE_RENTALS', label: 'Real estate & rentals', icon: Home },
-  { id: 'HOTEL_AIRBNB', label: 'Hotels & Airbnb', icon: Hotel },
-  { id: 'SERVICES_BOOKING', label: 'Pharmacies & health', icon: Stethoscope },
+  { key: 'ALL', filter: 'ALL', label: 'All', icon: Layers },
+  { key: 'RETAIL', filter: 'RETAIL', label: 'Shops', icon: ShoppingCart },
+  { key: 'FOOD', filter: 'SERVICES_BOOKING', label: 'Food', icon: UtensilsCrossed },
+  { key: 'RENTALS', filter: 'REAL_ESTATE_RENTALS', label: 'Rentals', icon: Home },
+  { key: 'HOTELS', filter: 'HOTEL_AIRBNB', label: 'Hotels', icon: Hotel },
+  { key: 'HEALTH', filter: 'SERVICES_BOOKING', label: 'Health', icon: Stethoscope },
 ];
+
+interface PinnedLocation {
+  label: string;
+  city: string;
+  lat: number;
+  lng: number;
+  detail?: string;
+}
+
+const money = (currency: string, value: any) =>
+  `${currency || 'UGX'} ${Number(value || 0).toLocaleString()}`;
+
+const mapUrl = (lat?: number, lng?: number) =>
+  lat != null && lng != null
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.006}%2C${lat - 0.004}%2C${lng + 0.006}%2C${lat + 0.004}&layer=mapnik&marker=${lat}%2C${lng}`
+    : `https://www.openstreetmap.org/export/embed.html?bbox=-30%2C-40%2C60%2C55&layer=mapnik`;
+
+function buildAddress(address: any) {
+  const street = address.road || address.pedestrian || address.residential || '';
+  const area = address.neighbourhood || address.suburb || address.quarter || address.city_district || address.village || '';
+  const city = address.city || address.town || address.municipality || address.county || address.state || '';
+  const country = address.country || '';
+
+  const parts = [street, area, city].filter(Boolean);
+  const unique = parts.filter((part, i) => parts.indexOf(part) === i);
+
+  return {
+    label: unique.join(', ') || city || 'Selected location',
+    city: city || area || '',
+    detail: [area, city, country].filter(Boolean).filter((p, i, arr) => arr.indexOf(p) === i).join(' · '),
+  };
+}
+
+async function reverseGeocode(lat: number, lng: number): Promise<PinnedLocation> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+    );
+    const data = await res.json();
+    if (data?.address) {
+      const built = buildAddress(data.address);
+      return { ...built, lat, lng };
+    }
+  } catch (e) {
+    // falls through to the backup lookup
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+    );
+    const data = await res.json();
+    const city = data.city || data.locality || data.principalSubdivision || '';
+    const area = data.localityInfo?.administrative?.slice(-1)?.[0]?.name || '';
+    return {
+      label: [area, city].filter(Boolean).join(', ') || 'Selected location',
+      city,
+      detail: [city, data.countryName].filter(Boolean).join(' · '),
+      lat,
+      lng,
+    };
+  } catch (e) {
+    return { label: 'Selected location', city: '', lat, lng };
+  }
+}
+
+async function searchAddresses(query: string) {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`
+  );
+  const data = await res.json();
+  return (data || []).map((row: any) => {
+    const built = buildAddress(row.address || {});
+    return {
+      label: built.label,
+      city: built.city,
+      detail: row.display_name as string,
+      lat: parseFloat(row.lat),
+      lng: parseFloat(row.lon),
+    } as PinnedLocation;
+  });
+}
+
+function LocationPicker({
+  open,
+  onOpenChange,
+  pinned,
+  merchantHubs,
+  activeCity,
+  onApply,
+  onClear,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pinned: PinnedLocation | null;
+  merchantHubs: string[];
+  activeCity: string;
+  onApply: (location: PinnedLocation) => void;
+  onClear: () => void;
+}) {
+  const [draft, setDraft] = useState<PinnedLocation | null>(pinned);
+  const [queryText, setQueryText] = useState('');
+  const [results, setResults] = useState<PinnedLocation[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setDraft(pinned);
+      setQueryText('');
+      setResults([]);
+    }
+  }, [open, pinned]);
+
+  useEffect(() => {
+    const term = queryText.trim();
+    if (term.length < 3) {
+      setResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const found = await searchAddresses(term);
+        if (!cancelled) setResults(found);
+      } catch (e) {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setIsSearching(false);
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [queryText]);
+
+  const detectGpsLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Your browser does not support location detection");
+      return;
+    }
+
+    setIsDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const resolved = await reverseGeocode(latitude, longitude);
+        setDraft(resolved);
+        setResults([]);
+        setQueryText('');
+        setIsDetecting(false);
+      },
+      () => {
+        setIsDetecting(false);
+        toast.error("Location access was blocked. Search for your area instead.");
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[92vh] w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-lg">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <DialogTitle className="text-base font-semibold text-slate-900">Set your location</DialogTitle>
+          <DialogDescription className="mt-0.5 text-sm text-slate-500">
+            We use this to show what is available near you
+          </DialogDescription>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="relative">
+            <iframe
+              key={draft ? `${draft.lat}-${draft.lng}` : 'world'}
+              title="Map"
+              src={mapUrl(draft?.lat, draft?.lng)}
+              className="h-44 w-full border-0 sm:h-52"
+              loading="lazy"
+            />
+            <Button
+              onClick={detectGpsLocation}
+              disabled={isDetecting}
+              className="absolute bottom-3 right-3 h-9 rounded-lg bg-white px-3 text-xs font-medium text-slate-900 shadow-md hover:bg-slate-50"
+            >
+              {isDetecting
+                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                : <Crosshair size={14} className="mr-2" />}
+              Use my location
+            </Button>
+          </div>
+
+          {draft ? (
+            <div className="flex items-start gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+              <MapPin size={16} className="mt-0.5 shrink-0 text-slate-900" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-900">{draft.label}</p>
+                {draft.detail ? <p className="truncate text-xs text-slate-500">{draft.detail}</p> : null}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-4 px-5 py-5">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-slate-500">Search an area, street or landmark</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Kabalagala, Ntinda, Garden City"
+                  value={queryText}
+                  onChange={(e) => setQueryText(e.target.value)}
+                  className="h-11 rounded-lg border-slate-200 pl-9 text-sm"
+                />
+                {isSearching ? (
+                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-400" />
+                ) : null}
+              </div>
+            </div>
+
+            {results.length > 0 ? (
+              <div className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
+                {results.map((result, i) => (
+                  <button
+                    key={`${result.lat}-${result.lng}-${i}`}
+                    onClick={() => {
+                      setDraft(result);
+                      setResults([]);
+                      setQueryText('');
+                    }}
+                    className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-slate-50"
+                  >
+                    <MapPin size={15} className="mt-0.5 shrink-0 text-slate-400" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-slate-900">{result.label}</span>
+                      <span className="block truncate text-xs text-slate-400">{result.detail}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {merchantHubs.length > 0 ? (
+              <div className="space-y-2 border-t border-slate-100 pt-4">
+                <Label className="text-xs font-medium text-slate-500">Areas with sellers</Label>
+                <div className="flex flex-wrap gap-2">
+                  {merchantHubs.map(hub => (
+                    <button
+                      key={hub}
+                      onClick={async () => {
+                        const found = await searchAddresses(hub);
+                        onApply(found[0] || { label: hub, city: hub, lat: 0, lng: 0 });
+                      }}
+                      className={cn(
+                        "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                        activeCity === hub
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      {hub}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 border-t border-slate-200 px-5 py-4">
+          <Button
+            variant="ghost"
+            onClick={() => { onClear(); onOpenChange(false); }}
+            className="h-11 rounded-lg text-sm font-medium text-slate-500"
+          >
+            Show all areas
+          </Button>
+          <Button
+            disabled={!draft}
+            onClick={() => draft && onApply(draft)}
+            className="h-11 flex-1 rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 sm:flex-none sm:px-6"
+          >
+            Use this location
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function GlobalNetworkSuperAppPage() {
   const queryClient = useQueryClient();
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [industryFilter, setIndustryFilter] = useState('ALL');
+  const [activeTab, setActiveTab] = useState('ALL');
 
-  // DYNAMIC LOCATION ENGINE STATE (GPS & DYNAMIC ADDRESS)
+  const [pinnedLocation, setPinnedLocation] = useState<PinnedLocation | null>(null);
   const [selectedLocation, setSelectedLocation] = useState('ALL');
-  const [userLocationLabel, setUserLocationLabel] = useState('Global / All locations');
-  const [isDetectingGps, setIsDetectingGps] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [customLocationSearch, setCustomLocationSearch] = useState('');
 
-  // MAP PREVIEW STATE (additive only — used purely to render the pin on the map)
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [isGeocoding, setIsGeocoding] = useState(false);
-
-  // MODAL STATES
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [b2bOrderItem, setB2bOrderItem] = useState<any | null>(null);
   const [b2bQuantity, setB2bQuantity] = useState<number>(10);
 
-  // 1. DATA: Get Current User Profile & Business Context
+  const industryFilter = CATEGORY_TABS.find(t => t.key === activeTab)?.filter || 'ALL';
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchInput), 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const { data: profile } = useQuery({
     queryKey: ['active_profile_network_superapp'],
     queryFn: async () => {
@@ -92,7 +366,6 @@ export default function GlobalNetworkSuperAppPage() {
 
   const buyerBusinessId = profile?.business_id;
 
-  // 2. DATA: Fetch Cross-Business Marketplace Items via RPC
   const { data: networkItems, isLoading } = useQuery({
     queryKey: ['global_bbu1_network_superapp', searchTerm, industryFilter, selectedLocation],
     queryFn: async () => {
@@ -105,92 +378,48 @@ export default function GlobalNetworkSuperAppPage() {
       });
 
       if (error) {
-        toast.error(`Super-App Network Error: ${error.message}`);
+        toast.error("Listings could not load. Pull to refresh or try again.");
         return [];
       }
       return data || [];
     }
   });
 
-  // DYNAMICALLY EXTRACT UNIQUE STORE LOCATIONS FROM DB RESULTS
+  const items = networkItems || [];
+
   const availableLocations = useMemo(() => {
-    if (!networkItems) return [];
     const locs = new Set<string>();
-    networkItems.forEach((item: any) => {
+    items.forEach((item: any) => {
       if (item.business_location) locs.add(item.business_location.trim());
     });
     return Array.from(locs);
-  }, [networkItems]);
+  }, [items]);
 
-  // DEVICE GPS SATELLITE GEOLOCATION HANDLER
-  const detectGpsLocation = () => {
-    if (!navigator.geolocation) {
-      return toast.error("Geolocation is not supported by your browser.");
-    }
-
-    setIsDetectingGps(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          setCoords({ lat: latitude, lng: longitude });
-          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-          const data = await res.json();
-
-          const city = data.city || data.locality || data.principalSubdivision || "Current Location";
-          const country = data.countryName || "";
-          const detectedLoc = country ? `${city}, ${country}` : city;
-
-          setSelectedLocation(city);
-          setUserLocationLabel(detectedLoc);
-          toast.success(`GPS Location Locked: ${detectedLoc}`);
-          setIsLocationModalOpen(false);
-        } catch (e) {
-          setUserLocationLabel("GPS Location Detected");
-          toast.success("GPS Coordinates Locked!");
-        } finally {
-          setIsDetectingGps(false);
-        }
-      },
-      (error) => {
-        setIsDetectingGps(false);
-        toast.error("Location permission denied. Please search your city manually.");
-      }
-    );
+  const applyLocation = (location: PinnedLocation) => {
+    setPinnedLocation(location);
+    setSelectedLocation(location.city || location.label);
+    setIsLocationModalOpen(false);
+    toast.success(`Showing sellers near ${location.city || location.label}`);
   };
 
-  // ADDITIVE HELPER (new, does not alter any existing function): resolves a typed address
-  // into coordinates so the map can drop an accurate pin for manual searches too.
-  const geocodeCustomLocation = async (query: string) => {
-    if (!query.trim()) return;
-    setIsGeocoding(true);
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      if (data && data[0]) {
-        setCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
-      }
-    } catch (e) {
-      // Silent fail — the text filter still gets applied below regardless of the map pin.
-    } finally {
-      setIsGeocoding(false);
-    }
+  const clearLocation = () => {
+    setPinnedLocation(null);
+    setSelectedLocation('ALL');
   };
 
-  // 3. MUTATION: B2B IN-SYSTEM WHOLESALE TRADE EXECUTION
   const b2bTradeMutation = useMutation({
     mutationFn: async () => {
       if (!buyerBusinessId) {
-        throw new Error("You must be logged in as a business owner to place B2B wholesale orders.");
+        throw new Error("Log in as a business owner to place wholesale orders.");
       }
-      if (!b2bOrderItem) throw new Error("No item selected for B2B trade.");
+      if (!b2bOrderItem) throw new Error("No item selected.");
 
       if (buyerBusinessId === b2bOrderItem.business_id) {
-        throw new Error("You cannot place a B2B wholesale order with your own store!");
+        throw new Error("This is your own store.");
       }
 
       if (b2bQuantity < Number(b2bOrderItem.min_b2b_qty || 1)) {
-        throw new Error(`Minimum order quantity for this item is ${b2bOrderItem.min_b2b_qty || 1} units.`);
+        throw new Error(`The minimum order is ${b2bOrderItem.min_b2b_qty || 1} units.`);
       }
 
       const { data, error } = await supabase.rpc('fn_process_b2b_wholesale_order', {
@@ -211,66 +440,77 @@ export default function GlobalNetworkSuperAppPage() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`B2B Trade Sealed! Ref #${data?.b2b_trade_uid}`, {
-        description: `Stock automatically transferred to your inventory and Purchase Order logged!`
-      });
+      toast.success(`Order placed. Reference ${data?.b2b_trade_uid || ''}`);
       setB2bOrderItem(null);
       queryClient.invalidateQueries({ queryKey: ['global_bbu1_network_superapp'] });
     },
-    onError: (err: any) => toast.error(`B2B Trade Failed: ${err.message}`)
+    onError: (err: any) => toast.error(err.message)
   });
 
-  const sendWhatsAppB2BInquiry = (item: any) => {
-    const text = `Hello *${item.business_name}*!\n\nI saw your listing on the *BBU1 Network Super-App*:\n📦 *${item.product_name}*\nPrice: ${item.currency_code} ${Number(item.online_price).toLocaleString()}\nWholesale Rate: ${item.currency_code} ${Number(item.wholesale_price).toLocaleString()}\nLocation: ${item.business_location || 'N/A'}\n\nI would like to place an order or inquire about availability.`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  const sendWhatsAppInquiry = (item: any) => {
+    const lines = [
+      `Hello ${item.business_name},`,
+      ``,
+      `I saw this on the BBU1 Network:`,
+      `${item.product_name}`,
+      `Price: ${money(item.currency_code, item.online_price)}`,
+      item.business_location ? `Location: ${item.business_location}` : '',
+      ``,
+      `Is it available?`
+    ].filter(Boolean);
+
+    const phone = String(item.business_phone || item.whatsapp_number || '').replace(/\D/g, '');
+    const base = phone ? `https://wa.me/${phone}` : `https://wa.me/`;
+    window.open(`${base}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
   };
 
-  const mapEmbedUrl = coords
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng - 0.01}%2C${coords.lat - 0.01}%2C${coords.lng + 0.01}%2C${coords.lat + 0.01}&layer=mapnik&marker=${coords.lat}%2C${coords.lng}`
-    : `https://www.openstreetmap.org/export/embed.html?bbox=-30%2C-40%2C60%2C55&layer=mapnik`;
+  const b2bUnitPrice = Number(b2bOrderItem?.wholesale_price || b2bOrderItem?.online_price || 0);
+  const b2bMinQty = Number(b2bOrderItem?.min_b2b_qty || 1);
+  const b2bStock = Number(b2bOrderItem?.stock_quantity || 0);
+  const b2bBelowMin = b2bQuantity < b2bMinQty;
+  const b2bOverStock = b2bStock > 0 && b2bQuantity > b2bStock;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans antialiased pb-20">
+    <div className="min-h-screen bg-slate-50 pb-16 antialiased">
       <Toaster position="top-center" />
 
-      {/* ============================= HEADER ============================= */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-16 flex items-center justify-between gap-3">
-
-            {/* Brand */}
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-9 w-9 shrink-0 bg-slate-900 rounded-lg flex items-center justify-center text-white">
-                <Globe size={18} />
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-14 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white">
+                <Globe size={16} />
               </div>
-              <span className="hidden sm:block text-[15px] font-semibold text-slate-900 tracking-tight whitespace-nowrap">
+              <span className="whitespace-nowrap text-[15px] font-semibold tracking-tight text-slate-900">
                 BBU1 Network
               </span>
             </div>
 
-            {/* Location trigger — center on desktop, compact on mobile */}
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="flex-1 max-w-xs sm:max-w-sm mx-1 flex items-center gap-2 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition-colors text-left min-w-0"
+              className="hidden min-w-0 max-w-sm flex-1 items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left transition-colors hover:bg-slate-50 md:flex"
             >
               <MapPin size={15} className="shrink-0 text-slate-500" />
               <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-medium text-slate-400 leading-none">Deliver to</span>
-                <span className="block text-[13px] font-semibold text-slate-900 leading-tight truncate">{userLocationLabel}</span>
+                <span className="block text-[10px] font-medium leading-none text-slate-400">Delivering to</span>
+                <span className="block truncate text-[13px] font-medium leading-tight text-slate-900">
+                  {pinnedLocation?.label || 'All areas'}
+                </span>
               </span>
               <ChevronRight size={14} className="shrink-0 text-slate-400" />
             </button>
 
-            {/* Account */}
             <div className="shrink-0">
               {profile ? (
-                <Badge className="bg-slate-900 text-white border-none font-medium text-xs px-3 py-2 rounded-lg flex items-center gap-1.5">
-                  <Building2 size={12} />
-                  <span className="hidden sm:inline">{profile.business_name}</span>
-                </Badge>
+                <div className="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2">
+                  <Building2 size={14} className="text-slate-500" />
+                  <span className="hidden max-w-[140px] truncate text-xs font-medium text-slate-700 sm:block">
+                    {profile.business_name}
+                  </span>
+                </div>
               ) : (
                 <Link href="/login">
-                  <Button variant="outline" size="sm" className="h-10 border-slate-200 text-slate-700 hover:bg-slate-50 font-medium rounded-lg px-3">
+                  <Button variant="outline" className="h-9 rounded-lg border-slate-200 px-3 text-xs font-medium">
                     <User size={15} className="sm:mr-1.5" />
                     <span className="hidden sm:inline">Log in</span>
                   </Button>
@@ -279,191 +519,220 @@ export default function GlobalNetworkSuperAppPage() {
             </div>
           </div>
 
-          {/* Search — its own row so it always gets full width, on every breakpoint */}
-          <div className="pb-3 sm:pb-4">
+          <button
+            onClick={() => setIsLocationModalOpen(true)}
+            className="mb-2 flex w-full items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left md:hidden"
+          >
+            <MapPin size={15} className="shrink-0 text-slate-500" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-medium leading-none text-slate-400">Delivering to</span>
+              <span className="block truncate text-[13px] font-medium leading-tight text-slate-900">
+                {pinnedLocation?.label || 'All areas'}
+              </span>
+            </span>
+            <ChevronRight size={14} className="shrink-0 text-slate-400" />
+          </button>
+
+          <div className="pb-3">
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
-                placeholder="Search products, restaurants, homes, hotels or stores…"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10 h-11 rounded-lg bg-slate-50 border-slate-200 focus-visible:bg-white text-sm"
+                placeholder="Search food, shops, homes or hotels"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                className="h-11 rounded-lg border-slate-200 bg-slate-50 pl-10 text-sm focus-visible:bg-white"
               />
+              {searchInput ? (
+                <button
+                  onClick={() => setSearchInput('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                >
+                  <X size={15} />
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
       </header>
 
-      {/* ============================= MAIN ============================= */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-8 sm:space-y-10">
-
-        {/* HERO */}
-        <section className="relative overflow-hidden rounded-2xl bg-slate-900 text-white px-6 py-10 sm:px-10 sm:py-12">
-          <Store className="absolute -right-4 -bottom-8 w-40 h-40 sm:w-56 sm:h-56 text-white/5" />
-          <div className="relative z-10 max-w-2xl space-y-3">
-            <Badge className="bg-white/10 text-blue-300 border-none font-medium text-[11px] px-2.5 py-1 rounded-md">
-              BBU1 Sovereign Super-App
-            </Badge>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight leading-tight">
-              Order anything, near you
-            </h1>
-            <p className="text-sm sm:text-[15px] text-slate-300 leading-relaxed max-w-xl">
-              Browse products, restaurant meals, real estate rentals, hotel stays and professional
-              services from verified businesses across the BBU1 network.
-            </p>
-          </div>
-        </section>
-
-        {/* CATEGORIES — horizontal scroll on mobile, grid from md up */}
-        <section className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Browse categories</h2>
-          <div className="flex md:grid md:grid-cols-6 gap-3 overflow-x-auto md:overflow-visible pb-1 -mx-1 px-1 snap-x snap-mandatory md:snap-none scrollbar-none">
-            {CATEGORY_TABS.map((cat, i) => {
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
+        <section>
+          <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+            {CATEGORY_TABS.map((cat) => {
               const Icon = cat.icon;
-              const isActive = industryFilter === cat.id && (i !== 5 || industryFilter === cat.id);
+              const isActive = activeTab === cat.key;
               return (
                 <button
-                  key={`${cat.id}-${i}`}
-                  onClick={() => setIndustryFilter(cat.id)}
+                  key={cat.key}
+                  onClick={() => setActiveTab(cat.key)}
                   className={cn(
-                    "shrink-0 w-[136px] md:w-auto snap-start p-4 rounded-xl border text-left transition-colors flex flex-col justify-between h-[104px]",
-                    industryFilter === cat.id
-                      ? "bg-slate-900 border-slate-900 text-white"
-                      : "bg-white border-slate-200 text-slate-900 hover:border-slate-300"
+                    "flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-colors",
+                    isActive
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                   )}
                 >
-                  <Icon size={18} className={industryFilter === cat.id ? "text-blue-300" : "text-slate-500"} />
-                  <span className="font-medium text-[12.5px] leading-snug">{cat.label}</span>
+                  <Icon size={20} className={isActive ? "text-white" : "text-slate-500"} />
+                  <span className="text-xs font-medium">{cat.label}</span>
                 </button>
               );
             })}
           </div>
         </section>
 
-        {/* RESULTS HEADER */}
+        {pinnedLocation ? (
+          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="flex items-stretch">
+              <iframe
+                key={`${pinnedLocation.lat}-${pinnedLocation.lng}`}
+                title="Your location"
+                src={mapUrl(pinnedLocation.lat, pinnedLocation.lng)}
+                className="h-24 w-28 shrink-0 border-0 sm:h-28 sm:w-44"
+                loading="lazy"
+              />
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">Your location</p>
+                  <p className="mt-1 truncate text-sm font-medium text-slate-900">{pinnedLocation.label}</p>
+                  {pinnedLocation.detail ? (
+                    <p className="truncate text-xs text-slate-500">{pinnedLocation.detail}</p>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsLocationModalOpen(true)}
+                    className="h-8 rounded-lg border-slate-200 px-3 text-xs font-medium"
+                  >
+                    Change
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={clearLocation}
+                    className="h-8 rounded-lg px-3 text-xs font-medium text-slate-500"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         <section className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            {isLoading ? 'Loading listings' : `${networkItems?.length || 0} listings`}
+          <h2 className="text-sm font-medium text-slate-500">
+            {isLoading ? 'Loading' : `${items.length} listing${items.length === 1 ? '' : 's'}`}
+            {selectedLocation !== 'ALL' ? ` in ${selectedLocation}` : ''}
           </h2>
-          {selectedLocation !== 'ALL' && (
-            <button
-              onClick={() => { setSelectedLocation('ALL'); setUserLocationLabel('Global / All locations'); }}
-              className="text-xs font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1"
-            >
-              Clear location filter <X size={12} />
-            </button>
-          )}
         </section>
 
-        {/* MARKETPLACE GRID */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
           {isLoading ? (
-            <div className="col-span-full py-24 text-center text-slate-400">
-              <Loader2 className="animate-spin inline mr-2" size={18} />
-              <span className="text-sm font-medium">Scanning the BBU1 network catalog…</span>
-            </div>
-          ) : networkItems.length === 0 ? (
             <div className="col-span-full py-24 text-center">
-              <ShoppingBag size={32} className="mx-auto text-slate-300 mb-3" />
-              <p className="text-sm font-medium text-slate-500">No listings match this location or category yet.</p>
+              <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
+              <p className="mt-3 text-sm text-slate-400">Loading listings</p>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="col-span-full py-20 text-center">
+              <ShoppingBag size={28} className="mx-auto mb-3 text-slate-300" />
+              <p className="text-sm font-medium text-slate-600">Nothing here yet</p>
+              <p className="mt-1 text-sm text-slate-400">Try another category or widen your area</p>
+              {selectedLocation !== 'ALL' ? (
+                <Button
+                  variant="outline"
+                  onClick={clearLocation}
+                  className="mt-5 h-9 rounded-lg border-slate-200 px-4 text-xs font-medium"
+                >
+                  Show all areas
+                </Button>
+              ) : null}
             </div>
           ) : (
-            networkItems.map((item: any) => {
+            items.map((item: any) => {
               const isOwnItem = buyerBusinessId && buyerBusinessId === item.business_id;
+              const hasWholesale = item.wholesale_price && item.wholesale_price < item.online_price;
 
               return (
                 <Card
                   key={`${item.business_id}-${item.variant_id}`}
                   onClick={() => setSelectedItem(item)}
-                  className="border border-slate-200 rounded-xl overflow-hidden shadow-none hover:shadow-md hover:border-slate-300 transition-all bg-white flex flex-col cursor-pointer group"
+                  className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-none transition-colors hover:border-slate-300"
                 >
-                  <div className="h-44 bg-slate-100 relative overflow-hidden flex items-center justify-center">
+                  <div className="relative flex h-32 items-center justify-center overflow-hidden bg-slate-100 sm:h-40">
                     {item.primary_media_url ? (
                       isVideoUrl(item.primary_media_url) ? (
-                        <video src={item.primary_media_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                        <video src={item.primary_media_url} autoPlay loop muted playsInline className="h-full w-full object-cover" />
                       ) : (
-                        <img src={item.primary_media_url} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" alt={item.product_name} />
+                        <img src={item.primary_media_url} className="h-full w-full object-cover" alt={item.product_name} />
                       )
                     ) : (
-                      <ShoppingBag size={40} className="text-slate-300" />
+                      <ShoppingBag size={32} className="text-slate-300" />
                     )}
 
-                    <span className="absolute top-2.5 left-2.5 bg-slate-900/85 backdrop-blur-sm text-white text-[11px] font-medium px-2 py-1 rounded-md flex items-center gap-1">
-                      <Building2 size={11} className="text-blue-300" />
-                      {item.business_name}
-                    </span>
-
-                    {item.business_location && (
-                      <span className="absolute bottom-2.5 left-2.5 bg-white/95 text-slate-700 text-[11px] font-medium px-2 py-1 rounded-md flex items-center gap-1">
-                        <MapPin size={11} className="text-emerald-600" />
+                    {item.business_location ? (
+                      <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
+                        <MapPin size={9} />
                         {item.business_location}
                       </span>
-                    )}
+                    ) : null}
                   </div>
 
-                  <div className="p-4 flex-1 flex flex-col gap-2">
-                    <h3 className="font-semibold text-slate-900 text-[13.5px] leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors">
+                  <div className="flex flex-1 flex-col gap-1.5 p-3">
+                    <p className="truncate text-[11px] text-slate-400">{item.business_name}</p>
+                    <h3 className="line-clamp-2 text-[13px] font-medium leading-snug text-slate-900">
                       {item.product_name}
                     </h3>
-
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-base font-semibold text-slate-900">
-                        {item.currency_code} {Number(item.online_price).toLocaleString()}
-                      </span>
-                      <span className="text-[11px] text-slate-400">retail</span>
-                    </div>
-
-                    {item.wholesale_price && item.wholesale_price < item.online_price && (
-                      <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1 w-fit">
-                        <Zap size={11} /> B2B {item.currency_code} {Number(item.wholesale_price).toLocaleString()}
-                      </span>
-                    )}
-
-                    {item.online_description && (
-                      <p className="text-[12.5px] text-slate-500 line-clamp-2">{item.online_description}</p>
-                    )}
+                    <p className="text-sm font-semibold text-slate-900">
+                      {money(item.currency_code, item.online_price)}
+                    </p>
+                    {hasWholesale ? (
+                      <p className="text-[11px] font-medium text-emerald-700">
+                        Wholesale {money(item.currency_code, item.wholesale_price)}
+                      </p>
+                    ) : null}
                   </div>
 
-                  <div className="p-4 pt-0 flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 p-3 pt-0">
                     <div className="flex gap-2">
                       <Link
                         href={`/store/${item.store_slug}`}
                         onClick={e => e.stopPropagation()}
                         className="flex-1"
                       >
-                        <Button variant="outline" className="w-full h-9 border-slate-200 text-slate-700 hover:bg-slate-50 font-medium rounded-lg text-[12.5px]">
-                          <Store size={13} className="mr-1.5 text-slate-500" /> Visit store
+                        <Button variant="outline" className="h-9 w-full rounded-lg border-slate-200 text-xs font-medium">
+                          <Store size={13} className="mr-1.5 text-slate-500" />
+                          Store
                         </Button>
                       </Link>
-
                       <Button
-                        onClick={(e) => { e.stopPropagation(); sendWhatsAppB2BInquiry(item); }}
-                        className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
-                        title="WhatsApp inquiry"
+                        onClick={(e) => { e.stopPropagation(); sendWhatsAppInquiry(item); }}
+                        variant="outline"
+                        className="h-9 w-9 shrink-0 rounded-lg border-slate-200 p-0"
+                        aria-label="Ask on WhatsApp"
                       >
-                        <MessageSquare size={15} />
+                        <MessageSquare size={14} className="text-emerald-600" />
                       </Button>
                     </div>
 
                     <Button
-                      disabled={isOwnItem}
+                      disabled={!!isOwnItem}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (!buyerBusinessId) {
-                          return toast.error("Please log in as a business owner to place B2B wholesale orders.");
+                          toast.error("Log in as a business owner to order wholesale");
+                          return;
                         }
                         setB2bOrderItem(item);
                         setB2bQuantity(Number(item.min_b2b_qty || 10));
                       }}
                       className={cn(
-                        "w-full h-9 font-medium text-[12.5px] rounded-lg transition-colors",
+                        "h-9 w-full rounded-lg text-xs font-medium",
                         isOwnItem
-                          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                          : "bg-slate-900 hover:bg-slate-800 text-white"
+                          ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                          : "bg-slate-900 text-white hover:bg-slate-800"
                       )}
                     >
-                      <Zap size={13} className="mr-1.5 text-emerald-400" />
-                      {isOwnItem ? "Your store" : "B2B wholesale order"}
+                      {isOwnItem ? "Your store" : "Order wholesale"}
                     </Button>
                   </div>
                 </Card>
@@ -473,193 +742,75 @@ export default function GlobalNetworkSuperAppPage() {
         </section>
       </main>
 
-      {/* ================= DYNAMIC GPS & CITY LOCATION PICKER MODAL ================= */}
-      <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
-        <DialogContent className="max-w-lg rounded-2xl p-0 overflow-hidden bg-white border border-slate-200 max-h-[90vh] overflow-y-auto text-slate-900">
-          <div className="px-6 pt-6 pb-4 border-b border-slate-100">
-            <DialogTitle className="text-base font-semibold text-slate-900">Set your delivery location</DialogTitle>
-            <DialogDescription className="text-[13px] text-slate-500 mt-0.5">
-              Detect your precise GPS position, or search any city or address worldwide.
-            </DialogDescription>
-          </div>
+      <LocationPicker
+        open={isLocationModalOpen}
+        onOpenChange={setIsLocationModalOpen}
+        pinned={pinnedLocation}
+        merchantHubs={availableLocations}
+        activeCity={selectedLocation}
+        onApply={applyLocation}
+        onClear={clearLocation}
+      />
 
-          <div className="px-6 py-5 space-y-5">
-
-            {/* MAP PREVIEW — shows an exact pin once we have coordinates, not just a city name */}
-            <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-              <iframe
-                key={coords ? `${coords.lat}-${coords.lng}` : 'world'}
-                title="Location preview map"
-                src={mapEmbedUrl}
-                className="w-full h-48 sm:h-56 border-0"
-                loading="lazy"
-              />
-              <div className="px-3 py-2 bg-white border-t border-slate-100 flex items-center justify-between gap-2">
-                <span className="text-[11.5px] text-slate-500 truncate">
-                  {coords
-                    ? `Pinned at ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`
-                    : 'No pin yet — detect GPS or search below'}
-                </span>
-                {coords && (
-                  <a
-                    href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=17/${coords.lat}/${coords.lng}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11.5px] font-medium text-blue-600 hover:underline shrink-0"
-                  >
-                    Open full map
-                  </a>
-                )}
-              </div>
-            </div>
-
-            {/* GPS DETECT BUTTON */}
-            <Button
-              onClick={detectGpsLocation}
-              disabled={isDetectingGps}
-              className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg flex items-center justify-center gap-2"
-            >
-              {isDetectingGps ? <Loader2 className="animate-spin h-4 w-4" /> : <Crosshair size={16} />}
-              {isDetectingGps ? "Locking GPS position…" : "Detect my precise GPS location"}
-            </Button>
-
-            <div className="relative flex items-center justify-center">
-              <span className="bg-white px-3 text-[11px] font-medium text-slate-400 z-10">or search a city / address</span>
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
-            </div>
-
-            {/* CUSTOM LOCATION INPUT */}
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-medium text-slate-500">City, address or landmark</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="e.g. Kampala, London, Nairobi, Dubai…"
-                  value={customLocationSearch}
-                  onChange={e => setCustomLocationSearch(e.target.value)}
-                  className="h-11 rounded-lg border-slate-200 text-sm flex-1"
-                />
-                <Button
-                  onClick={async () => {
-                    if (!customLocationSearch.trim()) return;
-                    await geocodeCustomLocation(customLocationSearch.trim());
-                    setSelectedLocation(customLocationSearch.trim());
-                    setUserLocationLabel(customLocationSearch.trim());
-                    setIsLocationModalOpen(false);
-                    toast.success(`Filter set to ${customLocationSearch}`);
-                  }}
-                  disabled={isGeocoding}
-                  className="h-11 px-5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm"
-                >
-                  {isGeocoding ? <Loader2 className="animate-spin h-4 w-4" /> : "Set"}
-                </Button>
-              </div>
-            </div>
-
-            {/* DYNAMICALLY DISCOVERED CITIES FROM DB */}
-            {availableLocations.length > 0 && (
-              <div className="space-y-2 pt-4 border-t border-slate-100">
-                <Label className="text-[11px] font-medium text-slate-500">Registered merchant hubs</Label>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => {
-                      setSelectedLocation('ALL');
-                      setUserLocationLabel('Global / All locations');
-                      setIsLocationModalOpen(false);
-                    }}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-                      selectedLocation === 'ALL' ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                    )}
-                  >
-                    All locations
-                  </button>
-
-                  {availableLocations.map(loc => (
-                    <button
-                      key={loc}
-                      onClick={async () => {
-                        setSelectedLocation(loc);
-                        setUserLocationLabel(loc);
-                        setIsLocationModalOpen(false);
-                        toast.success(`Location set to ${loc}`);
-                        geocodeCustomLocation(loc);
-                      }}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1",
-                        selectedLocation === loc ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                      )}
-                    >
-                      <MapPin size={10} />
-                      {loc}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100">
-            <Button variant="ghost" onClick={() => setIsLocationModalOpen(false)} className="h-10 font-medium text-sm text-slate-500">
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ================= 1. DETAIL SPECS & DUAL MEDIA OVERLAY MODAL ================= */}
       <Dialog open={!!selectedItem} onOpenChange={open => { if (!open) setSelectedItem(null); }}>
-        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden bg-white border border-slate-200 max-h-[90vh] overflow-y-auto text-slate-900">
+        <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl p-0 sm:max-w-2xl">
           {selectedItem && (
             <div>
-              <div className="h-56 sm:h-64 bg-slate-900 relative overflow-hidden flex items-center justify-center">
+              <div className="relative flex h-52 items-center justify-center overflow-hidden bg-slate-100 sm:h-64">
                 {selectedItem.primary_media_url ? (
                   isVideoUrl(selectedItem.primary_media_url) ? (
-                    <video src={selectedItem.primary_media_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                    <video src={selectedItem.primary_media_url} autoPlay loop muted playsInline className="h-full w-full object-cover" />
                   ) : (
-                    <img src={selectedItem.primary_media_url} className="w-full h-full object-cover" alt={selectedItem.product_name} />
+                    <img src={selectedItem.primary_media_url} className="h-full w-full object-cover" alt={selectedItem.product_name} />
                   )
                 ) : (
-                  <ShoppingBag size={56} className="text-slate-600" />
+                  <ShoppingBag size={48} className="text-slate-300" />
                 )}
-                <span className="absolute top-4 left-4 bg-blue-600 text-white text-xs font-medium px-3 py-1.5 rounded-md">
-                  Sold by {selectedItem.business_name}
-                </span>
               </div>
 
-              <div className="p-6 sm:p-8 space-y-6">
-                <div className="space-y-2 border-b border-slate-100 pb-5">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">{selectedItem.product_name}</h2>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-xl sm:text-2xl font-semibold text-slate-900">
-                      {selectedItem.currency_code} {Number(selectedItem.online_price).toLocaleString()}
+              <div className="space-y-5 px-5 py-5 sm:px-7">
+                <div>
+                  <p className="text-sm text-slate-500">{selectedItem.business_name}</p>
+                  <DialogTitle className="mt-1 text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
+                    {selectedItem.product_name}
+                  </DialogTitle>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span className="text-xl font-semibold text-slate-900">
+                      {money(selectedItem.currency_code, selectedItem.online_price)}
                     </span>
-                    <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium text-xs px-2.5 py-1">
-                      {selectedItem.business_location || 'Location unavailable'}
-                    </Badge>
+                    {selectedItem.business_location ? (
+                      <Badge variant="secondary" className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        <MapPin size={11} className="mr-1" />
+                        {selectedItem.business_location}
+                      </Badge>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Specifications & description</h4>
-                  <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100 whitespace-pre-line">
-                    {selectedItem.online_description || "No specific detailed description provided for this item."}
-                  </p>
-                </div>
+                {selectedItem.online_description ? (
+                  <div className="space-y-2 border-t border-slate-100 pt-5">
+                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Details</p>
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">
+                      {selectedItem.online_description}
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="px-6 sm:px-8 py-5 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col gap-2 border-t border-slate-200 px-5 py-4 sm:flex-row sm:px-7">
                 <Link href={`/store/${selectedItem.store_slug}`} className="flex-1">
-                  <Button className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg text-sm">
-                    <ExternalLink size={15} className="mr-2" /> Open seller's storefront
+                  <Button className="h-11 w-full rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-slate-800">
+                    <ExternalLink size={15} className="mr-2" />
+                    Visit store
                   </Button>
                 </Link>
-
                 <Button
-                  onClick={() => sendWhatsAppB2BInquiry(selectedItem)}
+                  onClick={() => sendWhatsAppInquiry(selectedItem)}
                   variant="outline"
-                  className="h-11 border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-medium rounded-lg text-sm px-6"
+                  className="h-11 rounded-lg border-slate-200 px-6 text-sm font-medium"
                 >
-                  <MessageSquare size={15} className="mr-2" /> WhatsApp order
+                  <MessageSquare size={15} className="mr-2 text-emerald-600" />
+                  WhatsApp
                 </Button>
               </div>
             </div>
@@ -667,71 +818,93 @@ export default function GlobalNetworkSuperAppPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ================= 2. B2B IN-SYSTEM WHOLESALE PURCHASE MODAL ================= */}
       <Dialog open={!!b2bOrderItem} onOpenChange={open => { if (!open) setB2bOrderItem(null); }}>
-        <DialogContent className="max-w-md rounded-2xl p-0 overflow-hidden bg-white border border-slate-200 text-slate-900">
+        <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl p-0 sm:max-w-md">
           {b2bOrderItem && (
             <div>
-              <div className="px-6 pt-6 pb-4 border-b border-slate-100">
-                <DialogTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                  <Building2 size={17} className="text-slate-500" /> B2B wholesale order
-                </DialogTitle>
-                <DialogDescription className="text-[13px] text-slate-500 mt-0.5">
-                  Direct in-system stock transfer from <strong className="text-slate-700">{b2bOrderItem.business_name}</strong>
+              <div className="border-b border-slate-200 px-5 py-4">
+                <DialogTitle className="text-base font-semibold text-slate-900">Wholesale order</DialogTitle>
+                <DialogDescription className="mt-0.5 text-sm text-slate-500">
+                  From {b2bOrderItem.business_name}
                 </DialogDescription>
               </div>
 
-              <div className="px-6 py-5 space-y-5">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1">
-                  <p className="text-[13.5px] font-semibold text-slate-900">{b2bOrderItem.product_name}</p>
-                  <p className="text-[13px] font-medium text-emerald-700">
-                    Wholesale unit price: {b2bOrderItem.currency_code} {Number(b2bOrderItem.wholesale_price || b2bOrderItem.online_price).toLocaleString()}
+              <div className="space-y-5 px-5 py-5">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-medium text-slate-900">{b2bOrderItem.product_name}</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {money(b2bOrderItem.currency_code, b2bUnitPrice)} per unit
                   </p>
-                  <p className="text-[11.5px] text-slate-400">
-                    Available stock at seller: {b2bOrderItem.stock_quantity || 0} units
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-medium text-slate-500">Order quantity (units)</Label>
-                  <Input
-                    type="number"
-                    min={Number(b2bOrderItem.min_b2b_qty || 1)}
-                    value={b2bQuantity}
-                    onChange={e => setB2bQuantity(Math.max(1, Number(e.target.value)))}
-                    className="h-12 border-slate-200 rounded-lg font-semibold text-lg text-slate-900"
-                  />
-                  <p className="text-[11.5px] text-slate-400 text-right">
-                    Minimum quantity: {b2bOrderItem.min_b2b_qty || 1} units
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    {b2bStock} unit{b2bStock === 1 ? '' : 's'} in stock · minimum order {b2bMinQty}
                   </p>
                 </div>
 
-                <div className="p-4 bg-slate-900 text-white rounded-xl flex justify-between items-center">
-                  <span className="text-xs font-medium text-slate-400">Total B2B cost</span>
-                  <span className="text-lg font-semibold text-emerald-400">
-                    {b2bOrderItem.currency_code} {(b2bQuantity * Number(b2bOrderItem.wholesale_price || b2bOrderItem.online_price)).toLocaleString()}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-slate-500">Quantity</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setB2bQuantity(q => Math.max(1, q - 1))}
+                      className="h-11 w-11 shrink-0 rounded-lg border-slate-200 p-0"
+                      aria-label="Decrease"
+                    >
+                      <Minus size={15} />
+                    </Button>
+                    <Input
+                      type="number"
+                      min={b2bMinQty}
+                      value={b2bQuantity}
+                      onChange={e => setB2bQuantity(Math.max(1, Number(e.target.value) || 1))}
+                      className="h-11 rounded-lg border-slate-200 text-center text-base font-medium tabular-nums"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => setB2bQuantity(q => q + 1)}
+                      className="h-11 w-11 shrink-0 rounded-lg border-slate-200 p-0"
+                      aria-label="Increase"
+                    >
+                      <Plus size={15} />
+                    </Button>
+                  </div>
+                  {b2bBelowMin ? (
+                    <p className="text-xs text-red-600">Minimum order is {b2bMinQty} units</p>
+                  ) : null}
+                  {b2bOverStock ? (
+                    <p className="text-xs text-red-600">Only {b2bStock} units are in stock</p>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+                  <span className="text-sm text-slate-500">Total</span>
+                  <span className="text-lg font-semibold tabular-nums text-slate-900">
+                    {money(b2bOrderItem.currency_code, b2bQuantity * b2bUnitPrice)}
                   </span>
                 </div>
 
-                <div className="p-3.5 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-2.5 text-blue-900">
-                  <ShieldCheck size={17} className="shrink-0 text-blue-600 mt-0.5" />
-                  <p className="text-[12px] leading-snug">
-                    Confirming this order automatically generates a purchase order for your business and
-                    receives <strong>{b2bQuantity} units</strong> directly into your inventory.
+                <div className="flex items-start gap-2.5 rounded-lg bg-slate-50 px-4 py-3">
+                  <ShieldCheck size={16} className="mt-0.5 shrink-0 text-slate-400" />
+                  <p className="text-xs leading-relaxed text-slate-600">
+                    A purchase order is created for your business and the stock is added to your inventory.
                   </p>
                 </div>
               </div>
 
-              <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                <Button variant="ghost" onClick={() => setB2bOrderItem(null)} className="h-11 font-medium text-sm text-slate-500">
+              <DialogFooter className="gap-2 border-t border-slate-200 px-5 py-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setB2bOrderItem(null)}
+                  className="h-11 rounded-lg text-sm font-medium text-slate-500"
+                >
                   Cancel
                 </Button>
                 <Button
                   onClick={() => b2bTradeMutation.mutate()}
-                  disabled={b2bTradeMutation.isPending}
-                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-sm flex-1"
+                  disabled={b2bTradeMutation.isPending || b2bBelowMin || b2bOverStock}
+                  className="h-11 flex-1 rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-slate-800"
                 >
-                  {b2bTradeMutation.isPending ? <Loader2 className="animate-spin h-4 w-4 mx-auto" /> : "Confirm B2B wholesale purchase"}
+                  {b2bTradeMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Place order
                 </Button>
               </DialogFooter>
             </div>

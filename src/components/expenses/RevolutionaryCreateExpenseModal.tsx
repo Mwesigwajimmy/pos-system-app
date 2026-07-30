@@ -8,13 +8,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { Loader2, PlusCircle, CalendarIcon, Info } from 'lucide-react';
+import { Loader2, Plus, CalendarIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -39,37 +38,33 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// --- Enterprise Props ---
 interface RevolutionaryCreateExpenseModalProps {
   businessId: string;
   userId: string;
-  countryCode?: string; // Added optional prop for multi-country support
+  countryCode?: string;
 }
 
-// --- Enterprise Validation Schema ---
 const expenseSchema = z.object({
   date: z.date(),
-  description: z.string().min(3, "Description must be detailed for audit purposes"),
-  amount: z.coerce.number().positive("Amount must be greater than zero"),
-  category_id: z.string().min(1, "Accounting Category is required"),
-  payment_account_id: z.string().min(1, "Payment source (Bank/Cash) is required"),
+  description: z.string().min(3, "Enter a description of at least 3 characters"),
+  amount: z.coerce.number().positive("Enter an amount greater than zero"),
+  category_id: z.string().min(1, "Select an expense account"),
+  payment_account_id: z.string().min(1, "Select where the money was paid from"),
   vendor: z.string().optional(),
 });
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
-export function RevolutionaryCreateExpenseModal({ 
-  businessId, 
+export function RevolutionaryCreateExpenseModal({
+  businessId,
   userId,
-  countryCode = 'UG' // Defaulting to UG based on NIM UGANDA context
+  countryCode = 'UG'
 }: RevolutionaryCreateExpenseModalProps) {
   const [open, setOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const supabase = createClient();
 
-  // --- 1. Fetch Tenant-Specific Expense Accounts ---
   const { data: expenseAccounts, isLoading: loadingExp } = useQuery({
     queryKey: ['accounts', 'expense', businessId],
     queryFn: async () => {
@@ -77,7 +72,7 @@ export function RevolutionaryCreateExpenseModal({
         .from('accounting_accounts')
         .select('id, name, code')
         .eq('business_id', businessId)
-        .in('type', ['Expense', 'Cost of Goods Sold', 'Overhead']) 
+        .in('type', ['Expense', 'Cost of Goods Sold', 'Overhead'])
         .eq('is_active', true);
       if (error) throw error;
       return data;
@@ -85,7 +80,6 @@ export function RevolutionaryCreateExpenseModal({
     enabled: open,
   });
 
-  // --- 2. Fetch Tenant-Specific Payment Accounts (Bank/Cash) ---
   const { data: paymentAccounts, isLoading: loadingPay } = useQuery({
     queryKey: ['accounts', 'payment', businessId],
     queryFn: async () => {
@@ -93,8 +87,8 @@ export function RevolutionaryCreateExpenseModal({
         .from('accounting_accounts')
         .select('id, name, current_balance, currency')
         .eq('business_id', businessId)
-        .eq('type', 'Asset') // Parent is Asset
-        .in('subtype', ['bank', 'cash']) // Lowercase subtype check
+        .eq('type', 'Asset')
+        .in('subtype', ['bank', 'cash'])
         .eq('is_active', true);
       if (error) throw error;
       return data;
@@ -114,7 +108,6 @@ export function RevolutionaryCreateExpenseModal({
     },
   });
 
-  // --- 3. Enterprise Atomic Posting Mutation ---
   const mutation = useMutation({
     mutationFn: async (values: ExpenseFormValues) => {
       const { data, error } = await supabase.rpc('record_enterprise_expense', {
@@ -126,22 +119,22 @@ export function RevolutionaryCreateExpenseModal({
         p_expense_account_id: values.category_id,
         p_payment_account_id: values.payment_account_id,
         p_vendor_name: values.vendor || null,
-        p_currency: 'UGX', 
-        p_country_code: countryCode, 
-        p_exchange_rate: 1.0         
+        p_currency: 'UGX',
+        p_country_code: countryCode,
+        p_exchange_rate: 1.0
       });
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      toast.success("Expense posted to Ledger successfully");
+      toast.success("Expense saved");
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       setOpen(false);
       form.reset();
     },
     onError: (err: any) => {
-        toast.error(`Accounting System Error: ${err.message}`);
+      toast.error(err.message);
     }
   });
 
@@ -154,173 +147,200 @@ export function RevolutionaryCreateExpenseModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700 shadow-lg transition-all">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Log New Expense
+        <Button className="h-9 rounded-lg bg-slate-900 px-4 text-xs font-medium text-white hover:bg-slate-800">
+          <Plus className="mr-2 h-4 w-4" />
+          New expense
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[550px] border-none shadow-2xl">
+      <DialogContent className="rounded-xl p-0 sm:max-w-[560px]">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-slate-900">Enterprise Expenditure Entry</DialogTitle>
-              <DialogDescription>
-                This action will perform a double-entry ledger post and update real-time financial reports.
-              </DialogDescription>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <DialogHeader className="border-b border-slate-200 px-6 py-5">
+              <DialogTitle className="text-base font-semibold text-slate-900">New expense</DialogTitle>
             </DialogHeader>
 
-            <Alert className="bg-blue-50 border-blue-100 text-blue-800">
-                <Info className="h-4 w-4" />
-                <AlertDescription className="text-xs font-medium">
-                    Tenant Context: <span className="font-mono">{businessId}</span>
-                </AlertDescription>
-            </Alert>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-5 px-6 py-6">
+              <div className="grid gap-5 sm:grid-cols-2">
                 <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
                     <FormItem className="flex flex-col">
-                        <FormLabel>Transaction Date</FormLabel>
-                        <Popover>
+                      <FormLabel className="text-xs font-medium text-slate-500">Date</FormLabel>
+                      <Popover>
                         <PopoverTrigger asChild>
-                            <FormControl>
-                            <Button 
-                                type="button" // CRITICAL: Stops form validation/blinking
-                                variant={"outline"} 
-                                className={cn("w-full text-left font-normal", !field.value && "text-muted-foreground")}
-                                // REMOVED stopPropagation here to let the Popover open
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn(
+                                "h-10 w-full justify-start rounded-lg border-slate-200 text-left text-sm font-normal",
+                                !field.value && "text-slate-400"
+                              )}
                             >
-                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              {field.value ? format(field.value, "dd MMM yyyy") : <span>Select date</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 text-slate-400" />
                             </Button>
-                            </FormControl>
+                          </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent 
-                            className="w-auto p-0 z-[1001]" 
-                            align="start"
-                        >
-                            <Calendar 
-                                mode="single" 
-                                selected={field.value} 
-                                onSelect={field.onChange} 
-                                disabled={(date) => date > new Date()} 
-                                captionLayout="dropdown-buttons"
-                                fromYear={2010}
-                                toYear={new Date().getFullYear()}
-                                initialFocus={false} // Prevents focus-trap interference
-                            />
+                        <PopoverContent className="z-[1001] w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date > new Date()}
+                            captionLayout="dropdown-buttons"
+                            fromYear={2010}
+                            toYear={new Date().getFullYear()}
+                            initialFocus={false}
+                          />
                         </PopoverContent>
-                        </Popover>
-                        <FormMessage />
+                      </Popover>
+                      <FormMessage />
                     </FormItem>
-                    )}
+                  )}
                 />
 
                 <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Total Amount (UGX)</FormLabel>
-                        <FormControl>
-                        <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0.00" 
-                            {...field} 
-                            onChange={(e) => field.onChange(e.target.value)}
-                            value={field.value as string | number}
+                      <FormLabel className="text-xs font-medium text-slate-500">Amount (UGX)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          value={field.value as string | number}
+                          className="h-10 rounded-lg border-slate-200 text-sm tabular-nums"
                         />
-                        </FormControl>
-                        <FormMessage />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
-                    )}
+                  )}
                 />
-            </div>
+              </div>
 
-            <FormField
+              <FormField
                 control={form.control}
                 name="description"
                 render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Description / Audit Reference</FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-slate-500">Description</FormLabel>
                     <FormControl>
-                    <Input placeholder="e.g., Monthly Internet Subscription - Office B" {...field} />
+                      <Input
+                        placeholder="What the money was spent on"
+                        {...field}
+                        className="h-10 rounded-lg border-slate-200 text-sm"
+                      />
                     </FormControl>
                     <FormMessage />
-                </FormItem>
+                  </FormItem>
                 )}
-            />
+              />
 
-            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-5 sm:grid-cols-2">
                 <FormField
-                    control={form.control}
-                    name="category_id"
-                    render={({ field }) => (
+                  control={form.control}
+                  name="category_id"
+                  render={({ field }) => (
                     <FormItem>
-                        <FormLabel>GL Expense Account</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormLabel className="text-xs font-medium text-slate-500">Expense account</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                            <SelectTrigger disabled={isLoadingData}>
-                            <SelectValue placeholder={isLoadingData ? "Syncing..." : "Select Account"} />
-                            </SelectTrigger>
+                          <SelectTrigger disabled={isLoadingData} className="h-10 rounded-lg border-slate-200 text-sm">
+                            <SelectValue placeholder={isLoadingData ? "Loading" : "Select account"} />
+                          </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
-                            {expenseAccounts?.map((acc: any) => (
-                            <SelectItem key={acc.id} value={acc.id}>{acc.code ? `${acc.code} - ` : ''}{acc.name}</SelectItem>
-                            ))}
+                        <SelectContent className="rounded-lg">
+                          {expenseAccounts?.length ? (
+                            expenseAccounts.map((acc: any) => (
+                              <SelectItem key={acc.id} value={acc.id}>
+                                {acc.code ? `${acc.code} — ` : ''}{acc.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-slate-400">No accounts available</div>
+                          )}
                         </SelectContent>
-                        </Select>
-                        <FormMessage />
+                      </Select>
+                      <FormMessage />
                     </FormItem>
-                    )}
+                  )}
                 />
 
                 <FormField
-                    control={form.control}
-                    name="payment_account_id"
-                    render={({ field }) => (
+                  control={form.control}
+                  name="payment_account_id"
+                  render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Payment Source</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormLabel className="text-xs font-medium text-slate-500">Paid from</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                            <SelectTrigger disabled={isLoadingData}>
-                            <SelectValue placeholder={isLoadingData ? "Syncing..." : "Select Bank/Cash"} />
-                            </SelectTrigger>
+                          <SelectTrigger disabled={isLoadingData} className="h-10 rounded-lg border-slate-200 text-sm">
+                            <SelectValue placeholder={isLoadingData ? "Loading" : "Select account"} />
+                          </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
-                            {paymentAccounts?.map((acc: any) => (
-                            <SelectItem key={acc.id} value={acc.id}>{acc.name} (UGX {new Intl.NumberFormat().format(acc.current_balance || 0)})</SelectItem>
-                            ))}
+                        <SelectContent className="rounded-lg">
+                          {paymentAccounts?.length ? (
+                            paymentAccounts.map((acc: any) => (
+                              <SelectItem key={acc.id} value={acc.id}>
+                                {acc.name}
+                                <span className="ml-2 text-xs text-slate-400 tabular-nums">
+                                  {acc.currency || 'UGX'} {new Intl.NumberFormat().format(acc.current_balance || 0)}
+                                </span>
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-slate-400">No accounts available</div>
+                          )}
                         </SelectContent>
-                        </Select>
-                        <FormMessage />
+                      </Select>
+                      <FormMessage />
                     </FormItem>
-                    )}
+                  )}
                 />
-            </div>
+              </div>
 
-            <FormField
+              <FormField
                 control={form.control}
                 name="vendor"
                 render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Payee / Vendor (Optional)</FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-slate-500">Payee (optional)</FormLabel>
                     <FormControl>
-                    <Input placeholder="Who was the funds recipient?" {...field} />
+                      <Input
+                        placeholder="Who was paid"
+                        {...field}
+                        className="h-10 rounded-lg border-slate-200 text-sm"
+                      />
                     </FormControl>
                     <FormMessage />
-                </FormItem>
+                  </FormItem>
                 )}
-            />
+              />
+            </div>
 
-            <DialogFooter className="pt-2">
-                <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 min-w-[140px]" disabled={mutation.isPending}>
-                    {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Post to Ledger"}
-                </Button>
+            <DialogFooter className="gap-2 border-t border-slate-200 px-6 py-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+                className="h-9 rounded-lg px-4 text-xs font-medium text-slate-500"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={mutation.isPending}
+                className="h-9 rounded-lg bg-slate-900 px-5 text-xs font-medium text-white hover:bg-slate-800"
+              >
+                {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save expense
+              </Button>
             </DialogFooter>
           </form>
         </Form>

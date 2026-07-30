@@ -1,17 +1,5 @@
 'use client';
 
-/**
- * --- BBU1 SOVEREIGN CASH FLOW ENGINE ---
- * COMPONENT: CashFlowReportClient
- * ROLE: Forensic liquidity analysis and ledger reconciliation.
- * 
- * DEEP WELDS PERFORMED:
- * 1. Array Integrity: Sanitizes raw RPC responses to ensure arrays are never null.
- * 2. Identity Currency: Resolves currency from the Business/Tenant node (No hardcoding).
- * 3. Temporal Customization: Integrated Calendar Protocol for custom date ranges.
- * 4. Error Hardening: Detects backend validation failures (Step 1 of SQL) before rendering.
- */
-
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
@@ -19,18 +7,12 @@ import { useCopilot } from '@/context/CopilotContext';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Decimal from 'decimal.js';
 
-// --- UI COMPONENTS (SHADCN) ---
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { 
-  Download, TrendingUp, TrendingDown, DollarSign, 
-  ChevronDown, Filter, Trash2, X, Search, LayoutGrid,
-  Loader2, RefreshCw, AlertCircle, FileText, Settings,
-  Calendar as CalendarIcon, Globe, Calculator, ShieldCheck, CheckCircle2, Lock, Eye
-} from "lucide-react";
+import { Download, FileText, Loader2, RefreshCw, AlertCircle, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -40,14 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  format, startOfMonth, endOfMonth, subMonths, 
-  startOfYear, endOfYear, subYears, startOfQuarter, endOfQuarter, isAfter, isBefore, isValid
-} from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from 'date-fns';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
-// --- TYPES ---
 export interface CashFlowData {
   section: 'Operating' | 'Investing' | 'Financing' | 'Taxation';
   line_item: string;
@@ -56,23 +34,9 @@ export interface CashFlowData {
   is_tax?: boolean;
   transaction_id?: string;
   source_ledger?: string;
-  verified?: boolean;
 }
 
-export interface ValidationError {
-  field: string;
-  value: any;
-  error: string;
-  severity: 'INFO' | 'WARNING' | 'ERROR';
-  line_item?: string;
-}
-
-// --- DEEP VALIDATION & SANITIZATION UTILITIES ---
 class CashFlowValidator {
-  /**
-   * THE ARRAY WELD:
-   * Prevents "operating must be an array" by forcing nulls to [].
-   */
   static sanitizeRawData(data: any): any {
     if (!data || data.status === 'FAILED') return null;
     return {
@@ -85,27 +49,8 @@ class CashFlowValidator {
       net_change: Number(data.net_change || 0)
     };
   }
-
-  static validateDataStructure(data: any): ValidationError[] {
-    const errors: ValidationError[] = [];
-    if (!data) return errors;
-
-    const requiredArrays = ['operating', 'investing', 'financing', 'taxes'];
-    requiredArrays.forEach(key => {
-      if (!Array.isArray(data[key])) {
-        errors.push({
-          field: key,
-          value: data[key],
-          error: `${key} must be an array`,
-          severity: 'ERROR'
-        });
-      }
-    });
-    return errors;
-  }
 }
 
-// --- FINANCIAL CALCULATOR ---
 class CashFlowCalculator {
   static calculateSectionTotal(items: any[]): string {
     let total = new Decimal(0);
@@ -116,62 +61,62 @@ class CashFlowCalculator {
     });
     return total.toFixed(2);
   }
-
-  static generateChecksum(data: CashFlowData[]): string {
-    return Math.random().toString(36).substring(7).toUpperCase(); 
-  }
 }
 
 const supabase = createClient();
 
-// --- MAIN COMPONENT ---
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="px-6 py-5">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <p className="mt-2 text-xl font-semibold tabular-nums tracking-tight text-slate-900">{value}</p>
+    </div>
+  );
+}
+
 export default function CashFlowReportClient() {
-  const { businessId, userId } = useCopilot();
+  const { businessId } = useCopilot();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // --- IDENTITY & CURRENCY RESOLVER ---
   const [businessCurrency, setBusinessCurrency] = useState<string>(searchParams.get('cur') || 'UGX');
 
   useEffect(() => {
-    const resolveSovereignContext = async () => {
+    const resolveCurrency = async () => {
       if (!businessId) return;
-      // Fetch the locked currency from the Tenant registry
       const { data } = await supabase
         .from('tenants')
         .select('currency_code')
         .eq('id', businessId)
         .single();
-      
+
       if (data?.currency_code) {
         setBusinessCurrency(data.currency_code);
       }
     };
-    resolveSovereignContext();
+    resolveCurrency();
   }, [businessId]);
 
-  // --- TEMPORAL RANGE STATE ---
   const [searchQuery, setSearchQuery] = useState("");
   const dateRangeMode = searchParams.get('range') || "this-month";
   const customFrom = searchParams.get('from') || "";
   const customTo = searchParams.get('to') || "";
   const statementType = searchParams.get('type') || "all";
 
-  // Resolve active dates
   const { from, to, label } = useMemo(() => {
     const now = new Date();
-    
+
     if (dateRangeMode === 'custom' && customFrom && customTo) {
       return { from: customFrom, to: customTo, label: `${customFrom} to ${customTo}` };
     }
 
     switch (dateRangeMode) {
-      case 'this-month': 
-        return { 
-          from: format(startOfMonth(now), 'yyyy-MM-dd'), 
-          to: format(endOfMonth(now), 'yyyy-MM-dd'), 
-          label: format(now, 'MMMM yyyy') 
+      case 'this-month':
+        return {
+          from: format(startOfMonth(now), 'yyyy-MM-dd'),
+          to: format(endOfMonth(now), 'yyyy-MM-dd'),
+          label: format(now, 'MMMM yyyy')
         };
       case 'last-month':
         const lm = subMonths(now, 1);
@@ -186,7 +131,6 @@ export default function CashFlowReportClient() {
   const updateFilter = useCallback((key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set(key, value);
-    // Reset custom dates if switching modes
     if (key === 'range' && value !== 'custom') {
       params.delete('from');
       params.delete('to');
@@ -194,7 +138,6 @@ export default function CashFlowReportClient() {
     router.push(`${pathname}?${params.toString()}`);
   }, [searchParams, pathname, router]);
 
-  // --- DATA FETCHING (RPC HANDSHAKE) ---
   const { data: serverData, isLoading, error, refetch } = useQuery({
     queryKey: ['cash-flow', from, to, businessId, businessCurrency],
     queryFn: async () => {
@@ -206,45 +149,40 @@ export default function CashFlowReportClient() {
       });
 
       if (rpcError) throw new Error(rpcError.message);
-      
-      // DEEP WELD: Sanitize null arrays immediately
+
       const sanitized = CashFlowValidator.sanitizeRawData(data);
-      if (!sanitized) throw new Error(data?.error || "Backend logic failed to resolve ledger.");
-      
+      if (!sanitized) throw new Error(data?.error || "The ledger could not be loaded for this period.");
+
       return sanitized;
     },
     enabled: !!businessId && !!businessCurrency,
     retry: 2
   });
 
-  // --- TABLE LOGIC & CATEGORIZATION ---
   const { tableRows, sectionTotals } = useMemo(() => {
-    if (!serverData) return { tableRows: [], sectionTotals: { op: '0.00', inv: '0.00', fin: '0.00' }};
-    
-    let rows: CashFlowData[] = [];
+    if (!serverData) return { tableRows: [], sectionTotals: { op: '0.00', inv: '0.00', fin: '0.00' } };
+
+    const rows: CashFlowData[] = [];
     const d = serverData;
 
-    // 1. Operating activiteiten
-    rows.push({ section: 'Operating', line_item: 'Net Income (Accounting Base)', amount: d.net_income_start });
-    d.operating.forEach((i: any) => rows.push({ ...i, section: 'Operating', verified: true }));
-    d.taxes.forEach((t: any) => rows.push({ section: 'Operating', line_item: `${t.line_item} (Tax Flow)`, amount: t.amount, is_tax: true, verified: true }));
-    
+    rows.push({ section: 'Operating', line_item: 'Net income', amount: d.net_income_start });
+    d.operating.forEach((i: any) => rows.push({ ...i, section: 'Operating' }));
+    d.taxes.forEach((t: any) => rows.push({ section: 'Operating', line_item: t.line_item, amount: t.amount, is_tax: true }));
+
     const opTotal = CashFlowCalculator.calculateSectionTotal([{ amount: d.net_income_start }, ...d.operating, ...d.taxes]);
-    rows.push({ section: 'Operating', line_item: 'Net Cash from OperatingActivities', amount: parseFloat(opTotal), is_total: true });
+    rows.push({ section: 'Operating', line_item: 'Net cash from operating activities', amount: parseFloat(opTotal), is_total: true });
 
-    // 2. Investing activités
-    d.investing.forEach((i: any) => rows.push({ ...i, section: 'Investing', verified: true }));
+    d.investing.forEach((i: any) => rows.push({ ...i, section: 'Investing' }));
     const invTotal = CashFlowCalculator.calculateSectionTotal(d.investing);
-    rows.push({ section: 'Investing', line_item: 'Net Cash used in Investing', amount: parseFloat(invTotal), is_total: true });
+    rows.push({ section: 'Investing', line_item: 'Net cash used in investing activities', amount: parseFloat(invTotal), is_total: true });
 
-    // 3. Financing activités
-    d.financing.forEach((i: any) => rows.push({ ...i, section: 'Financing', verified: true }));
+    d.financing.forEach((i: any) => rows.push({ ...i, section: 'Financing' }));
     const finTotal = CashFlowCalculator.calculateSectionTotal(d.financing);
-    rows.push({ section: 'Financing', line_item: 'Net Cash from Financing', amount: parseFloat(finTotal), is_total: true });
+    rows.push({ section: 'Financing', line_item: 'Net cash from financing activities', amount: parseFloat(finTotal), is_total: true });
 
-    // Filter engine
+    const term = searchQuery.trim().toLowerCase();
     const filtered = rows.filter(row => {
-      const matchesSearch = row.line_item.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = (row.line_item || '').toLowerCase().includes(term);
       const matchesType = statementType === 'all' || row.section.toLowerCase() === statementType.toLowerCase();
       return matchesSearch && matchesType;
     });
@@ -254,211 +192,263 @@ export default function CashFlowReportClient() {
 
   const netChange = serverData?.net_change || 0;
 
-  // --- DYNAMIC FORMATTER ---
   const formatMoney = (val: number) => {
-    return new Intl.NumberFormat(undefined, { 
-      style: 'currency', 
+    const amount = Number(val) || 0;
+    const text = new Intl.NumberFormat(undefined, {
+      style: 'currency',
       currency: businessCurrency,
       minimumFractionDigits: businessCurrency === 'UGX' ? 0 : 2
-    }).format(val);
+    }).format(Math.abs(amount));
+    return amount < 0 ? `(${text})` : text;
   };
 
-  // --- RENDER ---
-  if (error) return (
-    <div className="p-20 text-center space-y-6">
-      <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
-      <div className="max-w-md mx-auto">
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Handshake Interrupted</h2>
-        <p className="text-slate-500 mt-2 font-medium">{error instanceof Error ? error.message : 'The forensic link to the ledger was severed.'}</p>
+  const exportCSV = () => {
+    if (!tableRows.length) {
+      toast.error("Nothing to export");
+      return;
+    }
+    const headers = ["Section", "Line item", `Amount (${businessCurrency})`];
+    const rows = tableRows.map(r => [r.section, r.line_item, r.amount]);
+    rows.push(['', 'Net change in cash', netChange]);
+    const escape = (cell: any) => `"${String(cell ?? '').replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows].map(row => row.map(escape).join(",")).join("\n");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    link.setAttribute("download", `Cash_Flow_${from}_${to}.csv`);
+    link.click();
+  };
+
+  const exportPDF = () => {
+    if (!tableRows.length) {
+      toast.error("Nothing to export");
+      return;
+    }
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Cash Flow Statement", 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Period: ${label}`, 14, 28);
+    doc.text(`Currency: ${businessCurrency}`, 14, 34);
+
+    autoTable(doc, {
+      startY: 44,
+      head: [["Section", "Line item", `Amount (${businessCurrency})`]],
+      body: [
+        ...tableRows.map(r => [r.section, r.line_item, formatMoney(r.amount)]),
+        ["", "Net change in cash", formatMoney(netChange)]
+      ],
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+      columnStyles: { 2: { halign: 'right' } }
+    });
+
+    doc.save(`Cash_Flow_${from}_${to}.pdf`);
+    toast.success("PDF downloaded");
+  };
+
+  if (error) {
+    return (
+      <div className="mx-auto my-24 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-10 text-center">
+        <AlertCircle className="mx-auto mb-4 h-8 w-8 text-red-500" />
+        <h2 className="text-base font-semibold text-slate-900">Statement could not load</h2>
+        <p className="mt-2 text-sm text-slate-500">
+          {error instanceof Error ? error.message : 'The ledger could not be reached.'}
+        </p>
+        <Button onClick={() => refetch()} className="mt-6 h-10 rounded-lg px-6">
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Try again
+        </Button>
       </div>
-      <Button onClick={() => refetch()} variant="outline" className="font-bold border-slate-200">
-        <RefreshCw className="mr-2 w-4 h-4" /> Re-establish Identity Handshake
-      </Button>
-    </div>
-  );
+    );
+  }
+
+  let lastSection: string | null = null;
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto p-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      
-      {/* SECTION I: HEADER & PROTOCOL STATUS */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1">
-          <nav className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
-            <span>Forensic Accounting</span>
-            <span>/</span>
-            <span className="text-slate-900">Cash Flow Integrity</span>
-          </nav>
-          <h1 className="text-4xl font-black tracking-tighter text-slate-900">
-            Cash Flow Statement 
-            <Badge className="ml-3 bg-emerald-50 text-emerald-700 border-emerald-100 font-mono text-[9px]">LIVE HANDSHAKE ✓</Badge>
-          </h1>
-          <p className="text-slate-500 text-sm font-medium">
-            Auditing reconciliation for period: <span className="font-bold text-slate-900 underline decoration-blue-200">{label}</span>
-          </p>
+    <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 pb-16 xl:px-8">
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Cash Flow Statement</h1>
+          <p className="mt-1.5 text-sm text-slate-500">{label} · {businessCurrency}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-11 bg-white border-slate-200 shadow-sm font-bold">
-            <FileText className="mr-2 h-4 w-4 text-blue-600" /> PDF Report
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={exportPDF}
+            className="h-9 rounded-lg border-slate-200 px-4 text-xs font-medium"
+          >
+            <FileText className="mr-2 h-4 w-4 text-slate-400" />
+            PDF
           </Button>
-          <Button className="h-11 bg-slate-900 text-white font-black uppercase text-[10px] tracking-widest shadow-lg px-8 rounded-xl">
-            <Download className="mr-2 h-4 w-4" /> Export Audit CSV
+          <Button
+            onClick={exportCSV}
+            className="h-9 rounded-lg bg-slate-900 px-4 text-xs font-medium text-white hover:bg-slate-800"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            CSV
           </Button>
         </div>
       </div>
 
-      {/* SECTION II: SMART FILTER TOOLBAR */}
-      <Card className="border-slate-200 shadow-sm bg-slate-50/50 overflow-visible">
-        <CardContent className="p-5 grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-          
-          <div className="md:col-span-3 space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5">
-              <CalendarIcon className="w-3 h-3" /> Reporting Period
-            </label>
+      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white px-5 py-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-wrap items-end gap-5">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-slate-500">Period</Label>
             <Select value={dateRangeMode} onValueChange={(v) => updateFilter('range', v)}>
-              <SelectTrigger className="bg-white h-11 border-slate-100 rounded-xl"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="this-month">Current Month</SelectItem>
-                <SelectItem value="last-month">Previous Month</SelectItem>
-                <SelectItem value="this-year">Fiscal Year {new Date().getFullYear()}</SelectItem>
-                <SelectItem value="custom">Custom Calendar Selection</SelectItem>
+              <SelectTrigger className="h-9 w-52 rounded-lg border-slate-200 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent className="rounded-lg">
+                <SelectItem value="this-month">This month</SelectItem>
+                <SelectItem value="last-month">Last month</SelectItem>
+                <SelectItem value="this-year">This year</SelectItem>
+                <SelectItem value="custom">Custom dates</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {dateRangeMode === 'custom' && (
             <>
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">From</label>
-                <Input type="date" className="h-11 bg-white rounded-xl" value={customFrom} onChange={(e) => updateFilter('from', e.target.value)} />
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-slate-500">From</Label>
+                <Input
+                  type="date"
+                  className="h-9 w-40 rounded-lg border-slate-200 text-sm"
+                  value={customFrom}
+                  onChange={(e) => updateFilter('from', e.target.value)}
+                />
               </div>
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To</label>
-                <Input type="date" className="h-11 bg-white rounded-xl" value={customTo} onChange={(e) => updateFilter('to', e.target.value)} />
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-slate-500">To</Label>
+                <Input
+                  type="date"
+                  className="h-9 w-40 rounded-lg border-slate-200 text-sm"
+                  value={customTo}
+                  onChange={(e) => updateFilter('to', e.target.value)}
+                />
               </div>
             </>
           )}
 
-          <div className="md:col-span-2 space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5">
-              <Filter className="w-3 h-3" /> Ledger Filter
-            </label>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-slate-500">Section</Label>
             <Select value={statementType} onValueChange={(v) => updateFilter('type', v)}>
-              <SelectTrigger className="bg-white h-11 border-slate-100 rounded-xl"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Consolidated View</SelectItem>
-                <SelectItem value="operating">Operating Only</SelectItem>
-                <SelectItem value="investing">Investing Activities</SelectItem>
+              <SelectTrigger className="h-9 w-52 rounded-lg border-slate-200 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent className="rounded-lg">
+                <SelectItem value="all">All sections</SelectItem>
+                <SelectItem value="operating">Operating</SelectItem>
+                <SelectItem value="investing">Investing</SelectItem>
+                <SelectItem value="financing">Financing</SelectItem>
               </SelectContent>
             </Select>
           </div>
+        </div>
 
-          <div className={cn("space-y-2", dateRangeMode === 'custom' ? "md:col-span-3" : "md:col-span-7")}>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5">
-              <Search className="w-3 h-3" /> Forensic Search
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-300" />
-              <Input 
-                placeholder="Search ledger descriptions..." 
-                className="pl-10 h-11 bg-white border-slate-100 rounded-xl focus:ring-blue-500 transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+        <div className="space-y-2">
+          <Label className="text-xs font-medium text-slate-500">Search</Label>
+          <div className="relative w-full lg:w-80">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Search line items"
+              className="h-9 rounded-lg border-slate-200 pl-9 pr-9 text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery ? (
+              <X
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-slate-600"
               />
-              {searchQuery && <X onClick={() => setSearchQuery("")} className="absolute right-3 top-3.5 h-4 w-4 text-slate-300 cursor-pointer hover:text-red-500" />}
-            </div>
+            ) : null}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* SECTION III: DATA MATRIX */}
-      <Card className="border-slate-200 shadow-2xl overflow-hidden rounded-[2.5rem]">
+      <div className="grid divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white sm:grid-cols-2 sm:divide-y-0 sm:divide-x xl:grid-cols-4">
+        <Metric label="Operating" value={formatMoney(Number(sectionTotals.op))} />
+        <Metric label="Investing" value={formatMoney(Number(sectionTotals.inv))} />
+        <Metric label="Financing" value={formatMoney(Number(sectionTotals.fin))} />
+        <Metric label="Net change in cash" value={formatMoney(netChange)} />
+      </div>
+
+      <Card className="overflow-hidden rounded-xl border-slate-200 shadow-sm">
+        <CardHeader className="border-b border-slate-200 px-6 py-5">
+          <h2 className="text-sm font-semibold text-slate-900">Indirect method</h2>
+        </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="py-40 text-center space-y-4">
-              <Loader2 className="animate-spin h-10 w-10 text-blue-600 mx-auto" />
-              <div className="space-y-1">
-                 <p className="text-slate-900 font-black uppercase text-[11px] tracking-[0.3em]">Reconciling Sovereign Ledger</p>
-                 <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Validating Indirect Method Bridges...</p>
-              </div>
+            <div className="py-32 text-center">
+              <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
+              <p className="mt-3 text-sm text-slate-400">Loading</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-slate-50/80 border-b border-slate-100">
-                  <TableRow>
-                    <TableHead className="w-[180px] text-[10px] font-black uppercase text-slate-500 px-8 py-5">Section</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-slate-500">Transaction Line Item</TableHead>
-                    <TableHead className="text-center text-[10px] font-black uppercase text-slate-500 px-2">Handshake</TableHead>
-                    <TableHead className="text-right text-[10px] font-black uppercase text-slate-500 px-8">Amount ({businessCurrency})</TableHead>
+                <TableHeader>
+                  <TableRow className="border-b border-slate-200 hover:bg-transparent">
+                    <TableHead className="h-11 px-6 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      Line item
+                    </TableHead>
+                    <TableHead className="h-11 w-56 px-6 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      Amount ({businessCurrency})
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {tableRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-32 text-center">
-                         <div className="space-y-2 opacity-40 grayscale">
-                            <RefreshCw className="w-8 h-8 mx-auto text-slate-400" />
-                            <p className="text-slate-400 font-black uppercase text-[11px] tracking-widest italic">No financial data resolved for this temporal range.</p>
-                         </div>
+                      <TableCell colSpan={2} className="py-24 text-center text-sm text-slate-400">
+                        No entries for this period
                       </TableCell>
                     </TableRow>
-                  ) : tableRows.map((row, idx) => (
-                    <TableRow 
-                      key={idx} 
-                      className={cn(
-                        "group border-slate-50 transition-colors",
-                        row.is_total ? "bg-slate-50/50 font-black border-t-2 border-slate-100" : "hover:bg-slate-50/30"
-                      )}
-                    >
-                      <TableCell className="px-8 py-4">
-                        <span className={cn(
-                          "text-[9px] font-black uppercase px-2.5 py-1 rounded-md tracking-tighter",
-                          row.section === 'Operating' && "bg-blue-50 text-blue-600",
-                          row.section === 'Investing' && "bg-purple-50 text-purple-600",
-                          row.section === 'Financing' && "bg-amber-50 text-amber-600",
-                          row.is_total && "opacity-0"
-                        )}>
-                          {row.section}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm font-bold text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <span className={cn(row.is_total && "text-slate-900 tracking-tight")}>
-                            {row.line_item}
-                          </span>
-                          {row.is_tax && <Badge className="bg-red-50 text-red-500 border-none text-[8px] font-black px-1.5 py-0">TAX OUTFLOW</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {row.verified && (
-                          <span className="bg-emerald-50 text-emerald-600 text-[8px] font-black px-2 py-1 rounded uppercase flex items-center justify-center gap-1 w-fit mx-auto border border-emerald-100/50 shadow-sm">
-                            <CheckCircle2 size={10} /> Verified
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className={cn(
-                        "text-right px-8 font-mono font-black",
-                        row.amount < 0 ? "text-red-500" : "text-emerald-600",
-                        row.is_total && "text-slate-900 text-base"
-                      )}>
-                        {formatMoney(row.amount)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  ) : (
+                    tableRows.map((row, idx) => {
+                      const showSection = row.section !== lastSection;
+                      lastSection = row.section;
+                      return (
+                        <React.Fragment key={idx}>
+                          {showSection ? (
+                            <TableRow className="border-0 hover:bg-transparent">
+                              <TableCell
+                                colSpan={2}
+                                className="px-6 pb-2 pt-7 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400"
+                              >
+                                {row.section}
+                              </TableCell>
+                            </TableRow>
+                          ) : null}
+                          <TableRow
+                            className={cn(
+                              "border-0 hover:bg-slate-50",
+                              row.is_total && "hover:bg-transparent"
+                            )}
+                          >
+                            <TableCell
+                              className={cn(
+                                "py-2.5 pl-10 pr-6 text-sm text-slate-600",
+                                row.is_total && "border-t border-slate-200 py-3.5 pl-6 font-semibold text-slate-900"
+                              )}
+                            >
+                              {row.line_item}
+                            </TableCell>
+                            <TableCell
+                              className={cn(
+                                "px-6 py-2.5 text-right text-sm tabular-nums text-slate-700",
+                                row.is_total && "border-t border-slate-200 py-3.5 font-semibold text-slate-900"
+                              )}
+                            >
+                              {formatMoney(row.amount)}
+                            </TableCell>
+                          </TableRow>
+                        </React.Fragment>
+                      );
+                    })
+                  )}
 
-                  {/* SECTION IV: CONSOLIDATED SEAL */}
-                  <TableRow className="bg-slate-900 text-white hover:bg-slate-900 border-none shadow-2xl relative z-10">
-                    <TableCell className="px-8 py-10 font-black uppercase text-[10px] tracking-[0.4em] text-slate-400">
-                      Seal Matrix
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell className="border-t-2 border-slate-900 px-6 py-4 text-sm font-semibold text-slate-900">
+                      Net change in cash
                     </TableCell>
-                    <TableCell className="text-xl font-black tracking-tighter">
-                      Total Net Change in Cash (Consolidated Forensic Result)
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge className="bg-blue-600 text-white border-none text-[8px] font-black tracking-widest py-1.5 px-3 rounded-full">SOVEREIGN SEAL ✓</Badge>
-                    </TableCell>
-                    <TableCell className="text-right px-8 font-mono text-3xl font-black text-emerald-400">
+                    <TableCell className="border-t-2 border-slate-900 px-6 py-4 text-right text-sm font-semibold tabular-nums text-slate-900">
                       {formatMoney(netChange)}
                     </TableCell>
                   </TableRow>
@@ -468,45 +458,6 @@ export default function CashFlowReportClient() {
           )}
         </CardContent>
       </Card>
-
-      {/* SECTION V: AURA AI ANALYSIS PANEL */}
-      <div className="bg-blue-600 rounded-[3rem] p-1.5 shadow-2xl shadow-blue-200/50">
-        <div className="bg-white rounded-[2.8rem] p-8 flex flex-col md:flex-row items-center gap-10 border border-blue-50">
-          <div className="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center shrink-0 shadow-2xl shadow-blue-200">
-            <Calculator className="text-white w-10 h-10" />
-          </div>
-          <div className="flex-1 space-y-2 text-center md:text-left">
-            <h3 className="font-black text-slate-900 text-2xl tracking-tighter flex items-center justify-center md:justify-start gap-3">
-              Aura Forensic Liquidity Scan
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            </h3>
-            <p className="text-slate-500 text-base leading-relaxed font-medium max-w-5xl">
-              {isLoading ? (
-                "Aura is scanning your multi-tenant POS sales and inventory journal entries..."
-              ) : netChange > 0 
-                ? `Protocol complete. Aura confirms a positive cash delta of ${formatMoney(netChange)}. This is primarily driven by efficient operating activities. Advice: Allocate 15% of this surplus to your tax reserve for the next fiscal period.`
-                : `Liquidity scan detected a net burn of ${formatMoney(Math.abs(netChange))}. Forensic detection suggests reviewing high investing outflows in the 'Investing activities' section to maintain peak operational runway.`
-              }
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest h-14 px-10 rounded-2xl shadow-xl shadow-blue-100 transition-all">Request Analysis</Button>
-            <Button variant="ghost" className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Review Audit Log</Button>
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION VI: SECURITY ANCHOR */}
-      {!isLoading && (
-        <div className="pt-6 border-t border-slate-100 text-center space-y-2">
-           <p className="text-[9px] font-black uppercase text-slate-300 tracking-[0.5em] flex items-center justify-center gap-2">
-              <Lock size={10} /> Immutable Audit Traceability Active
-           </p>
-           <p className="text-[8px] font-bold text-slate-200 uppercase tracking-widest">
-              Digital Signature: {CashFlowCalculator.generateChecksum(tableRows)}
-           </p>
-        </div>
-      )}
     </div>
   );
 }
