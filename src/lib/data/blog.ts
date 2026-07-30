@@ -1,144 +1,213 @@
 import { LucideIcon, BrainCircuit, Zap, Users, ShieldCheck, TrendingUp, Cpu, BarChart3, Globe } from 'lucide-react';
 
+export interface BlogSection {
+  heading: string;
+  body: string;
+}
+
 export interface BlogPost {
-    slug: string;
-    title: string;
-    description: string;
-    author: string;
-    publishDate: string;
-    category: "Product Updates" | "Insights" | "Features" | "Success Stories";
-    image: string;
-    icon: any;
-    content: string[];
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  publishDate: string;
+  category: "Insights" | "Trends" | "Engineering" | "Growth" | "Supply Chain" | "Product Updates" | "Features" | "Success Stories";
+  image: string;
+  icon: any;
+  sections: BlogSection[];
 }
 
 export const blogPosts: BlogPost[] = [
-    {
-        slug: "how-ai-transforms-business",
-        title: "How AI is Transforming Your Business Operations",
-        description: "Explore how AI moves beyond simple automation to become the proactive architect of your business growth.",
-        author: "Mwesigwa Jimmy",
-        publishDate: "2026-03-12",
-        category: "Insights",
-        icon: BrainCircuit,
-        image: "/images/showcase/future-of-business-tech.jpg",
-        content: [
-            "AI is no longer a luxury; it is the fundamental engine of modern competition. Traditional software simply records history. AI, specifically the Aura Neural Core, architects the future.",
-            "The shift from reactive to proactive is the most significant change. Most ERP systems wait for you to input data and then ask for a report. Aura AI works in reverse. It monitors your general ledger, inventory levels, and sales pipelines 24/7.",
-            "By identifying a cash flow gap three weeks before it happens, BBU1 allows you to move capital strategically rather than reacting to a crisis. This is the difference between surviving and dominating a market.",
-            "Furthermore, the elimination of manual bookkeeping errors through Aura's pattern recognition ensures that your financial statements are always audit-ready. You are not just buying software; you are acquiring a tireless digital executive."
-        ]
-    },
-    {
-        slug: "future-of-automation",
-        title: "The Future of Business Automation",
-        description: "The next decade belongs to the autonomous enterprise. Learn how the BBU1 kernel is leading the charge.",
-        author: "Mwesigwa Jimmy",
-        publishDate: "2026-03-10",
-        category: "Insights",
-        icon: TrendingUp,
-        image: "/images/showcase/Greeting (41).jpeg",
-        content: [
-            "We are moving beyond simple 'if-this-then-that' rules into a world of self-healing business systems. The future is an enterprise that requires zero human intervention for routine operations.",
-            "The 'Integration Tax'—the hidden cost businesses pay for using disconnected apps—is coming to an end. By unifying CRM, Accounting, and Logistics into a single sovereign operating system, BBU1 eliminates the friction that slows down growth.",
-            "Hyper-personalization at scale is the next frontier. Automation allows even small shops to provide a bespoke experience to every customer, triggering personalized offers based on buying habits without human input.",
-            "Finally, autonomous compliance will become the standard. BBU1 is engineering a reality where tax filings and regulatory reports are generated and verified the millisecond a transaction is closed."
-        ]
-    },
-    {
-        slug: "zero-math-automation",
-        title: "Zero Math Automation: Reducing Human Error",
-        description: "Removing the human hand from the calculation process is the only way to achieve absolute data integrity.",
-        author: "Mwesigwa Jimmy",
-        publishDate: "2026-03-08",
-        category: "Features",
-        icon: Cpu,
-        image: "/images/showcase/education-dashboard.jpg",
-        content: [
-            "Human beings are excellent at strategy but poor at repetitive mathematical accuracy. Zero Math Automation is our philosophy of removing human touchpoints from the calculation process.",
-            "In a traditional business, an employee calculates a discount, then a tax, then a total. Every touchpoint is a risk. BBU1’s kernel handles all financial logic through verified, deterministic algorithms.",
-            "Every result in BBU1 is backed by an immutable audit trail. You never have to wonder why a balance is off; you can trace the algorithmic logic back to the source transaction with absolute certainty.",
-            "This foundation of mathematical irrefutability is what allows businesses to scale globally. When the board or an auditor looks at your numbers, they see engineering certainty, not human estimations."
-        ]
-    },
-    {
-        slug: "digital-transformation-sme",
-        title: "Digital Transformation for SMEs",
-        description: "Tier-1 enterprise power is no longer just for the giants. BBU1 levels the playing field for every entrepreneur.",
-        author: "Mwesigwa Jimmy",
-        publishDate: "2026-03-06",
-        category: "Insights",
-        icon: Globe,
-        image: "/images/showcase/retail-system-customer-service.jpg",
-        content: [
-            "For Small and Medium Enterprises, digital transformation is not about buying computers; it is about re-engineering how value is created. BBU1 brings elite power to the agile startup.",
-            "Operational velocity is the SME's greatest weapon. When your inventory, sales, and accounts are synced in real-time, you can pivot your strategy in hours rather than months.",
-            "Data sovereignty is critical. Many SMEs fear losing control to 'Big Tech.' BBU1’s commitment ensures that your business intelligence remains your asset, stored securely under your control.",
-            "The transformation BBU1 offers is one of empowerment. We provide the 'Neural Core' that allows a village shop to operate with the same digital precision as a Manhattan firm."
-        ]
-    },
-    {
-        slug: "inventory-management-revolution",
-        title: "The Inventory Management Revolution",
-        description: "Turn frozen capital into cash flow with real-time multi-warehouse synchronization and predictive reordering.",
-        author: "Mwesigwa Jimmy",
-        publishDate: "2026-03-04",
-        category: "Features",
-        icon: BarChart3,
-        image: "/images/showcase/ai-warehouse-logistics.jpg",
-        content: [
-            "Inventory is essentially frozen capital. The revolution in inventory management is about turning that capital back into liquid cash as efficiently as possible.",
-            "BBU1 provides a unified view across all locations. If an item sells in one branch, the central warehouse knows instantly. There are no more phone calls to check stock; only real-time data.",
-            "Predictive reordering through Aura AI analyzes sales velocity and seasonal trends. It prevents 'out-of-stock' disasters while ensuring you aren't over-leveraged in slow-moving stock.",
-            "Landed cost accuracy is the final piece of the puzzle. By automating the calculation of duties, freight, and insurance, BBU1 gives you the true margin on every single item you sell."
-        ]
-    },
-    {
-        slug: "aura-ai-cutting-edge-intelligence",
-        title: "Aura AI: The Cutting-Edge of Business Intelligence",
-        description: "Explore how Aura AI uses advanced algorithms to automate decision-making and provide strategic insights.",
-        author: "Mwesigwa Jimmy",
-        publishDate: "2026-03-02",
-        category: "Product Updates",
-        icon: BrainCircuit,
-        image: "/images/showcase/Greeting (10).jpeg",
-        content: [
-            "Aura is not a chatbot; it is a specialized, deterministic intelligence layer running across your entire business ecosystem.",
-            "Unlike 'Black Box' AIs, Aura provides the logic for its insights. It shows you the irrefutable data points it used to arrive at a conclusion, ensuring the human executive remains in control.",
-            "Aura identifies correlations invisible to the human eye. It might notice that a late supplier in one region affects sales in another three weeks later, allowing for proactive adjustments.",
-            "By running 24/7, Aura ensures that your business never sleeps. It is the silent partner that guarantees your operations are optimized for maximum profitability at all times."
-        ]
-    },
-    {
-        slug: "unbreakable-offline-mode-continuity",
-        title: "Unbreakable Offline Mode: Business Continuity Anywhere",
-        description: "Your business runs on BBU1 time, not internet time. Learn how we ensure zero downtime.",
-        author: "Mwesigwa Jimmy",
-        publishDate: "2026-02-28",
-        category: "Features",
-        icon: ShieldCheck,
-        image: "/images/showcase/artisan-cooperative-tech.jpg",
-        content: [
-            "In the real world, the internet fails. When it does, your business shouldn't. BBU1 is built with a 'Local-First' architecture that guarantees uptime.",
-            "Your POS and inventory systems continue to function perfectly without a connection. Transactions are stored securely on the device and sync automatically when a connection is detected.",
-            "Our sync engine uses sophisticated conflict-resolution algorithms. Data from multiple offline devices merges perfectly in the cloud without losing a single cent or record.",
-            "This is what we call 'Engineering Certainty.' Connectivity becomes a bonus feature rather than a prerequisite for running your business."
-        ]
-    },
-    {
-        slug: "sacco-transformation-success-story",
-        title: "Success Story: SACCO Digital Transformation",
-        description: "How a 500-member SACCO eliminated fraud and doubled their capital using the BBU1 Lending Module.",
-        author: "Mwesigwa Jimmy",
-        publishDate: "2026-02-25",
-        category: "Success Stories",
-        icon: Users,
-        image: "/images/showcase/System Image Generat (42).jpeg",
-        content: [
-            "From manual ledger books to an automated powerhouse. This is the story of how a 500-member SACCO re-engineered their community trust.",
-            "Before BBU1, loan calculations took days and errors were frequent. By implementing our specialized lending module, approval times dropped from 48 hours to just 10 minutes.",
-            "Transparency is the foundation of trust. Members now receive real-time updates on their shares and dividends, creating a culture of honesty that led to the SACCO doubling its capital.",
-            "By reducing administrative work from 40 hours a week to just 6, the leadership team was able to focus on member growth and financial literacy rather than data entry."
-        ]
-    }
+  {
+    slug: "how-ai-transforms-business",
+    title: "How AI Is Changing Day-to-Day Business Operations",
+    description: "AI isn't just automation with extra steps. Here's what actually changes when your books, inventory, and sales data are watched continuously instead of reviewed monthly.",
+    author: "Mwesigwa Jimmy",
+    publishDate: "2026-03-12",
+    category: "Insights",
+    icon: BrainCircuit,
+    image: "/images/showcase/future-of-business-tech.jpg",
+    sections: [
+      {
+        heading: "From reactive to proactive",
+        body: "Most business software waits for you to ask for a report. Aura, BBU1's built-in assistant, works the other way around — it watches your ledger, inventory, and sales pipeline continuously, so it can flag a cash flow gap three weeks before it happens instead of a month after."
+      },
+      {
+        heading: "Less manual bookkeeping",
+        body: "The most immediate change is fewer manual entries. Aura categorizes routine transactions automatically, which cuts down on the small errors that pile up over a year and turn into a stressful audit."
+      },
+      {
+        heading: "Decision support, not decisions",
+        body: "When you're weighing something like opening a new branch, Aura can surface relevant trends, tax implications, and overhead estimates from your own data — but the decision, and the judgment behind it, stays with you."
+      }
+    ]
+  },
+  {
+    slug: "future-of-automation",
+    title: "Where Business Automation Is Headed",
+    description: "The next wave of automation isn't about more rules — it's about fewer disconnected tools. Here's what that shift looks like in practice.",
+    author: "Mwesigwa Jimmy",
+    publishDate: "2026-03-10",
+    category: "Trends",
+    icon: TrendingUp,
+    image: "/images/showcase/Greeting (41).jpeg",
+    sections: [
+      {
+        heading: "The cost of disconnected tools",
+        body: "Most businesses run separate apps for CRM, accounting, and logistics, and pay for it in reconciliation time — someone has to keep all three in sync by hand. Bringing them into one platform removes that manual step entirely."
+      },
+      {
+        heading: "Personalization without extra headcount",
+        body: "When purchase history and preferences live in one place, even a small shop can send a relevant offer to a repeat customer automatically, without a marketing team behind it."
+      },
+      {
+        heading: "Compliance as a background process",
+        body: "The goal is for tax filings and regulatory reports to generate themselves from transactions as they happen, so compliance stops being a stressful end-of-month scramble."
+      }
+    ]
+  },
+  {
+    slug: "zero-math-automation",
+    title: "Reducing Manual Errors in Bookkeeping",
+    description: "People are good at judgment and bad at repetitive arithmetic. Here's why we push as much of the calculation work as possible onto the system instead of the person.",
+    author: "Mwesigwa Jimmy",
+    publishDate: "2026-03-08",
+    category: "Engineering",
+    icon: Cpu,
+    image: "/images/showcase/education-dashboard.jpg",
+    sections: [
+      {
+        heading: "Why we automate the math, not the judgment",
+        body: "In a manual workflow, someone calculates a discount, then a tax, then a total — and every one of those steps is a place a mistake can creep in. BBU1 handles that chain of calculations automatically, so the only manual step is approving the outcome."
+      },
+      {
+        heading: "A traceable record for every number",
+        body: "Every calculated figure is tied back to the transaction that produced it. If a balance looks off, you can trace it to the source instead of re-deriving it by hand."
+      },
+      {
+        heading: "Why this matters as you grow",
+        body: "The bigger your transaction volume, the more a small manual error rate compounds. Automating the arithmetic is what lets your books stay accurate as the number of transactions climbs."
+      }
+    ]
+  },
+  {
+    slug: "digital-transformation-sme",
+    title: "What Digital Transformation Actually Looks Like for a Small Business",
+    description: "It's not about buying new hardware. It's about closing the gap between when something happens in your business and when you find out about it.",
+    author: "Mwesigwa Jimmy",
+    publishDate: "2026-03-06",
+    category: "Growth",
+    icon: Globe,
+    image: "/images/showcase/retail-system-customer-service.jpg",
+    sections: [
+      {
+        heading: "Tools that used to be out of reach",
+        body: "Real-time inventory, unified customer records, and live financial reporting used to require an enterprise IT budget. That same tooling is now within reach of a single-location retailer or a two-person consultancy."
+      },
+      {
+        heading: "Speed is the real advantage",
+        body: "When your inventory, sales, and accounts update in real time, you can act on what's actually happening this week instead of waiting for a month-end report to tell you what already happened."
+      },
+      {
+        heading: "Your data stays yours",
+        body: "Moving to a unified platform doesn't mean losing control of your data. You should be able to export everything at any time — transformation should make you less dependent on any one vendor, not more."
+      }
+    ]
+  },
+  {
+    slug: "inventory-management-revolution",
+    title: "Turning Sitting Stock Into Cash Flow",
+    description: "Inventory that isn't moving is capital you can't use anywhere else. Here's how real-time visibility and better reordering change that.",
+    author: "Mwesigwa Jimmy",
+    publishDate: "2026-03-04",
+    category: "Supply Chain",
+    icon: BarChart3,
+    image: "/images/showcase/ai-warehouse-logistics.jpg",
+    sections: [
+      {
+        heading: "One view across every location",
+        body: "If an item sells at one branch, every other branch and your central warehouse see the updated count instantly. That alone eliminates most of the double-selling and stock discrepancies that come from checking in by phone."
+      },
+      {
+        heading: "Reordering based on actual sales velocity",
+        body: "Aura looks at your sales trends and seasonal patterns to suggest reorder points, which helps avoid both running out of fast movers and over-ordering stock that sits on the shelf."
+      },
+      {
+        heading: "Knowing your true margin",
+        body: "Landed cost — duties, freight, and insurance — gets calculated into your cost price automatically, so the margin you see for an imported item is the real one, not just the invoice price."
+      }
+    ]
+  },
+  {
+    slug: "aura-ai-cutting-edge-intelligence",
+    title: "Aura AI: How It Actually Works",
+    description: "Aura isn't a general chatbot bolted onto the platform. Here's what it's actually built to do, and where a human still needs to make the call.",
+    author: "Mwesigwa Jimmy",
+    publishDate: "2026-03-02",
+    category: "Product Updates",
+    icon: BrainCircuit,
+    image: "/images/showcase/Greeting (10).jpeg",
+    sections: [
+      {
+        heading: "It shows its work",
+        body: "When Aura surfaces an insight, it points to the specific data points behind it, so you can check its reasoning instead of taking a recommendation on faith."
+      },
+      {
+        heading: "Finding patterns across modules",
+        body: "Because Aura sees data from accounting, inventory, and sales together, it can spot connections a person checking each system separately might miss — like a late supplier in one region showing up as a sales dip elsewhere weeks later."
+      },
+      {
+        heading: "Continuous monitoring",
+        body: "Aura scans for anomalies like duplicate payments or unusual spending around the clock, and flags them for review rather than acting on its own."
+      }
+    ]
+  },
+  {
+    slug: "unbreakable-offline-mode-continuity",
+    title: "Keeping Your Business Running Without Internet",
+    description: "Connectivity isn't guaranteed everywhere. Here's how BBU1 keeps point of sale and inventory working when the connection drops, and syncs everything back up once it returns.",
+    author: "Mwesigwa Jimmy",
+    publishDate: "2026-02-28",
+    category: "Features",
+    icon: ShieldCheck,
+    image: "/images/showcase/artisan-cooperative-tech.jpg",
+    sections: [
+      {
+        heading: "Local-first, not cloud-only",
+        body: "Your point of sale and inventory tools run primarily off the device itself. Transactions are saved locally the instant they happen, connection or not."
+      },
+      {
+        heading: "Syncing back up safely",
+        body: "The moment a connection returns, everything syncs to the cloud in the background. If multiple devices were offline and made conflicting updates, the sync engine reconciles them instead of silently overwriting one."
+      },
+      {
+        heading: "What this means day to day",
+        body: "Your staff can keep serving customers and adjusting stock without a 'connection lost' error interrupting the sale. Connectivity becomes something you have, not something you depend on."
+      }
+    ]
+  },
+  {
+    slug: "sacco-transformation-success-story",
+    title: "What a SACCO Gains From Digitizing Loan Operations",
+    description: "A look at what typically changes for a savings and credit cooperative when loan calculations, approvals, and dividend distribution move off paper ledgers.",
+    author: "Mwesigwa Jimmy",
+    publishDate: "2026-02-25",
+    category: "Success Stories",
+    icon: Users,
+    image: "/images/showcase/System Image Generat (42).jpeg",
+    sections: [
+      {
+        heading: "The problem with manual ledgers",
+        body: "For many SACCOs, loan calculations and interest tracking are still done by hand. That's slow, and small errors in interest tracking are exactly the kind of thing that erodes member trust over time."
+      },
+      {
+        heading: "What changes with a digital lending module",
+        body: "Loan approvals that used to take days can be reviewed in minutes once credit checks and amortization schedules calculate automatically. Dividend distribution across hundreds of members becomes a single run instead of a manual, error-prone process repeated per member."
+      },
+      {
+        heading: "Why transparency matters most",
+        body: "The biggest shift isn't speed — it's that members can see their own shares and loan balances update in real time. That visibility is usually what rebuilds trust faster than anything else."
+      }
+    ]
+  }
 ];

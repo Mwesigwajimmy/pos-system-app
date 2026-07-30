@@ -1,7 +1,7 @@
 import { 
   Users, BarChart3, TrendingUp, Briefcase, Clock, 
   Zap, ShieldCheck, Layers, ShoppingCart, FileText, 
-  BrainCircuit, Lock, CheckCircle 
+  BrainCircuit, Lock, CheckCircle, Phone
 } from "lucide-react";
 
 export interface FeatureDetailItem {
@@ -23,169 +23,208 @@ export const featureSets: FeatureSet[] = [
   {
     slug: "human-resources",
     title: "Human Resources",
-    description: "Orchestrate your human capital from recruitment to retirement.",
-    longDescription: "A sovereign HR core designed to automate the complexities of workforce management, ensuring local compliance and high-fidelity performance tracking.",
+    description: "Manage your people, from recruitment through to retirement.",
+    longDescription: "An HR module that covers the full employee lifecycle — hiring, attendance, payroll, and performance — with settings you can adapt to local labor rules.",
     icon: Users,
     capabilities: [
-      "Automated Payroll Engine",
+      "Automated Payroll",
       "Biometric Attendance Sync",
-      "Dynamic Leave Management",
-      "Performance KPIs & Reviews",
+      "Leave Management",
+      "Performance Reviews",
       "Benefits Administration",
-      "Digital Employee Dossiers"
+      "Digital Employee Records"
     ],
     detailedBreakdown: [
-      { name: "Leave Management", detail: "Automate leave requests, approvals, and balance tracking with configurable regional policies." },
-      { name: "Recruitment Pipeline", detail: "Streamline hiring from job posting to onboarding with a collaborative engineering-grade recruitment flow." },
-      { name: "Performance Architecture", detail: "Set deterministic goals, conduct reviews, and foster growth with integrated data analytics." },
-      { name: "Payroll Automation", detail: "Deterministic salary calculations, tax deductions, and payslip generation with multi-currency support." }
+      { name: "Leave Management", detail: "Employees submit requests, managers approve from their dashboard, and balances update automatically based on policies you configure per region." },
+      { name: "Recruitment Pipeline", detail: "Post a role, collect applications, and move candidates through a shared pipeline your hiring team can see and comment on together." },
+      { name: "Performance Reviews", detail: "Set goals for individuals or teams, run review cycles on a schedule, and keep a history of feedback tied to each employee's record." },
+      { name: "Payroll Automation", detail: "Salary runs calculate deductions and taxes automatically, generate payslips, and support paying staff in more than one currency." },
+      { name: "Attendance & Shifts", detail: "Clock-ins sync from biometric devices or the mobile app, and shift schedules flag conflicts before they become a problem." },
+      { name: "Employee Self-Service", detail: "Staff can update their own details, download payslips, and check leave balances without emailing HR." }
     ]
   },
   {
     slug: "crm",
     title: "CRM & Sales",
-    description: "Build lasting customer relationships and accelerate the sales cycle.",
-    longDescription: "High-fidelity customer relationship management that unifies sales pipelines with service desk operations for a 360-degree business view.",
+    description: "Manage customer relationships and move deals through your pipeline.",
+    longDescription: "Sales pipeline, customer support, and marketing tools in one place, so your sales and service teams are working from the same customer data.",
     icon: TrendingUp,
     capabilities: [
-      "Visual Pipeline Management",
-      "Automated Lead Scoring",
-      "Integrated Helpdesk Support",
-      "Marketing ROI Tracking",
+      "Visual Pipeline",
+      "Lead Scoring",
+      "Helpdesk & Support",
+      "Marketing Campaigns",
       "Customer Segmentation",
-      "Sales Forecasting Models"
+      "Sales Forecasting"
     ],
     detailedBreakdown: [
-      { name: "Sales Pipeline", detail: "Visualize and manage your entire sales process with a customizable, deterministic drag-and-drop pipeline." },
-      { name: "Customer Support", detail: "Provide exceptional service with a built-in helpdesk to track, prioritize, and resolve issues with audit logs." },
-      { name: "Marketing Automation", detail: "Run targeted email campaigns and track multi-channel marketing ROI within the core system." },
-      { name: "Customer Segmentation", detail: "Dynamic segmentation of your customer base for personalized engagement and strategic offers." }
+      { name: "Sales Pipeline", detail: "Drag deals through customizable stages, assign owners, and see exactly where every opportunity stands at a glance." },
+      { name: "Customer Support", detail: "A built-in helpdesk lets you log, prioritize, and resolve tickets, with a full history attached to each customer record." },
+      { name: "Marketing Campaigns", detail: "Run email campaigns to segmented lists and track opens, clicks, and resulting deals without leaving the platform." },
+      { name: "Customer Segmentation", detail: "Group customers by purchase history, location, or any custom field, and target communication accordingly." },
+      { name: "Activity Timeline", detail: "Every call, email, and meeting is logged against the customer, so anyone on the team can pick up where the last person left off." },
+      { name: "Lead Scoring", detail: "Score incoming leads automatically against criteria you define, so your team spends time on the ones most likely to convert." }
     ]
   },
   {
     slug: "finance-accounting",
     title: "Finance & Accounting",
-    description: "Gain complete financial control with AI-powered, GAAP-compliant accounting.",
-    longDescription: "An unbreakable financial core featuring double-entry accounting, real-time auditing, and intelligent tax localization for global markets.",
+    description: "Real-time, GAAP-compliant accounting with full financial control.",
+    longDescription: "A double-entry accounting core with live reporting, bank reconciliation, and tax rules that adapt to the country you operate in.",
     icon: BarChart3,
     capabilities: [
-      "Multi-Currency General Ledger",
-      "Real-time P&L & Balance Sheets",
-      "Automated Bank Reconciliation",
-      "Asset Depreciation Engine",
-      "Consolidated Financial Reports",
+      "General Ledger",
+      "Real-Time P&L & Balance Sheet",
+      "Bank Reconciliation",
+      "Asset Depreciation",
+      "Consolidated Reporting",
       "Accounts Payable & Receivable"
     ],
     detailedBreakdown: [
-      { name: "Financial Reporting", detail: "Generate high-fidelity P&L, Balance Sheets, and Cash Flow statements with sub-second processing." },
-      { name: "Expense Management", detail: "Capture, approve, and reimburse employee expenses seamlessly with zero paper-trail friction." },
-      { name: "Advanced Invoicing", detail: "Construct and dispatch professional invoices with automated reminders and multi-gateway payment support." },
-      { name: "Zero-Math Bank Sync", detail: "Automate bank reconciliations, matching transactions to your ledger with absolute mathematical precision." }
+      { name: "Financial Reporting", detail: "Profit & Loss, Balance Sheet, and Cash Flow statements update as transactions post — no month-end wait to see where you stand." },
+      { name: "Expense Management", detail: "Staff submit expenses with a photo of the receipt, managers approve from their phone, and reimbursement flows straight to the ledger." },
+      { name: "Advanced Invoicing", detail: "Send invoices with automated payment reminders, and accept payments through multiple gateways without manual entry." },
+      { name: "Bank Reconciliation", detail: "Imported bank statements are matched against your ledger automatically, with any mismatches flagged for review." },
+      { name: "Multi-Currency Accounting", detail: "Transact and report in multiple currencies with exchange rates that update automatically." },
+      { name: "Accounts Payable & Receivable", detail: "Track what you owe and what's owed to you in one place, with aging reports that show exactly what's overdue." }
     ]
   },
   {
     slug: "inventory-supply-chain",
     title: "Inventory & Supply Chain",
     description: "Optimize stock levels, manage warehouses, and streamline logistics.",
-    longDescription: "Precision inventory orchestration engine featuring multi-location synchronization, barcode integration, and intelligent demand forecasting.",
+    longDescription: "Track stock across every location in real time, with barcode scanning, reorder alerts, and landed cost tracking built in.",
     icon: Layers,
     capabilities: [
-      "Multi-Warehouse Orchestration",
-      "Batch & Serial Number Tracking",
+      "Multi-Warehouse Tracking",
+      "Batch & Serial Numbers",
       "Landed Cost Calculation",
       "Automated Reorder Points",
-      "Barcode & QR Integration",
-      "Supplier Relationship Mgmt"
+      "Barcode & QR Scanning",
+      "Supplier Management"
     ],
     detailedBreakdown: [
-      { name: "Multi-Warehouse Mgmt", detail: "Track and transfer inventory across infinite locations or stores in real-time with total visibility." },
-      { name: "Purchase Engineering", detail: "Generate, dispatch, and track purchase orders while managing strategic supplier performance metrics." },
-      { name: "Stock Level Optimization", detail: "Automate reorder points and receive proactive alerts for low-stock scenarios to prevent outages." },
-      { name: "Barcode Architecture", detail: "Accelerate floor operations with integrated scanning for receiving, picking, and dispatch cycles." }
+      { name: "Multi-Warehouse Management", detail: "See stock levels across every location in real time, and transfer inventory between warehouses with a full audit trail." },
+      { name: "Purchase Orders", detail: "Create and send purchase orders, track delivery status, and compare supplier performance over time." },
+      { name: "Stock Level Optimization", detail: "Set reorder points per item and get alerted before you run out, instead of finding out at the till." },
+      { name: "Barcode Scanning", detail: "Speed up receiving, picking, and dispatch with barcode or QR scanning from the mobile app or a handheld scanner." },
+      { name: "Landed Cost Tracking", detail: "Duties, freight, and insurance are factored into your cost price automatically, so your margins reflect the real cost of imported goods." },
+      { name: "Supplier Management", detail: "Keep supplier contacts, pricing history, and performance notes in one record tied to every purchase order." }
     ]
   },
   {
     slug: "sales-ecommerce",
     title: "Sales & E-commerce",
-    description: "Omnichannel commerce from retail POS to global online stores.",
-    longDescription: "Unify your physical and digital sales channels into a single high-performance nervous system with real-time stock and order sync.",
+    description: "Manage every sales channel, from retail POS to your online store.",
+    longDescription: "Run in-store and online sales from the same inventory and customer data, with orders and stock syncing automatically across channels.",
     icon: ShoppingCart,
     capabilities: [
-      "Sovereign Point of Sale",
-      "Online Marketplace Sync",
-      "Omnichannel Order Mgmt",
+      "Point of Sale",
+      "Online Store Sync",
+      "Order Management",
       "Dynamic Pricing Rules",
-      "Customer Buying Patterns",
-      "BOPIS (Pick-up) Integration"
+      "Sales Analytics",
+      "Click & Collect"
     ],
     detailedBreakdown: [
-      { name: "Sovereign POS", detail: "Intuitive and rapid retail interface with built-in offline synchronization and hardware integration." },
-      { name: "Global E-commerce", detail: "Synchronize products, orders, and customer data across your website and physical stores automatically." },
-      { name: "Order Fulfillment", detail: "Process sales orders with deterministic status tracking and automated logistics workflows." },
-      { name: "Sales Intelligence", detail: "Gain deep insights into product performance and customer buying velocity with executive dashboards." }
+      { name: "Point of Sale", detail: "A fast, offline-capable checkout that stays in sync with your inventory the moment a connection is available." },
+      { name: "E-commerce Sync", detail: "Products, orders, and customer data stay synchronized between your website and physical stores automatically." },
+      { name: "Order Fulfillment", detail: "Every sales order moves through clear status stages, from placed to packed to delivered, with automated notifications." },
+      { name: "Sales Analytics", detail: "See which products, staff, and locations are performing best, with dashboards you can filter by date range." },
+      { name: "Dynamic Pricing", detail: "Set promotional pricing, bulk discounts, or customer-specific rates that apply automatically at checkout." },
+      { name: "Click & Collect", detail: "Let customers order online and pick up in-store, with stock reserved automatically the moment they check out." }
     ]
   },
   {
     slug: "project-management",
     title: "Project Management",
-    description: "Plan, execute, and track enterprise projects with high-fidelity tools.",
-    longDescription: "Deterministic project tracking connecting time entries, resource allocation, and budget profitability in one unified environment.",
+    description: "Plan, execute, and track projects with your team in one place.",
+    longDescription: "Task management connected to time tracking and budgets, so you can see project profitability alongside progress.",
     icon: Briefcase,
     capabilities: [
-      "Gantt & Kanban Workflows",
-      "Resource Utilization Logs",
-      "Integrated Time Tracking",
-      "Budget vs. Actual Analysis",
-      "Client Approval Portals",
-      "Milestone Profitability"
+      "Task & Kanban Boards",
+      "Resource Allocation",
+      "Time Tracking",
+      "Budget vs. Actual",
+      "Client Portal",
+      "Milestone Tracking"
     ],
     detailedBreakdown: [
-      { name: "Task Orchestration", detail: "Organize projects into tasks, assign owners, and track progress with high-fidelity visual workflows." },
-      { name: "Precision Time Tracking", detail: "Accurately log billable and internal hours for precise resource cost analysis and client billing." },
-      { name: "Resource Mapping", detail: "Allocate team members effectively across global projects to ensure optimal utilization and scale." },
-      { name: "Profitability Analytics", detail: "Monitor project margins in real-time against budgets to prevent scope creep and revenue leakage." }
+      { name: "Task Management", detail: "Break projects into tasks, assign owners, set deadlines, and track progress on a board your whole team can see." },
+      { name: "Time Tracking", detail: "Log billable and internal hours against tasks for accurate client billing and a clear picture of where time goes." },
+      { name: "Resource Allocation", detail: "See who's assigned to what across every active project, so you can spot overload before it becomes a bottleneck." },
+      { name: "Budget Tracking", detail: "Set a project budget and watch actual spend against it in real time, instead of finding out at the final invoice." },
+      { name: "Client Portal", detail: "Give clients a secure, read-only view of project progress, files, and invoices, without access to anything else." },
+      { name: "Milestone Tracking", detail: "Break long projects into milestones with their own deadlines and deliverables, so progress is visible at a glance." }
     ]
   },
   {
     slug: "compliance-governance",
     title: "Compliance & Governance",
-    description: "Maintain absolute regulatory adherence and internal audit integrity.",
-    longDescription: "A sovereign security core ensuring all business actions are logged, encrypted, and compliant with regional and global standards.",
+    description: "Stay compliant and keep strong internal controls.",
+    longDescription: "Role-based permissions, audit logs, and configurable tax rules to help you meet regulatory requirements without manual tracking.",
     icon: ShieldCheck,
     capabilities: [
-      "Immutable Audit Trails",
+      "Audit Trails",
       "Role-Based Access Control",
-      "GDPR & Data Privacy Hub",
-      "Tax Localization Engine",
+      "Data Privacy Tools",
+      "Tax Localization",
       "Document Version Control",
-      "Enterprise Fraud Detection"
+      "Fraud Detection"
     ],
     detailedBreakdown: [
-      { name: "Audit Integrity", detail: "Maintain a complete, tamper-proof audit trail of every business action with cryptographic verification." },
-      { name: "Granular Permissions", detail: "Deploy role-based access controls to manage user visibility and system interaction at the field level." },
-      { name: "Document Infrastructure", detail: "Securely store and organize sensitive documents with enterprise-grade encryption and versioning." },
-      { name: "Sovereign Tax Engine", detail: "Handle complex transactions in 160+ currencies with localized tax calculation and compliance." }
+      { name: "Audit Trails", detail: "Every action in the system is logged with a timestamp and user ID, giving you a complete record for internal or external audits." },
+      { name: "Role-Based Access", detail: "Control exactly what each user can see and do, down to individual fields, so sensitive data stays with the right people." },
+      { name: "Document Management", detail: "Store business documents with version history and access permissions, so nothing gets overwritten by accident." },
+      { name: "Tax & Currency Rules", detail: "Configure tax rates and reporting rules per region, so transactions calculate and report correctly wherever you operate." },
+      { name: "Fraud Detection", detail: "Unusual transaction patterns are flagged automatically, so you can investigate before a small issue becomes a big loss." },
+      { name: "Data Privacy Tools", detail: "Manage consent, data retention, and access requests to help meet GDPR and other regional privacy regulations." }
     ]
   },
   {
-    slug: "aura-ai-intelligence",
-    title: "Intelligence & Aura AI",
-    description: "Transform raw data into actionable insights with the Aura Neural Core.",
-    longDescription: "The cognitive layer of BBU1. Aura automates routine cognitive tasks and provides strategic forecasts to drive deterministic growth.",
-    icon: BrainCircuit,
+    slug: "telecom-services",
+    title: "Telecom Services",
+    description: "An end-to-end solution for telecom and agent-based businesses.",
+    longDescription: "Manage agent networks, mobile money float, and airtime or data products from one dashboard, built for high-volume telecom operations.",
+    icon: Phone,
     capabilities: [
-      "Autonomous Bookkeeping",
-      "Predictive Cash Flow Models",
-      "Anomaly & Fraud Alerts",
-      "Natural Language Queries",
-      "Executive Growth Reports",
-      "Demand Velocity Patterns"
+      "Agent Hierarchy & Commissions",
+      "Real-Time Float Monitoring",
+      "Reconciliation & Settlement",
+      "Risk & Financial Controls",
+      "Airtime & Data Configuration",
+      "Subscriber Management"
     ],
     detailedBreakdown: [
-      { name: "Aura Copilot", detail: "The AI agent that automates manual data entry and provides proactive strategic alerts." },
-      { name: "Neural Dashboards", detail: "Create personalized visual reports using drag-and-drop AI to visualize mission-critical KPIs." },
-      { name: "Predictive Engines", detail: "Leverage machine learning to forecast sales trajectories and inventory requirements with high accuracy." },
-      { name: "Pattern Detection", detail: "Automatically detect unusual data behaviors, alerting leadership to risks before they impact the bottom line." }
+      { name: "Admin Dashboard", detail: "See your entire telecom operation, from agent performance to financial health, in one dashboard." },
+      { name: "Agent Management", detail: "Onboard and manage large agent networks with commission structures and hierarchical controls." },
+      { name: "Reconciliation & Settlement", detail: "Automate reconciliations between your systems, MNOs, and partners for accurate, timely settlements." },
+      { name: "Financial Controls", detail: "Set limits, commissions, and controls across your agent network to manage risk." },
+      { name: "Product Configuration", detail: "Configure airtime, data bundles, mobile money, and other telecom products." },
+      { name: "Subscriber Management", detail: "Manage subscriber accounts, activations, and support for your telecom offerings." }
+    ]
+  },
+  {
+    slug: "business-intelligence-ai",
+    title: "Business Intelligence & AI",
+    description: "Turn your business data into decisions with AI-assisted analytics.",
+    longDescription: "Aura is the assistant built into BBU1. It helps with day-to-day bookkeeping, flags anomalies, and answers plain-language questions about your own data.",
+    icon: BrainCircuit,
+    capabilities: [
+      "Automated Bookkeeping",
+      "Predictive Cash Flow",
+      "Anomaly Alerts",
+      "Natural Language Queries",
+      "Custom Dashboards",
+      "Demand Forecasting"
+    ],
+    detailedBreakdown: [
+      { name: "Aura Copilot", detail: "Ask questions like \"what was our best-selling category last week\" and get an answer pulled directly from your data." },
+      { name: "Anomaly Detection", detail: "Aura flags things like duplicate payments or unusual spending so you can review them before they become a problem." },
+      { name: "Custom Dashboards", detail: "Build dashboards with drag-and-drop tools to track the metrics that matter most to your business." },
+      { name: "Forecasting", detail: "Get sales and inventory projections based on your own historical data, updated as new transactions come in." },
+      { name: "Data Integration", detail: "Bring data from every module — sales, inventory, finance — into one place, instead of exporting from five different systems to build a report." },
+      { name: "Cash Flow Projection", detail: "See likely cash flow gaps weeks in advance, based on outstanding invoices and recurring expenses." }
     ]
   }
 ];

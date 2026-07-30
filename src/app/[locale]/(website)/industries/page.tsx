@@ -11,47 +11,44 @@ export default function IndustriesPage() {
       <BackNavbar backHref="/" backLabel="Home" />
       <main className="flex-grow pt-20 pb-24">
         <div className="container mx-auto px-6 max-w-7xl">
-          
-          {/* --- HERO HEADER --- */}
-          <header className="max-w-4xl mb-24">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full mb-8">
+
+          {/* --- HEADER --- */}
+          <header className="max-w-3xl mb-20">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full mb-6">
               <LayoutGrid className="h-4 w-4 text-blue-600" />
-              <span className="text-blue-700 text-xs font-bold tracking-widest uppercase">Industry Specific Solutions</span>
+              <span className="text-blue-700 text-xs font-bold tracking-widest uppercase">Industries</span>
             </div>
-            
-            {/* Fixed: Professional size, straight text, no all-caps */}
-            <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-tight mb-8">
-              Built for <span className="text-blue-600">ambition.</span>
+
+            <h1 className="text-4xl md:text-6xl font-bold text-slate-900 tracking-tight leading-tight mb-6">
+              Built for how your industry actually works.
             </h1>
-            
-            <p className="text-xl md:text-2xl font-normal text-slate-600 leading-relaxed border-l-4 border-blue-600 pl-8 max-w-3xl">
-              From bustling city markets to the digital frontier, BBU1 provides the specialized operating core for 14+ global industry verticals.
+
+            <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-2xl">
+              Every business has its own workflows and compliance needs. BBU1 adapts to yours, with modules built around the way your industry actually operates.
             </p>
           </header>
 
           {/* --- INDUSTRIES GRID --- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {industries.map((ind) => (
               <Link href={`/industries/${ind.slug}`} key={ind.slug} className="group block">
-                <Card className="bg-slate-50 border-slate-200 rounded-[2.5rem] overflow-hidden hover:bg-white hover:shadow-2xl hover:border-blue-200 transition-all duration-300 h-full border">
-                  <div className="p-10 md:p-12">
-                    {/* Icon Container */}
-                    <div className="h-16 w-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-8 group-hover:scale-110 transition-transform">
-                      <ind.icon className="h-8 w-8" />
+                <Card className="bg-slate-50 border-slate-200 rounded-2xl overflow-hidden hover:bg-white hover:shadow-lg hover:border-blue-200 transition-all duration-300 h-full border">
+                  <div className="p-8">
+                    {/* Icon */}
+                    <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 mb-6">
+                      <ind.icon className="h-6 w-6" />
                     </div>
-                    
-                    {/* Title: No italics, no all-caps */}
-                    <h3 className="text-2xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors mb-4 tracking-tight">
+
+                    <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors mb-3 tracking-tight">
                       {ind.name}
                     </h3>
-                    
-                    <p className="text-slate-600 text-base font-normal leading-relaxed mb-10">
+
+                    <p className="text-slate-600 text-sm leading-relaxed mb-8">
                       {ind.description}
                     </p>
-                    
-                    {/* CTA link */}
-                    <div className="flex items-center gap-2 text-blue-600 font-bold text-sm tracking-wide group-hover:gap-4 transition-all">
-                      View Solution <ArrowRight className="h-4 w-4" />
+
+                    <div className="flex items-center gap-1.5 text-blue-600 font-semibold text-sm group-hover:gap-2.5 transition-all">
+                      View solution <ArrowRight className="h-4 w-4" />
                     </div>
                   </div>
                 </Card>
@@ -60,13 +57,13 @@ export default function IndustriesPage() {
           </div>
 
           {/* --- BOTTOM CTA --- */}
-          <section className="mt-32 p-12 md:p-20 bg-blue-600 rounded-[3rem] text-center shadow-2xl shadow-blue-600/20 text-white">
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">Scale your industry.</h2>
-            <p className="text-blue-50 text-lg md:text-xl font-normal mb-10 max-w-2xl mx-auto">
-              Integrate the BBU1 operating core into your specific business vertical and start automating your future today.
+          <section className="mt-24 p-10 md:p-16 bg-blue-600 rounded-3xl text-center text-white">
+            <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-4">Don't see your industry?</h2>
+            <p className="text-blue-50 text-base md:text-lg mb-8 max-w-xl mx-auto">
+              We build custom fields and workflows for businesses outside our standard list too. Tell us how you operate.
             </p>
-            <Link href="/contact" className="inline-flex items-center gap-2 px-10 py-4 bg-white text-blue-600 font-bold rounded-xl hover:bg-slate-50 transition-all shadow-xl">
-              Get Started <ArrowRight className="h-5 w-5" />
+            <Link href="/contact" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-blue-600 font-semibold rounded-xl hover:bg-slate-50 transition-all">
+              Get in touch <ArrowRight className="h-4 w-4" />
             </Link>
           </section>
 

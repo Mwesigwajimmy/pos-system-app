@@ -19,11 +19,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, LucideIcon, Menu, ArrowRight, ChevronDown, Utensils, WifiOff, Rocket, Send, Signal, Store, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, CheckCircle2, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud, Truck, Mail, Globe2, Link2, Target, Layers, Microscope, Cpu, Award, BookOpen, Quote, Heart, Smartphone, User, Home, Moon, Sun
+    Banknote, Bot, BrainCircuit, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, LucideIcon, Menu, ArrowRight, ChevronDown, WifiOff, Rocket, Send, Signal, Users, X, ShieldHalf, LayoutGrid, Sparkles, Loader2, CheckCircle, CheckCircle2, Briefcase, Globe, Building, Megaphone, Settings, GitBranch, Warehouse, MessageSquareText, HelpCircle, DownloadCloud, Truck, Globe2, Target, Layers, BookOpen, Home, Moon, Sun
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import NewsletterPopup from '@/components/NewsletterPopup';
+import { featureSets } from '@/lib/data/features';
 // --- Constants ---
 const COOKIE_CONSENT_NAME = 'bbu1_cookie_consent';
 const COOKIE_EXPIRY_DAYS = 365;
@@ -33,24 +34,6 @@ const SLIDESHOW_INTERVAL = 8000;
 const PILLAR_INTERVAL = 8000;
 
 // --- Interfaces ---
-interface FeatureDetail {
-    icon: LucideIcon;
-    title: string;
-    description: string;
-    details: { name: string; detail: string; }[];
-    backgroundImage: string;
-}
-
-interface IndustryItem { 
-    name: string; 
-    icon: LucideIcon; 
-    description: string; 
-    fullDescription: string; 
-    keyFeatures: string[]; 
-    category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; 
-    backgroundImage: string; 
-}
-
 interface FaqItem { q: string; a: ReactNode; }
 
 interface PlatformPillar { 
@@ -98,113 +81,6 @@ const siteConfig = {
             facebook: "https://facebook.com/bbu1official" // 
         }
     },
-    featureSets: [
-        {
-            icon: Users, title: "Human Resources", description: "Manage your people, from recruitment to retirement.",
-            backgroundImage: "/images/showcase/modern-office-bbU1.jpg",
-            details: [
-                { name: "Leave Management", detail: "Automate leave requests, approvals, and balance tracking with configurable policies for any country." },
-                { name: "Recruitment", detail: "Manage hiring from job posting to onboarding with a collaborative recruitment pipeline." },
-                { name: "Performance Management", detail: "Set goals, run reviews, and track growth with integrated performance tools." },
-                { name: "Onboarding & Offboarding", detail: "Give new hires a structured plan from day one, and handle offboarding cleanly." },
-                { name: "Payroll Automation", detail: "Automate salary calculations, tax deductions, and payslip generation, with multi-currency support." },
-                { name: "Employee Self-Service", detail: "Let employees manage their profiles, request leave, and access payslips directly." },
-            ]
-        },
-        {
-            icon: Handshake, title: "CRM", description: "Manage customer relationships and move deals through your pipeline.",
-            backgroundImage: "/images/showcase/call-center-crm.jpg",
-            details: [
-                { name: "Sales Pipeline & Lead Management", detail: "Manage your sales process, from lead qualification to close, with a customizable drag-and-drop pipeline." },
-                { name: "Customer Support & Ticketing", detail: "Track, prioritize, and resolve customer issues with a built-in helpdesk." },
-                { name: "Marketing Automation & Campaigns", detail: "Run email campaigns, manage customer segments, and track marketing ROI from the same platform." },
-                { name: "Customer Segmentation", detail: "Segment your customer base for more relevant, targeted communication." },
-                { name: "Activity Tracking", detail: "Log calls, emails, and meetings for a complete history of every relationship." },
-            ]
-        },
-        {
-            icon: Landmark, title: "Finance & Accounting", description: "Financial control with compliant, real-time accounting.",
-            backgroundImage: "/images/showcase/office-admin-bbU1.jpg",
-            details: [
-                { name: "Financial Reporting & Analytics", detail: "Generate Profit & Loss, Balance Sheet, Cash Flow, and custom reports in real time." },
-                { name: "Expense Management", detail: "Capture, approve, and reimburse employee expenses without manual paperwork." },
-                { name: "General Ledger & Chart of Accounts", detail: "Keep a complete, auditable record of every transaction with an automated double-entry ledger, configurable for your business." },
-                { name: "Advanced Invoicing & Billing", detail: "Send professional invoices with automated reminders. Supports recurring billing, multi-currency, and credit notes." },
-                { name: "Bank Reconciliation", detail: "Automate reconciliation by matching bank transactions to your ledger." },
-                { name: "Accounts Payable & Receivable", detail: "Manage bills, vendor payments, and customer invoices to stay on top of payments and collections." },
-                { name: "Budgeting & Forecasting", detail: "Build budgets, track performance against them in real time, and forecast ahead." },
-            ]
-        },
-        {
-            icon: Warehouse, title: "Inventory & Supply Chain", description: "Manage stock, warehouses, and your supply chain in one view.",
-            backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg",
-            details: [
-                { name: "Multi-Warehouse Management", detail: "Track inventory across multiple locations, warehouses, or stores in real time." },
-                { name: "Purchase Order Management", detail: "Create, send, and track purchase orders and manage supplier relationships." },
-                { name: "Stock Level Optimization", detail: "Automate reorder points and get alerts for low stock before it becomes a problem." },
-                { name: "Batch & Serial Number Tracking", detail: "Maintain full product traceability, essential for quality control and recalls." },
-                { name: "Barcode Scanning Integration", detail: "Speed up receiving, picking, and dispatch with integrated barcode scanning." },
-                { name: "Landed Cost Calculation", detail: "Calculate the true cost of imported goods, including duties, freight, and insurance." },
-            ]
-        },
-        {
-            icon: ShoppingCart, title: "Sales & E-commerce", description: "Manage every sales channel, from retail POS to your online store.",
-            backgroundImage: "/images/showcase/bakery-pos-system.jpg",
-            details: [
-                { name: "Point of Sale (POS)", detail: "A fast POS system for retail, supporting multiple payment methods and connected to live inventory." },
-                { name: "E-commerce Integration", detail: "Sync products, orders, and customer data with popular e-commerce platforms in real time." },
-                { name: "Order Management", detail: "Process sales orders from creation to fulfillment, with status tracking and automated workflows." },
-                { name: "Pricing & Discounts", detail: "Manage pricing strategies, promotions, and customer-specific pricing rules." },
-                { name: "Sales Analytics", detail: "See sales performance, top products, and buying patterns through built-in dashboards." },
-            ]
-        },
-        {
-            icon: Briefcase, title: "Project Management", description: "Plan, run, and track projects with your team in one place.",
-            backgroundImage: "/images/showcase/creative-agency-pm.jpg",
-            details: [
-                { name: "Task & Workflow Management", detail: "Break projects into tasks, assign owners, set deadlines, and track progress and spend." },
-                { name: "Time Tracking", detail: "Track time spent on tasks and projects for accurate billing and resourcing." },
-                { name: "Resource Management", detail: "Allocate team members across projects and avoid overloading anyone." },
-                { name: "Budgeting & Cost Tracking", detail: "Set project budgets, track actual spend against them, and monitor profitability." },
-                { name: "Client Collaboration Portal", detail: "Give clients secure access to updates, documents, and conversations." },
-            ]
-        },
-        {
-            icon: Scale, title: "Compliance & Governance", description: "Stay compliant and keep strong internal controls.",
-            backgroundImage: "/images/showcase/office-presentation-dashboard.jpg",
-            details: [
-                { name: "Audit Trails & Logs", detail: "Keep a complete, tamper-evident record of every action taken in the system." },
-                { name: "Role-Based Access Control", detail: "Set granular permissions and access rights so data stays with the right people." },
-                { name: "Document Management", detail: "Store and organize business documents with version control and access permissions." },
-                { name: "Multi-Currency & Tax Localization", detail: "Handle transactions in multiple currencies and configure tax rules for different regions automatically." },
-                { name: "Data Privacy & GDPR Compliance", detail: "Tools to help your business meet GDPR and other local data protection requirements." },
-            ]
-        },
-        {
-            icon: Phone, title: "Telecom Services", description: "An end-to-end solution for telecom and agent-based businesses.",
-            backgroundImage: "/images/showcase/mobile-money-agent.jpg",
-            details: [
-                { name: "Admin Dashboard & Real-time Monitoring", detail: "See your entire telecom operation, from agent performance to financial health, in one dashboard." },
-                { name: "Agent Management & Hierarchy", detail: "Onboard and manage large agent networks with commission structures and hierarchical controls." },
-                { name: "Reconciliation & Settlement Center", detail: "Automate reconciliations between your systems, MNOs, and partners for accurate, timely settlements." },
-                { name: "Financial Controls & Risk Management", detail: "Set limits, commissions, and controls across your agent network to manage risk." },
-                { name: "Product & Service Configuration", detail: "Configure airtime, data bundles, mobile money, and other telecom products." },
-                { name: "Customer & Subscriber Management", detail: "Manage subscriber accounts, activations, and support for your telecom offerings." },
-            ]
-        },
-        {
-            icon: BarChart3, title: "Business Intelligence & AI", description: "Turn your business data into decisions with AI-assisted analytics.",
-            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg",
-            details: [
-                { name: "AI Copilot & Smart Insights", detail: "Aura, our AI copilot, assists with bookkeeping, flags anomalies, and surfaces insights like an upcoming cash flow gap." },
-                { name: "Custom Dashboards & Reporting", detail: "Build dashboards and reports with drag-and-drop tools to track the KPIs that matter to you." },
-                { name: "Predictive Analytics", detail: "Forecast sales, demand, and financial trends so you can plan ahead." },
-                { name: "Data Integration Hub", detail: "Bring data from across BBU1 and external sources into one view of your business." },
-                { name: "Anomaly Detection", detail: "Get alerted to unusual patterns or outliers in your data." },
-            ]
-        },
-    ] as FeatureDetail[],
-    
     // --- PLATFORM PILLARS ---
     platformPillars: [
         { 
@@ -287,165 +163,6 @@ const siteConfig = {
         },
     ] as PlatformPillar[],
 
-    // --- INDUSTRY ITEMS ---
-    industryItems: [
-        // --- Common ---
-        { 
-            name: "Retail / Wholesale", 
-            icon: Store, 
-            description: "Unified POS, inventory, and CRM for retail operations.", 
-            fullDescription: "Run your physical stores, e-commerce, and warehouse from one connected platform, in real time. No more stock discrepancies or disconnected customer data.",
-            keyFeatures: ["Integrated POS with offline capability", "Real-time inventory synchronization", "Customer loyalty & gift card management", "Matrix inventory for size/color variants"],
-            category: 'Common', 
-            backgroundImage: "/images/showcase/grocery-store-bbu1.jpg" 
-        },
-        { 
-            name: "Restaurant / Cafe", 
-            icon: Utensils, 
-            description: "Complete management with KDS, tables, and recipes.", 
-            fullDescription: "Run a tighter kitchen and a smoother front-of-house. From table reservations to ingredient-level inventory, BBU1 helps you reduce food waste and turn tables faster.",
-            keyFeatures: ["Kitchen Display System (KDS) integration", "Recipe costing & margin analysis", "Table management & split billing", "Ingredient-level stock deduction"],
-            category: 'Common', 
-            backgroundImage: "/images/showcase/restaurant-kitchen-orders.jpg" 
-        },
-        { 
-            name: "Professional Services", 
-            icon: Briefcase, 
-            description: "Project tracking and time billing for agencies.", 
-            fullDescription: "For consultancies, law firms, and agencies, time is billable. BBU1 connects project management with billing, so every hour is captured and invoiced accurately.",
-            keyFeatures: ["Automated time tracking & timesheets", "Project profitability analysis", "Retainer management & recurring billing", "Client portal for approvals"],
-            category: 'Common', 
-            backgroundImage: "/images/showcase/modern-office-team.jpg" 
-        },
-
-        // --- Specialized ---
-        { 
-            name: "Manufacturing", 
-            icon: Wrench, 
-            description: "BOM, production planning, and work orders.", 
-            fullDescription: "Manage your production line with complete manufacturing resource planning. Track multi-level Bills of Materials, work-in-progress, and the true cost of finished goods.",
-            keyFeatures: ["Multi-level Bill of Materials (BOM)", "Production scheduling & work orders", "Raw material demand forecasting", "Waste & scrap tracking"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/produce-inspection.jpg" 
-        },
-        { 
-            name: "Construction & Engineering", 
-            icon: Building, 
-            description: "Job costing and project management.", 
-            fullDescription: "Purpose-built tools for contractors to manage job costing, track equipment on site, and handle progress billing, so projects stay on budget.",
-            keyFeatures: ["Project job costing", "AIA-style progress billing", "Subcontractor management", "Equipment & tool tracking"],
-            category: 'Trades & Services', 
-            backgroundImage: "/images/showcase/construction-site.jpg" 
-        },
-        { 
-            name: "Field Service Management", 
-            icon: Car, 
-            description: "Scheduling and technician tracking.", 
-            fullDescription: "Dispatch jobs to technicians, track their location, and let them invoice and collect payment on-site through the mobile app.",
-            keyFeatures: ["Visual dispatch board", "Mobile app for field technicians", "On-site invoicing & signature capture", "Maintenance contracts"],
-            category: 'Trades & Services', 
-            backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg" 
-        },
-        { 
-            name: "Distribution & Logistics", 
-            icon: Package, 
-            description: "Warehouse management and fleet optimization.", 
-            fullDescription: "Warehouse management tools to optimize pick-and-pack routes, track fleet maintenance, and keep deliveries on time.",
-            keyFeatures: ["Bin location & warehouse mapping", "Barcode/QR scanning mobile app", "Fleet maintenance tracking", "Delivery route optimization"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" 
-        },
-        { 
-            name: "Lending / Microfinance", 
-            icon: Banknote, 
-            description: "Loan accounts, disbursements, client management, KYC, and portfolio management.", 
-            fullDescription: "A dedicated core banking module for microfinance institutions and lenders. Manage the full loan lifecycle, from application and credit scoring to disbursement and repayment tracking.",
-            keyFeatures: ["Loan origination & credit scoring", "Automated penalty & interest calculation", "Portfolio at Risk (PAR) reporting", "SMS repayment reminders"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/mobile-money-agent.jpg" 
-        },
-        { 
-            name: "Real Estate & Property Management", 
-            icon: KeyRound, 
-            description: "Property management and tenant billing.", 
-            fullDescription: "Manage residential or commercial leases, automate rent invoicing, track maintenance requests, and view occupancy in one dashboard.",
-            keyFeatures: ["Lease contract management", "Automated rent invoicing & collection", "Maintenance ticket tracking", "Landlord & owner statements"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/office-admin-bbU1.jpg" 
-        },
-        { 
-            name: "SACCO / Co-operative", 
-            icon: Users, 
-            description: "Member management and dividend calculation for SACCOs and co-operatives.", 
-            fullDescription: "Run your cooperative with transparency and less overhead. Manage member shares and savings, and automate dividend calculations and regulatory reporting.",
-            keyFeatures: ["Member registry & KYC", "Share capital management", "Savings & deposit tracking", "Dividend calculation engine"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/community-group-meeting.jpg" 
-        },
-        { 
-            name: "Telecom Services", 
-            icon: Signal, 
-            description: "Mobile money, airtime, and agent networks.", 
-            fullDescription: "Built for telecom dealers and aggregators. Manage large agent networks, reconcile float in real time, and handle high-volume airtime and data bundle transactions securely.",
-            keyFeatures: ["Agent hierarchy & commission structures", "Real-time float monitoring", "Bulk airtime/data distribution", "Fraud detection algorithms"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/mobile-money-agent.jpg" 
-        },
-        { 
-            name: "Nonprofit & NGOs", 
-            icon: HeartHandshake, 
-            description: "Donor management, fund accounting, and grant tracking.", 
-            fullDescription: "Manage donor relationships, track restricted funds, and report on program outcomes, in line with international grant standards.",
-            keyFeatures: ["Grant & fund accounting", "Donor CRM & pledge tracking", "Program budget vs. actuals", "Impact reporting metrics"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/community-group-meeting.jpg" 
-        },
-        { 
-            name: "Healthcare & Clinics", 
-            icon: ClipboardList, 
-            description: "Patient management and medical inventory.", 
-            fullDescription: "An integrated practice management system for patient registration, appointments, electronic medical records, and pharmacy inventory.",
-            keyFeatures: ["Patient EMR/EHR", "Appointment scheduling & reminders", "Pharmacy inventory & expiry tracking", "Insurance billing integration"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/healthcare-team.jpg" 
-        },
-        { 
-            name: "Education & Institutions", 
-            icon: Book, 
-            description: "Student systems and fee management.", 
-            fullDescription: "Manage student admissions and academic records, and automate fee billing and collection, for administrators and parents alike.",
-            keyFeatures: ["Student Information System (SIS)", "Fee structure management & billing", "Academic grading & reports", "Parent & teacher portals"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/education-dashboard.jpg" 
-        },
-        { 
-            name: "Agriculture & Agribusiness", 
-            icon: Leaf, 
-            description: "Farm management and crop tracking.", 
-            fullDescription: "Track inputs like fertilizer and seed, manage livestock records, monitor crop cycles, and analyze harvest yields.",
-            keyFeatures: ["Crop cycle & harvest tracking", "Livestock genealogy & health records", "Farm input inventory control", "Field mapping & labor tracking"],
-            category: 'Specialized', 
-            backgroundImage: "/images/showcase/agriculture-tech.jpg" 
-        },
-        { 
-            name: "Creative Agencies", 
-            icon: Palette, 
-            description: "Portfolio tracking and client billing.", 
-            fullDescription: "Track time against creative briefs, manage freelancer costs, and keep client billing aligned with the value you deliver.",
-            keyFeatures: ["Digital asset management", "Retainer & milestone billing", "Freelancer portal", "Project collaboration tools"],
-            category: 'Creative & Digital', 
-            backgroundImage: "/images/showcase/creative-agency-pm.jpg" 
-        },
-        { 
-            name: "Tech & Software", 
-            icon: Cloud, 
-            description: "Subscription billing and issue tracking.", 
-            fullDescription: "Manage recurring subscription revenue, track churn, and handle support tickets from one integrated platform.",
-            keyFeatures: ["Subscription & recurring billing", "Churn & MRR analytics", "Helpdesk & issue tracking", "SLA management"],
-            category: 'Creative & Digital', 
-            backgroundImage: "/images/showcase/future-of-business-tech.jpg" 
-        },
-    ] as IndustryItem[],
     faqItems: [
         { q: 'What is BBU1?', a: 'BBU1 is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-assisted insights into a single platform.' },
         { q: 'How does the AI Copilot Aura work?', a: 'Aura analyzes your company\u2019s data to find patterns, assist with routine tasks, and surface simple, actionable insights, for example flagging a projected cash flow gap, so you can plan ahead of it.' },
@@ -665,38 +382,6 @@ const FullScreenDialog = ({ children, title, description, backgroundImage, icon:
     );
 };
 
-const FEATURE_SLUGS: Record<string, string> = {
-    'Human Resources': 'human-resources',
-    'CRM': 'crm',
-    'Finance & Accounting': 'finance-accounting',
-    'Inventory & Supply Chain': 'inventory-supply-chain',
-    'Sales & E-commerce': 'sales-ecommerce',
-    'Project Management': 'project-management',
-    'Compliance & Governance': 'compliance-governance',
-    'Telecom Services': 'telecom-services',
-    'Business Intelligence & AI': 'business-intelligence-ai',
-};
-
-const INDUSTRY_SLUGS: Record<string, string> = {
-    'Retail / Wholesale': 'retail-wholesale',
-    'Restaurant / Cafe': 'restaurant-cafe',
-    'Professional Services': 'professional-services',
-    'Manufacturing': 'manufacturing',
-    'Construction & Engineering': 'construction-engineering',
-    'Field Service Management': 'field-service',
-    'Distribution & Logistics': 'distribution-logistics',
-    'Lending / Microfinance': 'lending-microfinance',
-    'Real Estate & Property Management': 'real-estate',
-    'SACCO / Co-operative': 'sacco-cooperative',
-    'Telecom Services': 'telecom',
-    'Nonprofit & NGOs': 'nonprofit-ngo',
-    'Healthcare & Clinics': 'healthcare',
-    'Education & Institutions': 'education',
-    'Agriculture & Agribusiness': 'agriculture',
-    'Creative Agencies': 'creative-agencies',
-    'Tech & Software': 'tech-software',
-};
-
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [openMenu, setOpenMenu] = useState<'features' | 'industries' | null>(null);
@@ -808,9 +493,9 @@ const MegaMenuHeader = () => {
                                 </div>
                                 <div className="max-h-[60vh] overflow-y-auto">
                                     <ul className="grid grid-cols-2 gap-1 p-4">
-                                        {siteConfig.featureSets.map((feature) => (
-                                            <li key={feature.title} className="list-none">
-                                                <Link href={`/features/${FEATURE_SLUGS[feature.title] || ''}`} onClick={() => setOpenMenu(null)}>
+                                        {featureSets.map((feature) => (
+                                            <li key={feature.slug} className="list-none">
+                                                <Link href={`/features/${feature.slug}`} onClick={() => setOpenMenu(null)}>
                                                     <ListItem title={feature.title} icon={feature.icon}>{feature.description}</ListItem>
                                                 </Link>
                                             </li>
@@ -1638,12 +1323,6 @@ const PartnerWithUsSection = () => {
 
     return (
         <AnimatedSection id="partner" className="bg-slate-50 dark:bg-slate-900/50 border-y relative overflow-hidden">
-            {/* Background Decoration */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute top-10 right-10 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl" />
-                <div className="absolute bottom-10 left-10 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
-            </div>
-
             <div className="container mx-auto px-4 relative z-10">
                 <div className="text-center max-w-3xl mx-auto mb-12">
                     <span className="text-sm font-bold tracking-widest text-blue-600 uppercase mb-2 block">Ecosystem Growth</span>
