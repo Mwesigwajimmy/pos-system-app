@@ -2,7 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN PATIENT 360 REGISTRY & EHR HUB ---
- * VERSION: v10.0 OMEGA (DEEP PATIENT FILE & DIAGNOSTIC LEDGER)
+ * VERSION: v11.0 OMEGA (COMPLETE INTAKE FIELDS + EDIT FILE + FACILITY NAV)
  * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Health System
  */
 
@@ -21,17 +21,19 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 
-import { 
-  Users, Search, UserPlus, ShieldCheck, 
-  Droplets, Activity, Calendar, MoreVertical, Loader2,
-  Eye, Edit3, FileText, Phone, MapPin, AlertCircle,
-  ShieldAlert, Pill, FlaskConical, CheckCircle2,
-  HeartPulse, Thermometer, Download, Building2, CreditCard,
-  Plus, X, Lock, Printer, ClipboardList, Stethoscope
+import {
+  Users, Search, UserPlus,
+  Droplets, Activity, Loader2,
+  Eye, Edit3, Phone, MapPin, AlertCircle,
+  ShieldAlert, Pill, FlaskConical,
+  Building2, CreditCard, Bell,
+  Printer, Stethoscope, Briefcase, HeartHandshake,
+  ChevronRight, ListFilter, IdCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,9 +43,14 @@ interface PatientRegistryProps {
 
 const supabase = createClient();
 
+const MARITAL_STATUSES = ['Single', 'Married', 'Divorced', 'Widowed', 'Prefer not to say'];
+const RELATIONSHIPS = ['Spouse', 'Parent', 'Sibling', 'Child', 'Guardian', 'Friend', 'Other'];
+const STATUS_FILTERS = ['All Patients', 'Active Only', 'Archived Only'];
+
 export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Patients');
 
   // --- MODAL STATES ---
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -64,11 +71,35 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
     blood_group: 'O+',
     allergies: '',
     medical_history: '',
+    marital_status: 'Single',
+    occupation: '',
+    referring_facility: '',
     insurance_provider: '',
     insurance_policy_no: '',
     coverage_percentage: 100,
     emergency_contact_name: '',
-    emergency_contact_phone: ''
+    emergency_contact_phone: '',
+    emergency_contact_relationship: 'Spouse'
+  });
+
+  // --- EDIT PATIENT FORM STATE ---
+  const [editPatient, setEditPatient] = useState({
+    full_name: '',
+    phone: '',
+    address: '',
+    national_id: '',
+    blood_group: 'O+',
+    allergies: '',
+    medical_history: '',
+    marital_status: 'Single',
+    occupation: '',
+    insurance_provider: '',
+    insurance_policy_no: '',
+    coverage_percentage: 100,
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+    emergency_contact_relationship: 'Spouse',
+    is_active: true
   });
 
   // 1. DATA: Identity Context & Currency
@@ -144,15 +175,23 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
     }
   });
 
-  // FILTERED PATIENT LIST
+  // FILTERED PATIENT LIST (search + status)
   const filteredPatients = useMemo(() => {
     if (!patients) return [];
-    return patients.filter(p => 
-      p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.patient_uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.insurance_provider?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [patients, searchTerm]);
+    return patients
+      .filter(p => {
+        if (statusFilter === 'Active Only') return p.is_active;
+        if (statusFilter === 'Archived Only') return !p.is_active;
+        return true;
+      })
+      .filter(p =>
+        p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.patient_uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.insurance_provider?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  }, [patients, searchTerm, statusFilter]);
+
+  const activeCount = useMemo(() => patients?.filter(p => p.is_active).length || 0, [patients]);
 
   // MUTATION: Register New Patient
   const registerPatientMutation = useMutation({
@@ -186,9 +225,13 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
             phone: newPatient.phone,
             address: newPatient.address,
             national_id: newPatient.national_id,
+            marital_status: newPatient.marital_status,
+            occupation: newPatient.occupation,
+            referring_facility: newPatient.referring_facility,
             emergency_contact: {
               name: newPatient.emergency_contact_name,
-              phone: newPatient.emergency_contact_phone
+              phone: newPatient.emergency_contact_phone,
+              relationship: newPatient.emergency_contact_relationship
             }
           },
           is_active: true
@@ -212,16 +255,97 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
         blood_group: 'O+',
         allergies: '',
         medical_history: '',
+        marital_status: 'Single',
+        occupation: '',
+        referring_facility: '',
         insurance_provider: '',
         insurance_policy_no: '',
         coverage_percentage: 100,
         emergency_contact_name: '',
-        emergency_contact_phone: ''
+        emergency_contact_phone: '',
+        emergency_contact_relationship: 'Spouse'
       });
       queryClient.invalidateQueries({ queryKey: ['medical_patients'] });
     },
     onError: (e: any) => toast.error(`Registration Failed: ${e.message}`)
   });
+
+  // MUTATION: Update Existing Patient File (new — additive, does not alter existing calls above)
+  const updatePatientMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedPatient?.id) throw new Error("No patient selected for edit.");
+      if (!editPatient.full_name.trim()) throw new Error("Patient Full Name is required.");
+
+      const allergyArray = editPatient.allergies
+        ? editPatient.allergies.split(',').map(a => a.trim()).filter(Boolean)
+        : [];
+
+      const existingSummary = selectedPatient.medical_history_summary || {};
+
+      const { data, error } = await supabase
+        .from('medical_patients')
+        .update({
+          full_name: editPatient.full_name,
+          blood_group: editPatient.blood_group,
+          allergies: allergyArray,
+          insurance_provider: editPatient.insurance_provider || null,
+          insurance_policy_no: editPatient.insurance_policy_no || null,
+          coverage_percentage: Number(editPatient.coverage_percentage) || 100,
+          is_active: editPatient.is_active,
+          medical_history_summary: {
+            ...existingSummary,
+            notes: editPatient.medical_history,
+            phone: editPatient.phone,
+            address: editPatient.address,
+            national_id: editPatient.national_id,
+            marital_status: editPatient.marital_status,
+            occupation: editPatient.occupation,
+            emergency_contact: {
+              name: editPatient.emergency_contact_name,
+              phone: editPatient.emergency_contact_phone,
+              relationship: editPatient.emergency_contact_relationship
+            }
+          }
+        })
+        .eq('id', selectedPatient.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (patient) => {
+      toast.success(`Patient File Updated: ${patient?.full_name}`);
+      setIsEditModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['medical_patients'] });
+    },
+    onError: (e: any) => toast.error(`Update Failed: ${e.message}`)
+  });
+
+  // Open the Edit modal, hydrating form state from the selected patient record
+  const openEditModal = (p: any) => {
+    const summary = p.medical_history_summary || {};
+    setSelectedPatient(p);
+    setEditPatient({
+      full_name: p.full_name || '',
+      phone: summary.phone || '',
+      address: summary.address || '',
+      national_id: summary.national_id || '',
+      blood_group: p.blood_group || 'O+',
+      allergies: p.allergies?.join(', ') || '',
+      medical_history: summary.notes || '',
+      marital_status: summary.marital_status || 'Single',
+      occupation: summary.occupation || '',
+      insurance_provider: p.insurance_provider || '',
+      insurance_policy_no: p.insurance_policy_no || '',
+      coverage_percentage: p.coverage_percentage || 100,
+      emergency_contact_name: summary.emergency_contact?.name || '',
+      emergency_contact_phone: summary.emergency_contact?.phone || '',
+      emergency_contact_relationship: summary.emergency_contact?.relationship || 'Spouse',
+      is_active: p.is_active ?? true
+    });
+    setIsEditModalOpen(true);
+  };
 
   // EXPORT PATIENT 360 MEDICAL SUMMARY PDF
   const exportPatientEhrPdf = (patient: any) => {
@@ -249,6 +373,19 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
       headStyles: { fillColor: [15, 23, 42] }
     });
 
+    // Contact & Occupation
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 8,
+      head: [['Phone', 'Address', 'National ID', 'Occupation']],
+      body: [[
+        patient.medical_history_summary?.phone || 'N/A',
+        patient.medical_history_summary?.address || 'N/A',
+        patient.medical_history_summary?.national_id || 'N/A',
+        patient.medical_history_summary?.occupation || 'N/A'
+      ]],
+      headStyles: { fillColor: [30, 41, 59] }
+    });
+
     // Medical Alerts & Insurance
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 8,
@@ -262,6 +399,18 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
       headStyles: { fillColor: [30, 41, 59] }
     });
 
+    // Emergency Contact
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 8,
+      head: [['Emergency Contact', 'Relationship', 'Phone']],
+      body: [[
+        patient.medical_history_summary?.emergency_contact?.name || 'N/A',
+        patient.medical_history_summary?.emergency_contact?.relationship || 'N/A',
+        patient.medical_history_summary?.emergency_contact?.phone || 'N/A'
+      ]],
+      headStyles: { fillColor: [30, 41, 59] }
+    });
+
     doc.save(`Patient_EHR_${patient.patient_uid || 'RECORD'}.pdf`);
     toast.success("Patient EHR Record Exported!");
   };
@@ -271,140 +420,220 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      
-      {/* MAIN CARD CONTAINER */}
-      <Card className="border border-slate-200 shadow-xl bg-white rounded-[2.5rem] overflow-hidden">
-        
-        {/* HEADER & SEARCH BAR */}
-        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 p-8 bg-slate-50/30">
-          <div>
-            <CardTitle className="text-2xl font-black tracking-tight flex items-center gap-3 text-slate-900">
-              <Users className="text-blue-600" size={28} /> PATIENT 360 REGISTRY
-            </CardTitle>
-            <CardDescription className="text-xs font-medium text-slate-500 mt-1">
-              Electronic Health Records (EHR), Insurance, Allergies & Patient History
-            </CardDescription>
+    <div className="min-h-full bg-slate-50/50">
+
+      {/* ---------------------------------------------------------------- */}
+      {/* FACILITY NAVIGATION BAR — persistent utility bar for context switching */}
+      {/* ---------------------------------------------------------------- */}
+      <div className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950">
+        <div className="flex h-14 items-center justify-between px-6">
+          {/* Left: facility identity + breadcrumb */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shrink-0">
+              <Building2 size={16} className="text-white" />
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0 text-sm">
+              <span className="font-bold text-white truncate max-w-[160px]">
+                {profile?.business_name || 'Clinical Facility'}
+              </span>
+              <ChevronRight size={14} className="text-slate-600 shrink-0" />
+              <span className="text-slate-400 font-medium hidden sm:inline">Records</span>
+              <ChevronRight size={14} className="text-slate-600 shrink-0 hidden sm:inline" />
+              <span className="text-slate-200 font-semibold">Patient 360 Registry</span>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input 
-                placeholder="Search Name, UID or Insurance..." 
-                className="pl-10 h-11 bg-white border-slate-200 rounded-xl font-bold text-xs"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          {/* Right: status filter + clinician */}
+          <div className="flex items-center gap-2 shrink-0">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-auto gap-2 rounded-md border-slate-800 bg-slate-900 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 focus:ring-0">
+                <ListFilter size={12} className="text-slate-400" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg z-[10000]">
+                {STATUS_FILTERS.map(s => (
+                  <SelectItem key={s} value={s} className="text-xs font-medium">{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="mx-1 h-5 w-px bg-slate-800 hidden md:block" />
+
+            <button className="hidden md:flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-900 hover:text-white transition-colors">
+              <Bell size={15} />
+            </button>
+
+            <div className="flex items-center gap-2 rounded-md bg-slate-900 py-1 pl-1 pr-3">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700">
+                <Users size={12} className="text-slate-300" />
+              </div>
+              <span className="text-xs font-semibold text-slate-200 hidden lg:inline max-w-[120px] truncate">
+                {profile?.full_name || 'Records Officer'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-8 animate-in fade-in duration-500 p-6 lg:p-8 pb-20">
+
+        {/* MAIN CARD CONTAINER */}
+        <Card className="border border-slate-200 shadow-xl bg-white rounded-[2.5rem] overflow-hidden">
+
+          {/* HEADER & SEARCH BAR */}
+          <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 p-8 bg-slate-50/30">
+            <div>
+              <CardTitle className="text-2xl font-black tracking-tight flex items-center gap-3 text-slate-900">
+                <Users className="text-blue-600" size={28} /> PATIENT 360 REGISTRY
+              </CardTitle>
+              <CardDescription className="text-xs font-medium text-slate-500 mt-1">
+                Electronic Health Records (EHR), Insurance, Allergies & Patient History
+                <span className="ml-2 font-bold text-emerald-600">{activeCount} Active Files</span>
+              </CardDescription>
             </div>
 
-            <Button onClick={() => setIsRegisterOpen(true)} className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200">
-              <UserPlus size={18} className="mr-2" /> Register Patient
-            </Button>
-          </div>
-        </CardHeader>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search Name, UID or Insurance..."
+                  className="pl-10 h-11 bg-white border-slate-200 rounded-xl font-bold text-xs"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
 
-        {/* PATIENT LEDGER TABLE */}
-        <CardContent className="p-0">
-          <ScrollArea className="w-full">
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow className="h-14">
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500 pl-8">Identity & UID</TableHead>
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Bio Data & Blood</TableHead>
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Allergy Warnings</TableHead>
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Insurance Protocol</TableHead>
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500 text-center">Status</TableHead>
-                  <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-slate-500 pr-8">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={6} className="h-64 text-center"><Loader2 className="animate-spin inline-block mr-2 text-blue-600" /> Syncing Patient Ledger...</TableCell></TableRow>
-                ) : filteredPatients?.map(p => (
-                  <TableRow key={p.id} className="hover:bg-slate-50/50 transition-colors group h-20">
-                    
-                    {/* IDENTITY & UID */}
-                    <TableCell className="pl-8 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-11 w-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-black text-lg shadow-sm">
-                          {p.full_name.charAt(0)}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 text-sm">{p.full_name}</span>
-                          <span className="text-[10px] font-mono text-slate-400 font-bold uppercase">UID: {p.patient_uid || 'TEMP-ID'}</span>
-                        </div>
-                      </div>
-                    </TableCell>
+              <Button onClick={() => setIsRegisterOpen(true)} className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200">
+                <UserPlus size={18} className="mr-2" /> Register Patient
+              </Button>
+            </div>
+          </CardHeader>
 
-                    {/* BIO DATA */}
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                          <Activity size={12} className="text-blue-500" /> {p.gender} • {p.dob || 'DOB N/A'}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs font-black text-rose-600">
-                          <Droplets size={12} className="text-rose-500" /> GROUP {p.blood_group || 'N/A'}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* ALLERGY WARNINGS */}
-                    <TableCell>
-                      {p.allergies && p.allergies.length > 0 ? (
-                        <div className="flex items-center gap-1.5 p-2 bg-rose-50 border border-rose-100 rounded-xl max-w-xs">
-                          <ShieldAlert size={14} className="text-rose-600 shrink-0 animate-pulse" />
-                          <span className="text-[10px] font-bold text-rose-800 truncate">{p.allergies.join(', ')}</span>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">No Known Allergies</span>
-                      )}
-                    </TableCell>
-
-                    {/* INSURANCE */}
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-slate-800">{p.insurance_provider || 'Private Cash Pay'}</span>
-                        <span className="text-[10px] text-slate-400 font-mono italic">{p.insurance_policy_no || 'NO POLICY'}</span>
-                      </div>
-                    </TableCell>
-
-                    {/* STATUS */}
-                    <TableCell className="text-center">
-                      <Badge className={cn("border-none text-[9px] font-bold uppercase px-3 py-1", p.is_active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>
-                        {p.is_active ? 'ACTIVE FILE' : 'ARCHIVED'}
-                      </Badge>
-                    </TableCell>
-
-                    {/* ACTIONS */}
-                    <TableCell className="text-right pr-8">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button 
-                          onClick={() => { setSelectedPatient(p); setIsPatientFileOpen(true); }}
-                          variant="outline" size="sm" 
-                          className="h-9 px-3 font-bold text-xs text-blue-600 border-blue-200 hover:bg-blue-50 rounded-xl"
-                        >
-                          <Eye size={14} className="mr-1.5" /> 360 File
-                        </Button>
-
-                        <Button 
-                          onClick={() => exportPatientEhrPdf(p)} 
-                          variant="ghost" size="icon" 
-                          className="h-9 w-9 text-slate-400 hover:text-slate-900 rounded-xl"
-                        >
-                          <Printer size={16} />
-                        </Button>
-                      </div>
-                    </TableCell>
-
+          {/* PATIENT LEDGER TABLE */}
+          <CardContent className="p-0">
+            <ScrollArea className="w-full">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow className="h-14">
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500 pl-8">Identity & UID</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Bio Data & Blood</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Contact</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Allergy Warnings</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Insurance Protocol</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500 text-center">Status</TableHead>
+                    <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-slate-500 pr-8">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={7} className="h-64 text-center"><Loader2 className="animate-spin inline-block mr-2 text-blue-600" /> Syncing Patient Ledger...</TableCell></TableRow>
+                  ) : filteredPatients?.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="h-48 text-center text-xs font-bold text-slate-400">No patients match the current search & filter.</TableCell></TableRow>
+                  ) : filteredPatients?.map(p => (
+                    <TableRow key={p.id} className="hover:bg-slate-50/50 transition-colors group h-20">
+
+                      {/* IDENTITY & UID */}
+                      <TableCell className="pl-8 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-11 w-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-black text-lg shadow-sm">
+                            {p.full_name.charAt(0)}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-900 text-sm">{p.full_name}</span>
+                            <span className="text-[10px] font-mono text-slate-400 font-bold uppercase">UID: {p.patient_uid || 'TEMP-ID'}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* BIO DATA */}
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                            <Activity size={12} className="text-blue-500" /> {p.gender} • {p.dob || 'DOB N/A'}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs font-black text-rose-600">
+                            <Droplets size={12} className="text-rose-500" /> GROUP {p.blood_group || 'N/A'}
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* CONTACT */}
+                      <TableCell>
+                        <div className="flex flex-col gap-1 max-w-[160px]">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                            <Phone size={12} className="text-slate-400 shrink-0" /> {p.medical_history_summary?.phone || 'N/A'}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 truncate">
+                            <MapPin size={12} className="text-slate-300 shrink-0" /> {p.medical_history_summary?.address || 'No address on file'}
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* ALLERGY WARNINGS */}
+                      <TableCell>
+                        {p.allergies && p.allergies.length > 0 ? (
+                          <div className="flex items-center gap-1.5 p-2 bg-rose-50 border border-rose-100 rounded-xl max-w-xs">
+                            <ShieldAlert size={14} className="text-rose-600 shrink-0 animate-pulse" />
+                            <span className="text-[10px] font-bold text-rose-800 truncate">{p.allergies.join(', ')}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">No Known Allergies</span>
+                        )}
+                      </TableCell>
+
+                      {/* INSURANCE */}
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-slate-800">{p.insurance_provider || 'Private Cash Pay'}</span>
+                          <span className="text-[10px] text-slate-400 font-mono italic">{p.insurance_policy_no || 'NO POLICY'} • {p.coverage_percentage ?? 100}%</span>
+                        </div>
+                      </TableCell>
+
+                      {/* STATUS */}
+                      <TableCell className="text-center">
+                        <Badge className={cn("border-none text-[9px] font-bold uppercase px-3 py-1", p.is_active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>
+                          {p.is_active ? 'ACTIVE FILE' : 'ARCHIVED'}
+                        </Badge>
+                      </TableCell>
+
+                      {/* ACTIONS */}
+                      <TableCell className="text-right pr-8">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            onClick={() => { setSelectedPatient(p); setIsPatientFileOpen(true); }}
+                            variant="outline" size="sm"
+                            className="h-9 px-3 font-bold text-xs text-blue-600 border-blue-200 hover:bg-blue-50 rounded-xl"
+                          >
+                            <Eye size={14} className="mr-1.5" /> 360 File
+                          </Button>
+
+                          <Button
+                            onClick={() => openEditModal(p)}
+                            variant="ghost" size="icon"
+                            className="h-9 w-9 text-slate-400 hover:text-blue-600 rounded-xl"
+                          >
+                            <Edit3 size={16} />
+                          </Button>
+
+                          <Button
+                            onClick={() => exportPatientEhrPdf(p)}
+                            variant="ghost" size="icon"
+                            className="h-9 w-9 text-slate-400 hover:text-slate-900 rounded-xl"
+                          >
+                            <Printer size={16} />
+                          </Button>
+                        </div>
+                      </TableCell>
+
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* ==================================================================== */}
       {/* MODAL 1: REGISTER NEW PATIENT FORM */}
@@ -420,70 +649,164 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
             </div>
           </div>
 
-          <ScrollArea className="max-h-[75vh] p-8 space-y-6 bg-white">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              <div className="space-y-2 md:col-span-2">
-                <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Full Patient Name *</Label>
-                <Input placeholder="e.g. Mukasa David" value={newPatient.full_name} onChange={e => setNewPatient({ ...newPatient, full_name: e.target.value })} className="h-12 rounded-2xl font-bold" />
-              </div>
+          <ScrollArea className="max-h-[75vh] bg-white">
+            <div className="p-8 space-y-8">
 
-              <div className="space-y-2">
-                <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Gender *</Label>
-                <Select value={newPatient.gender} onValueChange={v => setNewPatient({ ...newPatient, gender: v })}>
-                  <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Male" className="font-bold">Male</SelectItem>
-                    <SelectItem value="Female" className="font-bold">Female</SelectItem>
-                    <SelectItem value="Other" className="font-bold">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* SECTION: IDENTITY */}
+              <div className="space-y-4">
+                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Identity</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Full Patient Name *</Label>
+                    <Input placeholder="e.g. Mukasa David" value={newPatient.full_name} onChange={e => setNewPatient({ ...newPatient, full_name: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                  </div>
 
-              <div className="space-y-2">
-                <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Date of Birth (DOB)</Label>
-                <Input type="date" value={newPatient.dob} onChange={e => setNewPatient({ ...newPatient, dob: e.target.value })} className="h-12 rounded-2xl font-bold" />
-              </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Gender *</Label>
+                    <Select value={newPatient.gender} onValueChange={v => setNewPatient({ ...newPatient, gender: v })}>
+                      <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male" className="font-bold">Male</SelectItem>
+                        <SelectItem value="Female" className="font-bold">Female</SelectItem>
+                        <SelectItem value="Other" className="font-bold">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="space-y-2">
-                <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Blood Group</Label>
-                <Select value={newPatient.blood_group} onValueChange={v => setNewPatient({ ...newPatient, blood_group: v })}>
-                  <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(b => (
-                      <SelectItem key={b} value={b} className="font-bold">Group {b}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Date of Birth (DOB)</Label>
+                    <Input type="date" value={newPatient.dob} onChange={e => setNewPatient({ ...newPatient, dob: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                  </div>
 
-              <div className="space-y-2">
-                <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Phone Number</Label>
-                <Input placeholder="e.g. +256 700 000000" value={newPatient.phone} onChange={e => setNewPatient({ ...newPatient, phone: e.target.value })} className="h-12 rounded-2xl font-bold" />
-              </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Blood Group</Label>
+                    <Select value={newPatient.blood_group} onValueChange={v => setNewPatient({ ...newPatient, blood_group: v })}>
+                      <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(b => (
+                          <SelectItem key={b} value={b} className="font-bold">Group {b}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label className="text-[11px] font-black text-rose-500 uppercase ml-1">Known Allergies (Comma Separated)</Label>
-                <Input placeholder="e.g. Penicillin, Sulphur, Nuts, Latex" value={newPatient.allergies} onChange={e => setNewPatient({ ...newPatient, allergies: e.target.value })} className="h-12 rounded-2xl font-bold border-rose-200 bg-rose-50/20 text-rose-900" />
-              </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Marital Status</Label>
+                    <Select value={newPatient.marital_status} onValueChange={v => setNewPatient({ ...newPatient, marital_status: v })}>
+                      <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MARITAL_STATUSES.map(m => (
+                          <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Insurance Provider & Policy No</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input placeholder="e.g. Prudential / UAP / Jubilee" value={newPatient.insurance_provider} onChange={e => setNewPatient({ ...newPatient, insurance_provider: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                  <Input placeholder="Policy #" value={newPatient.insurance_policy_no} onChange={e => setNewPatient({ ...newPatient, insurance_policy_no: e.target.value })} className="h-12 rounded-2xl font-mono font-bold" />
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
+                      <IdCard size={12} /> National ID / Passport No.
+                    </Label>
+                    <Input placeholder="e.g. CM8901234XXXXX" value={newPatient.national_id} onChange={e => setNewPatient({ ...newPatient, national_id: e.target.value })} className="h-12 rounded-2xl font-mono font-bold" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
+                      <Briefcase size={12} /> Occupation
+                    </Label>
+                    <Input placeholder="e.g. Teacher, Boda Rider, Trader" value={newPatient.occupation} onChange={e => setNewPatient({ ...newPatient, occupation: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Emergency Contact Person & Phone</Label>
-                <div className="grid grid-cols-2 gap-4">
+              {/* SECTION: CONTACT */}
+              <div className="space-y-4">
+                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Contact Details</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
+                      <Phone size={12} /> Phone Number
+                    </Label>
+                    <Input placeholder="e.g. +256 700 000000" value={newPatient.phone} onChange={e => setNewPatient({ ...newPatient, phone: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Referring Facility (if any)</Label>
+                    <Input placeholder="e.g. Mulago Regional Referral Hospital" value={newPatient.referring_facility} onChange={e => setNewPatient({ ...newPatient, referring_facility: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
+                      <MapPin size={12} /> Residential Address
+                    </Label>
+                    <Textarea placeholder="e.g. Plot 24, Kanjokya Street, Kampala" value={newPatient.address} onChange={e => setNewPatient({ ...newPatient, address: e.target.value })} className="min-h-[72px] rounded-2xl font-medium resize-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION: CLINICAL */}
+              <div className="space-y-4">
+                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Clinical Background</Label>
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-black text-rose-500 uppercase ml-1">Known Allergies (Comma Separated)</Label>
+                    <Input placeholder="e.g. Penicillin, Sulphur, Nuts, Latex" value={newPatient.allergies} onChange={e => setNewPatient({ ...newPatient, allergies: e.target.value })} className="h-12 rounded-2xl font-bold border-rose-200 bg-rose-50/20 text-rose-900" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Medical History Summary</Label>
+                    <Textarea placeholder="Chronic conditions, past surgeries, ongoing medication, family history..." value={newPatient.medical_history} onChange={e => setNewPatient({ ...newPatient, medical_history: e.target.value })} className="min-h-[96px] rounded-2xl font-medium resize-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION: INSURANCE */}
+              <div className="space-y-4">
+                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Insurance & Billing</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
+                      <CreditCard size={12} /> Insurance Provider & Policy No
+                    </Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Input placeholder="e.g. Prudential / UAP / Jubilee" value={newPatient.insurance_provider} onChange={e => setNewPatient({ ...newPatient, insurance_provider: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                      <Input placeholder="Policy #" value={newPatient.insurance_policy_no} onChange={e => setNewPatient({ ...newPatient, insurance_policy_no: e.target.value })} className="h-12 rounded-2xl font-mono font-bold" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Coverage %</Label>
+                    <div className="relative">
+                      <Input type="number" min="0" max="100" value={newPatient.coverage_percentage} onChange={e => setNewPatient({ ...newPatient, coverage_percentage: Number(e.target.value) })} className="h-12 rounded-2xl font-black" />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-xs">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION: NEXT OF KIN */}
+              <div className="space-y-4">
+                <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                  <HeartHandshake size={12} /> Next of Kin / Emergency Contact
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input placeholder="Contact Name" value={newPatient.emergency_contact_name} onChange={e => setNewPatient({ ...newPatient, emergency_contact_name: e.target.value })} className="h-12 rounded-2xl font-bold" />
                   <Input placeholder="Contact Phone" value={newPatient.emergency_contact_phone} onChange={e => setNewPatient({ ...newPatient, emergency_contact_phone: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                  <Select value={newPatient.emergency_contact_relationship} onValueChange={v => setNewPatient({ ...newPatient, emergency_contact_relationship: v })}>
+                    <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RELATIONSHIPS.map(r => (
+                        <SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -500,7 +823,147 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
       </Dialog>
 
       {/* ==================================================================== */}
-      {/* MODAL 2: DEEP PATIENT 360 FILE DRAWER */}
+      {/* MODAL 2: EDIT EXISTING PATIENT FILE */}
+      {/* ==================================================================== */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-2xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-none shadow-3xl">
+          <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-xl font-black uppercase tracking-wider flex items-center gap-3">
+                <Edit3 className="text-blue-500" /> Edit Patient File
+              </DialogTitle>
+              <DialogDescription className="text-slate-400 text-xs mt-1 uppercase font-medium">
+                {selectedPatient?.patient_uid} • Update record & archive status
+              </DialogDescription>
+            </div>
+          </div>
+
+          <ScrollArea className="max-h-[75vh] bg-white">
+            <div className="p-8 space-y-8">
+
+              {/* ARCHIVE / ACTIVE TOGGLE */}
+              <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <div>
+                  <Label className="text-xs font-black uppercase text-slate-700">File Status</Label>
+                  <p className="text-[10px] font-medium text-slate-400 mt-0.5">Archived patients are hidden from active workflows but retained for records.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={cn("text-[10px] font-black uppercase", editPatient.is_active ? "text-emerald-600" : "text-slate-400")}>
+                    {editPatient.is_active ? 'Active' : 'Archived'}
+                  </span>
+                  <Switch checked={editPatient.is_active} onCheckedChange={v => setEditPatient({ ...editPatient, is_active: v })} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Full Patient Name *</Label>
+                  <Input value={editPatient.full_name} onChange={e => setEditPatient({ ...editPatient, full_name: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Blood Group</Label>
+                  <Select value={editPatient.blood_group} onValueChange={v => setEditPatient({ ...editPatient, blood_group: v })}>
+                    <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(b => (
+                        <SelectItem key={b} value={b} className="font-bold">Group {b}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Marital Status</Label>
+                  <Select value={editPatient.marital_status} onValueChange={v => setEditPatient({ ...editPatient, marital_status: v })}>
+                    <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MARITAL_STATUSES.map(m => (
+                        <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Phone Number</Label>
+                  <Input value={editPatient.phone} onChange={e => setEditPatient({ ...editPatient, phone: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">National ID / Passport No.</Label>
+                  <Input value={editPatient.national_id} onChange={e => setEditPatient({ ...editPatient, national_id: e.target.value })} className="h-12 rounded-2xl font-mono font-bold" />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Residential Address</Label>
+                  <Textarea value={editPatient.address} onChange={e => setEditPatient({ ...editPatient, address: e.target.value })} className="min-h-[72px] rounded-2xl font-medium resize-none" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Occupation</Label>
+                  <Input value={editPatient.occupation} onChange={e => setEditPatient({ ...editPatient, occupation: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Coverage %</Label>
+                  <Input type="number" min="0" max="100" value={editPatient.coverage_percentage} onChange={e => setEditPatient({ ...editPatient, coverage_percentage: Number(e.target.value) })} className="h-12 rounded-2xl font-black" />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-[11px] font-black text-rose-500 uppercase ml-1">Known Allergies (Comma Separated)</Label>
+                  <Input value={editPatient.allergies} onChange={e => setEditPatient({ ...editPatient, allergies: e.target.value })} className="h-12 rounded-2xl font-bold border-rose-200 bg-rose-50/20 text-rose-900" />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Medical History Summary</Label>
+                  <Textarea value={editPatient.medical_history} onChange={e => setEditPatient({ ...editPatient, medical_history: e.target.value })} className="min-h-[96px] rounded-2xl font-medium resize-none" />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Insurance Provider & Policy No</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input value={editPatient.insurance_provider} onChange={e => setEditPatient({ ...editPatient, insurance_provider: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                    <Input value={editPatient.insurance_policy_no} onChange={e => setEditPatient({ ...editPatient, insurance_policy_no: e.target.value })} className="h-12 rounded-2xl font-mono font-bold" />
+                  </div>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Next of Kin / Emergency Contact</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input placeholder="Contact Name" value={editPatient.emergency_contact_name} onChange={e => setEditPatient({ ...editPatient, emergency_contact_name: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                    <Input placeholder="Contact Phone" value={editPatient.emergency_contact_phone} onChange={e => setEditPatient({ ...editPatient, emergency_contact_phone: e.target.value })} className="h-12 rounded-2xl font-bold" />
+                    <Select value={editPatient.emergency_contact_relationship} onValueChange={v => setEditPatient({ ...editPatient, emergency_contact_relationship: v })}>
+                      <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RELATIONSHIPS.map(r => (
+                          <SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="p-6 bg-slate-50 border-t flex gap-4">
+            <Button variant="ghost" onClick={() => setIsEditModalOpen(false)} className="h-12 font-bold uppercase text-xs text-slate-400">Cancel</Button>
+            <Button onClick={() => updatePatientMutation.mutate()} disabled={updatePatientMutation.isPending} className="h-12 px-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-xl uppercase text-xs flex-1">
+              {updatePatientMutation.isPending ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : "Save Patient File"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ==================================================================== */}
+      {/* MODAL 3: DEEP PATIENT 360 FILE DRAWER */}
       {/* ==================================================================== */}
       <Dialog open={isPatientFileOpen} onOpenChange={setIsPatientFileOpen}>
         <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-none shadow-3xl">
@@ -517,12 +980,51 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
               </div>
             </div>
 
-            <Button onClick={() => exportPatientEhrPdf(selectedPatient)} variant="outline" className="bg-transparent border-slate-700 text-white hover:bg-slate-800 font-bold text-xs">
-              <Printer size={16} className="mr-2" /> Export EHR PDF
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => openEditModal(selectedPatient)} variant="outline" className="bg-transparent border-slate-700 text-white hover:bg-slate-800 font-bold text-xs">
+                <Edit3 size={16} className="mr-2" /> Edit File
+              </Button>
+              <Button onClick={() => exportPatientEhrPdf(selectedPatient)} variant="outline" className="bg-transparent border-slate-700 text-white hover:bg-slate-800 font-bold text-xs">
+                <Printer size={16} className="mr-2" /> Export EHR PDF
+              </Button>
+            </div>
           </div>
 
           <ScrollArea className="max-h-[75vh] p-8 bg-white">
+
+            {/* QUICK BIO STRIP */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <span className="text-[9px] font-black uppercase text-slate-400">Phone</span>
+                <p className="text-xs font-bold text-slate-800 mt-1">{selectedPatient?.medical_history_summary?.phone || 'N/A'}</p>
+              </div>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <span className="text-[9px] font-black uppercase text-slate-400">Occupation</span>
+                <p className="text-xs font-bold text-slate-800 mt-1">{selectedPatient?.medical_history_summary?.occupation || 'N/A'}</p>
+              </div>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <span className="text-[9px] font-black uppercase text-slate-400">Marital Status</span>
+                <p className="text-xs font-bold text-slate-800 mt-1">{selectedPatient?.medical_history_summary?.marital_status || 'N/A'}</p>
+              </div>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <span className="text-[9px] font-black uppercase text-slate-400">Next of Kin</span>
+                <p className="text-xs font-bold text-slate-800 mt-1 truncate">
+                  {selectedPatient?.medical_history_summary?.emergency_contact?.name || 'N/A'}
+                  {selectedPatient?.medical_history_summary?.emergency_contact?.relationship ? ` (${selectedPatient.medical_history_summary.emergency_contact.relationship})` : ''}
+                </p>
+              </div>
+            </div>
+
+            {selectedPatient?.medical_history_summary?.notes && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
+                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-[9px] font-black uppercase text-amber-700">Medical History Summary</span>
+                  <p className="text-xs font-medium text-amber-900 mt-1">{selectedPatient.medical_history_summary.notes}</p>
+                </div>
+              </div>
+            )}
+
             <Tabs defaultValue="labs" className="space-y-6">
               <TabsList className="bg-slate-100 p-1 rounded-2xl h-12 w-full justify-start">
                 <TabsTrigger value="labs" className="rounded-xl font-bold text-xs uppercase px-6"><FlaskConical size={14} className="mr-2"/> Lab History ({patientLabs?.length || 0})</TabsTrigger>
