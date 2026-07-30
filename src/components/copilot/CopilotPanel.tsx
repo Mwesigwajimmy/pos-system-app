@@ -5,6 +5,11 @@
  * The chat surface itself (header + thread + composer). Mounted inside
  * CopilotDock, which handles the responsive slide-in (desktop) / full
  * popup (mobile) shell and backdrop around it.
+ *
+ * 🔍 TEMPORARY DIAGNOSTICS ADDED (v-debug): a fixed red banner showing the
+ * raw `input` state on every render, and a console.log inside onChange
+ * showing the raw DOM event value. Used to trace why typing resets to
+ * empty. REMOVE both once the typing bug is confirmed and fixed.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -161,6 +166,11 @@ export default function CopilotPanel() {
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden relative font-sans">
 
+      {/* 🔍 TEMPORARY DIAGNOSTIC — remove after testing */}
+      <div style={{ position: 'fixed', top: 0, left: 0, background: 'red', color: 'white', padding: '4px', zIndex: 9999, fontSize: '10px' }}>
+        RAW INPUT STATE: "{safeInput}" (length: {safeInput.length})
+      </div>
+
       <AnimatePresence mode="wait">
         {boardroomData && (
           <AuraBoardroom
@@ -295,7 +305,10 @@ export default function CopilotPanel() {
           <input
             ref={inputRef}
             value={safeInput}
-            onChange={handleInputChange}
+            onChange={(e) => {
+              console.log('%c[DIAGNOSTIC] onChange fired, raw DOM value:', 'color: cyan; font-weight: bold;', e.target.value);
+              handleInputChange(e);
+            }}
             placeholder={!isReady ? "Connecting..." : "Ask Aura anything..."}
             disabled={isChatLoading}
             className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] sm:text-sm text-slate-900 placeholder:text-slate-400 h-9"
