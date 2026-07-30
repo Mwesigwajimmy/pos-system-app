@@ -1,7 +1,4 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import { Toaster } from "sonner";
-import SiteShell from "@/components/SiteShell";
 
 export const metadata: Metadata = {
   title: "BBU1 — Business Operating System",
@@ -14,17 +11,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default function WebsiteLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
-      <body className="min-h-full flex flex-col">
-        <SiteShell>{children}</SiteShell>
-        <Toaster position="top-center" richColors />
-      </body>
-    </html>
-  );
+  return <>{children}</>;
 }
