@@ -3,14 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-  Rocket, Link2, X, Globe2, Smartphone, User, Leaf,
+  Link2, X, Globe2, Smartphone, User, Leaf,
   ShieldCheck, MessageSquareText, DownloadCloud, Sparkles, Heart
 } from 'lucide-react';
 import FooterNewsletter from '@/components/FooterNewsletter';
 
 export default function SiteFooter() {
   return (
-    <footer className="relative bg-gradient-to-b from-blue-400 via-blue-600 via-60% to-blue-950 text-white pt-24 pb-12 border-t-0 z-10 selection:bg-white/30">
+    <footer className="relative bg-blue-600 text-white pt-24 pb-12 border-t-0 z-10 selection:bg-white/30">
       {/* Smooth blend from above */}
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white to-transparent pointer-events-none" />
 
@@ -20,9 +20,6 @@ export default function SiteFooter() {
           {/* 1. Branding + Contacts */}
           <div className="lg:col-span-4 space-y-8">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-white rounded-xl shadow-sm">
-                <Rocket className="h-7 w-7 text-blue-600" />
-              </div>
               <h3 className="text-2xl font-bold text-white tracking-tight">
                 BBU1 <span className="text-blue-100 font-light text-base ml-1 uppercase tracking-widest">Global</span>
               </h3>
@@ -122,6 +119,8 @@ export default function SiteFooter() {
               </li>
               <li><Link href="/contact" className="text-blue-100 hover:text-white transition-colors">Contact us</Link></li>
               <li><Link href="/donate" className="flex items-center gap-2.5 text-white font-bold hover:text-blue-100 transition-colors"><Heart size={16} /> Giving back</Link></li>
+              <li><Link href="/terms" className="text-blue-100 hover:text-white transition-colors">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="text-blue-100 hover:text-white transition-colors">Privacy Policy</Link></li>
             </ul>
           </div>
         </div>

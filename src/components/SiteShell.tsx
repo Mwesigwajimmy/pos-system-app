@@ -16,7 +16,7 @@ const SUPPORTED_LOCALES = ['de', 'en', 'fr', 'lg', 'nl', 'no', 'nyn', 'pt-BR', '
 const PUBLIC_ROUTE_PREFIXES = [
   '/about', '/aura-ai', '/blog', '/careers', '/contact', '/courses',
   '/donate', '/download', '/features', '/help-centre', '/industries',
-  '/login', '/newsletter', '/pricing', '/signup', '/updates',
+  '/login', '/newsletter', '/pricing', '/privacy', '/signup', '/terms', '/updates',
 ];
 
 function stripLocale(pathname: string): string {
