@@ -1,29 +1,14 @@
 'use client';
 
-/**
- * --- BBU1 SOVEREIGN SCANNER WORKBENCH ---
- * VERSION: v4.2 OMEGA (ENTERPRISE AUTO-RESUME & GLOBAL PRICING WELD)
- * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Logistics
- * 
- * FEATURES:
- * 1. 3-TIER SMART FALLBACK: Auto-adapts across phones, tablets, laptops, & webcams.
- * 2. CAMERA FLIP / SWITCHER: 1-Tap toggle between front & rear cameras.
- * 3. AUTO-RESUME ENGINE: Unpauses camera immediately when onboarding modal closes.
- * 4. GLOBAL PRICING PIPELINE: Auto-fills scanned retail price & acquisition cost.
- * 5. HIGH-PRECISION 1D/2D DECODER: EAN-13, Code-128, UPC-A, QR Codes.
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import jsPDF from 'jspdf';
 import bwipjs from 'bwip-js';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { 
-    Barcode, Loader2, PackageCheck, 
-    Printer, History, CheckCircle2,
-    Activity, ArrowDownToLine, ShieldCheck,
-    Globe, Camera, XCircle, Plus, Sparkles,
-    SwitchCamera, RefreshCw
+import {
+  Barcode, Loader2, Printer, History, CheckCircle2,
+  Activity, ArrowDownToLine, Camera, XCircle,
+  SwitchCamera
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeepAudioEngine } from '@/lib/hardware/DeepAudioEngine';
@@ -35,536 +20,488 @@ import { cn } from '@/lib/utils';
 import ProductManagementConsole from '@/components/inventory/AddProductDialog';
 
 interface ScannedSessionItem {
-    variant_id: number;
-    product_name: string;
-    variant_name: string;
-    sku: string;
-    price: number;
-    qtyAdded: number;
-    timestamp: Date;
-    location_id: string;
-    tenant_id: string;
+  variant_id: number;
+  product_name: string;
+  variant_name: string;
+  sku: string;
+  price: number;
+  qtyAdded: number;
+  timestamp: Date;
+  location_id: string;
+  tenant_id: string;
 }
 
-interface BusinessDNA {
-    name: string;
-    currency: string;
-    location_name: string;
+interface BusinessProfile {
+  name: string;
+  currency: string;
+  location_name: string;
 }
 
 interface CameraDeviceOption {
-    id: string;
-    label: string;
+  id: string;
+  label: string;
 }
 
 interface ScanBridgePacket {
-    barcode: string;
-    name: string;
-    price?: number;
-    costPrice?: number;
-    isGlobal: boolean;
+  barcode: string;
+  name: string;
+  price?: number;
+  costPrice?: number;
+  isGlobal: boolean;
 }
 
 const supabase = createClient();
 
 export default function ScannerWorkbench({ businessId, categories = [] }: { businessId: string; categories?: any[] }) {
-    const [isScanning, setIsScanning] = useState(false);
-    const [isCameraActive, setIsCameraActive] = useState(false);
-    const [sessionLog, setSessionLog] = useState<ScannedSessionItem[]>([]);
-    const [dna, setDna] = useState<BusinessDNA | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [sessionLog, setSessionLog] = useState<ScannedSessionItem[]>([]);
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
 
-    // DYNAMIC CAMERA HARDWARE ENUMERATION
-    const [availableCameras, setAvailableCameras] = useState<CameraDeviceOption[]>([]);
-    const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const [availableCameras, setAvailableCameras] = useState<CameraDeviceOption[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
 
-    // CAMERA-TO-ONBOARD BRIDGE STATE (WITH GLOBAL PRICING)
-    const [scanBridgeData, setScanBridgeData] = useState<ScanBridgePacket | null>(null);
+  const [scanBridgeData, setScanBridgeData] = useState<ScanBridgePacket | null>(null);
 
-    const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
-    useEffect(() => {
-        const fetchNodeIdentity = async () => {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('business_name, currency')
-                .eq('business_id', businessId)
-                .maybeSingle();
+  useEffect(() => {
+    const fetchBusinessProfile = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_name, currency')
+        .eq('business_id', businessId)
+        .maybeSingle();
 
-            if (profile) {
-                setDna({
-                    name: profile.business_name || "Business Registry",
-                    currency: profile.currency || 'UGX',
-                    location_name: "Primary Node"
-                });
-            }
-        };
-        fetchNodeIdentity();
-    }, [businessId]);
+      if (profile) {
+        setBusiness({
+          name: profile.business_name || "Business",
+          currency: profile.currency || 'UGX',
+          location_name: "Main location"
+        });
+      }
+    };
+    fetchBusinessProfile();
+  }, [businessId]);
 
-    // ====================================================================
-    // SMART ADAPTIVE CAMERA PROTOCOL
-    // ====================================================================
-    const startCamera = async () => {
-        setIsCameraActive(true);
-        const html5QrCode = new Html5Qrcode("bbu1-neural-view");
-        scannerRef.current = html5QrCode;
+  const scanConfig = {
+    fps: 20,
+    qrbox: { width: 280, height: 160 },
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.ITF
+    ],
+    experimentalFeatures: {
+      useBarCodeDetectorIfSupported: true
+    }
+  };
 
-        // HIGH-PRECISION 1D & 2D DECODER CONFIGURATION
-        const config = { 
-            fps: 20, 
-            qrbox: { width: 280, height: 160 },
-            formatsToSupport: [
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E,
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.ITF
-            ],
-            experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true // GPU Hardware Acceleration
-            }
-        };
+  const startCamera = async () => {
+    setIsCameraActive(true);
+    const html5QrCode = new Html5Qrcode("scanner-viewport");
+    scannerRef.current = html5QrCode;
 
-        const onScanSuccess = (decodedText: string) => {
-            console.log("📷 BARCODE DETECTED:", decodedText);
-            html5QrCode.pause();
-            executeDeepScan(decodedText);
-        };
-
-        try {
-            // STEP 1: HARDWARE DISCOVERY - Enumerate physical cameras
-            const devices = await Html5Qrcode.getCameras();
-            
-            if (devices && devices.length > 0) {
-                const formattedDevices = devices.map(d => ({ 
-                    id: d.id, 
-                    label: d.label || `Camera ${d.id.substring(0, 5)}` 
-                }));
-                setAvailableCameras(formattedDevices);
-
-                // Auto-select rear/back camera on phones & tablets
-                let targetCameraId = selectedCameraId;
-                if (!targetCameraId) {
-                    const backCamera = devices.find(d => {
-                        const lbl = d.label.toLowerCase();
-                        return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment') || lbl.includes('main');
-                    });
-                    targetCameraId = backCamera ? backCamera.id : devices[0].id;
-                    setSelectedCameraId(targetCameraId);
-                }
-
-                // TIER 1: Start with target camera ID
-                try {
-                    await html5QrCode.start(targetCameraId, config, onScanSuccess, () => {});
-                    return;
-                } catch (e) {
-                    console.warn("Tier 1 camera start failed, attempting Tier 2 fallback...", e);
-                }
-            }
-
-            // TIER 2: Fallback to environment facing mode
-            try {
-                await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
-                return;
-            } catch (e) {
-                console.warn("Tier 2 environment mode failed, attempting Tier 3 universal fallback...", e);
-            }
-
-            // TIER 3: Universal Fallback (Guaranteed to work on all webcams and screens)
-            await html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, () => {});
-
-        } catch (err: any) {
-            console.error("Camera Hardware Protocol Error:", err);
-            const errString = err?.message || err?.toString() || '';
-            
-            if (errString.includes('Permission') || errString.includes('denied') || errString.includes('NotAllowedError')) {
-                toast.error("Camera Permission Blocked", { 
-                    description: "Tap the lock icon in your browser URL bar and set Camera to ALLOW." 
-                });
-            } else {
-                toast.error("Hardware Refusal", { 
-                    description: "Could not lock camera hardware. Ensure no other application is using the camera." 
-                });
-            }
-            setIsCameraActive(false);
-        }
+    const onScanSuccess = (decodedText: string) => {
+      html5QrCode.pause();
+      processScan(decodedText);
     };
 
-    // ====================================================================
-    // SMART CAMERA SWITCHER (FLIP BETWEEN FRONT & REAR CAMERAS)
-    // ====================================================================
-    const switchCamera = async () => {
-        if (availableCameras.length <= 1) {
-            toast.info("Single Camera System", { description: "No secondary camera hardware detected on this device." });
-            return;
+    try {
+      // Discover physical cameras and prefer the rear/back camera on phones and tablets
+      const devices = await Html5Qrcode.getCameras();
+
+      if (devices && devices.length > 0) {
+        const formattedDevices = devices.map(d => ({
+          id: d.id,
+          label: d.label || `Camera ${d.id.substring(0, 5)}`
+        }));
+        setAvailableCameras(formattedDevices);
+
+        let targetCameraId = selectedCameraId;
+        if (!targetCameraId) {
+          const backCamera = devices.find(d => {
+            const lbl = d.label.toLowerCase();
+            return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment') || lbl.includes('main');
+          });
+          targetCameraId = backCamera ? backCamera.id : devices[0].id;
+          setSelectedCameraId(targetCameraId);
         }
-
-        const currentIndex = availableCameras.findIndex(c => c.id === selectedCameraId);
-        const nextIndex = (currentIndex + 1) % availableCameras.length;
-        const nextCamera = availableCameras[nextIndex];
-
-        setSelectedCameraId(nextCamera.id);
-
-        if (scannerRef.current) {
-            try {
-                await scannerRef.current.stop();
-                scannerRef.current = null;
-            } catch (e) { console.error("Hardware Release Fault"); }
-        }
-
-        setIsCameraActive(true);
-        const html5QrCode = new Html5Qrcode("bbu1-neural-view");
-        scannerRef.current = html5QrCode;
-
-        const config = { 
-            fps: 20, 
-            qrbox: { width: 280, height: 160 },
-            formatsToSupport: [
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E,
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.ITF
-            ],
-            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-        };
 
         try {
-            await html5QrCode.start(
-                nextCamera.id,
-                config,
-                (decodedText) => {
-                    console.log("📷 BARCODE DETECTED:", decodedText);
-                    html5QrCode.pause();
-                    executeDeepScan(decodedText);
-                },
-                () => {}
-            );
-            toast.success("Camera Flipped", { description: `Active: ${nextCamera.label}` });
+          await html5QrCode.start(targetCameraId, scanConfig, onScanSuccess, () => {});
+          return;
         } catch (e) {
-            toast.error("Camera Switch Refused");
+          console.warn("Camera start with device id failed, trying facingMode fallback", e);
         }
-    };
+      }
 
-    const stopCamera = async () => {
-        if (scannerRef.current) {
-            try {
-                await scannerRef.current.stop();
-                scannerRef.current = null;
-            } catch (e) { console.error("Hardware Release Fault"); }
-        }
-        setIsCameraActive(false);
-    };
+      try {
+        await html5QrCode.start({ facingMode: "environment" }, scanConfig, onScanSuccess, () => {});
+        return;
+      } catch (e) {
+        console.warn("Environment-facing camera failed, trying default camera", e);
+      }
 
-    // ====================================================================
-    // AUTO-RESUME CAMERA WHEN ONBOARDING MODAL CLOSES / DISCARDS
-    // ====================================================================
-    const handleCloseBridgeModal = () => {
-        setScanBridgeData(null);
-        
-        // Auto-resume camera stream so user can scan next product immediately
-        if (scannerRef.current && scannerRef.current.isPaused()) {
-            try {
-                scannerRef.current.resume();
-            } catch (e) {
-                console.warn("Camera auto-resume notice:", e);
-            }
-        }
-    };
+      await html5QrCode.start({ facingMode: "user" }, scanConfig, onScanSuccess, () => {});
 
-    // HARDWARE KEYBOARD LISTENER FOR PHYSICAL PLUG-IN BARCODE GUNS
-    useEffect(() => {
-        let buffer = '';
-        let lastKeyTime = Date.now();
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      const errString = err?.message || err?.toString() || '';
 
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (document.activeElement?.tagName === 'INPUT') return;
-            const now = Date.now();
-            if (now - lastKeyTime > 50) buffer = '';
-            
-            if (e.key === 'Enter') {
-                if (buffer.length > 2) executeDeepScan(buffer);
-                buffer = '';
-            } else if (e.key.length === 1) {
-                buffer += e.key;
-            }
-            lastKeyTime = now;
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            if (scannerRef.current) stopCamera();
-        };
-    }, [businessId]);
-
-    const printSovereignLabel = async (item: ScannedSessionItem) => {
-        const promise = async () => {
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [50, 25] });
-            
-            const canvas = document.createElement('canvas');
-            bwipjs.toCanvas(canvas, {
-                bcid: 'code128', text: item.sku,
-                scale: 3, height: 10, includetext: true, textsize: 8,
-            });
-
-            const barcodeImg = canvas.toDataURL('image/png');
-
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(6);
-            doc.text((dna?.name || "BBU1 NODE").toUpperCase(), 25, 4, { align: 'center' });
-            doc.setFontSize(9);
-            doc.text(item.product_name.toUpperCase().substring(0, 22), 25, 8, { align: 'center' });
-            doc.setFontSize(7);
-            doc.text(item.variant_name.toUpperCase(), 25, 11, { align: 'center' });
-            doc.addImage(barcodeImg, 'PNG', 5, 12, 40, 8);
-            doc.setLineWidth(0.1);
-            doc.line(5, 21, 45, 21);
-            doc.setFontSize(10);
-            doc.text(`${dna?.currency} ${item.price.toLocaleString()}`, 25, 24, { align: 'center' });
-
-            const blob = doc.output('blob');
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
-        };
-
-        toast.promise(promise(), {
-            loading: 'Generating High-Precision Label...',
-            success: 'Label Sent to Hardware Bridge',
-            error: 'Hardware Print Failure'
+      if (errString.includes('Permission') || errString.includes('denied') || errString.includes('NotAllowedError')) {
+        toast.error("Camera access blocked", {
+          description: "Allow camera access from the browser's address bar to continue."
         });
-    };
-
-    // ====================================================================
-    // DEEP SCAN EXECUTION ENGINE
-    // ====================================================================
-    const executeDeepScan = async (code: string) => {
-        setIsScanning(true);
-        
-        const { data: handshake, error } = await supabase.rpc('fn_sovereign_barcode_handshake', {
-            p_barcode: code,
-            p_business_id: businessId
+      } else {
+        toast.error("Camera unavailable", {
+          description: "Make sure no other app is using the camera and try again."
         });
+      }
+      setIsCameraActive(false);
+    }
+  };
 
-        if (error || !handshake) {
-            try { DeepAudioEngine.playError(); } catch (e) {}
-            toast.error("Identity Desync", { description: `Code ${code} query failed.` });
-            setIsScanning(false);
-            
-            // Auto-resume scanner
-            if (scannerRef.current && scannerRef.current.isPaused()) {
-                setTimeout(() => { scannerRef.current?.resume(); }, 2000);
-            }
-            return;
-        }
+  const switchCamera = async () => {
+    if (availableCameras.length <= 1) {
+      toast.info("Only one camera detected on this device.");
+      return;
+    }
 
-        // CASE 1: LOCAL MATCH -> AUTO-STOCK (+1)
-        if (handshake.status === 'LOCAL_FOUND') {
-            const item = handshake.data;
-            const qtyToInject = Number(item.units_per_pack) || 1;
+    const currentIndex = availableCameras.findIndex(c => c.id === selectedCameraId);
+    const nextIndex = (currentIndex + 1) % availableCameras.length;
+    const nextCamera = availableCameras[nextIndex];
 
-            const { error: rpcError } = await supabase.rpc('process_enterprise_inbound_scan', {
-                p_variant_id: item.variant_id,
-                p_location_id: item.location_id,
-                p_business_id: businessId,
-                p_tenant_id: item.tenant_id,
-                p_qty_to_add: qtyToInject,
-                p_cost: item.cost_price
-            });
+    setSelectedCameraId(nextCamera.id);
 
-            if (rpcError) {
-                try { DeepAudioEngine.playError(); } catch (e) {}
-                toast.error("Ledger Handshake Refused");
-            } else {
-                try { DeepAudioEngine.playSuccess(); } catch (e) {}
-                const logEntry: ScannedSessionItem = {
-                    variant_id: item.variant_id,
-                    product_name: item.product_name,
-                    variant_name: item.variant_name,
-                    sku: item.sku,
-                    price: item.cost_price,
-                    qtyAdded: qtyToInject,
-                    timestamp: new Date(),
-                    location_id: item.location_id,
-                    tenant_id: item.tenant_id
-                };
-                setSessionLog(prev => [logEntry, ...prev]);
-                toast.success(`Node Reconciled: +${qtyToInject} ${item.product_name}`);
-            }
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current = null;
+      } catch (e) { console.error("Could not release camera", e); }
+    }
 
-            // Auto-resume camera stream after local reconciliation
-            if (scannerRef.current && scannerRef.current.isPaused()) {
-                setTimeout(() => { scannerRef.current?.resume(); }, 2500);
-            }
-        } 
-        // CASE 2: GLOBAL MATCH -> TRIGGER ONBOARDING DIALOG WITH AUTO-FILLED PRICING
-        else if (handshake.status === 'GLOBAL_FOUND') {
-            try { DeepAudioEngine.playSuccess(); } catch (e) {}
-            setScanBridgeData({
-                barcode: code,
-                name: handshake.data.product_name || '',
-                price: Number(handshake.data.suggested_price) || 0,
-                costPrice: Number(handshake.data.suggested_cost) || 0,
-                isGlobal: true
-            });
-        } 
-        // CASE 3: NEW UNKNOWN BARCODE -> TRIGGER ONBOARDING DIALOG
-        else {
-            try { DeepAudioEngine.playError(); } catch (e) {}
-            setScanBridgeData({
-                barcode: code,
-                name: '',
-                price: 0,
-                costPrice: 0,
-                isGlobal: false
-            });
-        }
-        
-        setIsScanning(false);
+    setIsCameraActive(true);
+    const html5QrCode = new Html5Qrcode("scanner-viewport");
+    scannerRef.current = html5QrCode;
+
+    try {
+      await html5QrCode.start(
+        nextCamera.id,
+        scanConfig,
+        (decodedText) => {
+          html5QrCode.pause();
+          processScan(decodedText);
+        },
+        () => {}
+      );
+      toast.success(`Switched to ${nextCamera.label}`);
+    } catch (e) {
+      toast.error("Could not switch camera");
+    }
+  };
+
+  const stopCamera = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current = null;
+      } catch (e) { console.error("Could not release camera", e); }
+    }
+    setIsCameraActive(false);
+  };
+
+  const handleCloseBridgeModal = () => {
+    setScanBridgeData(null);
+
+    // Resume the camera stream so the next item can be scanned immediately
+    if (scannerRef.current && scannerRef.current.isPaused()) {
+      try {
+        scannerRef.current.resume();
+      } catch (e) {
+        console.warn("Could not resume camera:", e);
+      }
+    }
+  };
+
+  // Supports physical plug-in barcode scanners, which behave like a fast keyboard
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT') return;
+      const now = Date.now();
+      if (now - lastKeyTime > 50) buffer = '';
+
+      if (e.key === 'Enter') {
+        if (buffer.length > 2) processScan(buffer);
+        buffer = '';
+      } else if (e.key.length === 1) {
+        buffer += e.key;
+      }
+      lastKeyTime = now;
     };
 
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 py-6 h-[calc(100vh-180px)]">
-            
-            {/* HARDWARE ACTION ZONE */}
-            <div className="lg:col-span-5 flex flex-col gap-6">
-                <Card className="flex-1 border-dashed border-4 border-slate-100 bg-slate-900 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden rounded-[2.5rem]">
-                    
-                    {/* CAMERA VIEW NODE */}
-                    <div id="bbu1-neural-view" className={cn(
-                        "w-full h-full rounded-3xl overflow-hidden transition-opacity duration-500",
-                        isCameraActive ? "opacity-100" : "opacity-0 absolute"
-                    )} />
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (scannerRef.current) stopCamera();
+    };
+  }, [businessId]);
 
-                    {!isCameraActive && (
-                        <div className="animate-in fade-in duration-1000">
-                            <Barcode size={120} strokeWidth={1} className={isScanning ? "animate-pulse text-blue-500" : "text-slate-700"} />
-                            <div className="mt-8 space-y-2">
-                                <h2 className="text-xl font-bold text-white uppercase tracking-widest">Scanner Node Idle</h2>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] max-w-xs mx-auto">
-                                    Ready for hardware handshake at {dna?.name || "Target Node"}
-                                </p>
-                            </div>
-                        </div>
-                    )}
+  const printProductLabel = async (item: ScannedSessionItem) => {
+    const promise = async () => {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [50, 25] });
 
-                    {isScanning && !isCameraActive && (
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in">
-                            <Loader2 className="animate-spin text-blue-500 h-10 w-10" />
-                        </div>
-                    )}
+      const canvas = document.createElement('canvas');
+      bwipjs.toCanvas(canvas, {
+        bcid: 'code128', text: item.sku,
+        scale: 3, height: 10, includetext: true, textsize: 8,
+      });
 
-                    {/* LIVE CAMERA OVERLAY CONTROLS */}
-                    <div className="absolute bottom-6 flex items-center gap-3">
-                        <Button 
-                            onClick={isCameraActive ? stopCamera : startCamera}
-                            className={cn(
-                                "h-14 px-8 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl transition-all",
-                                isCameraActive ? "bg-red-600 hover:bg-red-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"
-                            )}
-                        >
-                            {isCameraActive ? <><XCircle className="mr-3 h-4 w-4" /> Shutdown Camera</> : <><Camera className="mr-3 h-4 w-4" /> Activate Phone Scan</>}
-                        </Button>
+      const barcodeImg = canvas.toDataURL('image/png');
 
-                        {/* SMART CAMERA FLIP BUTTON */}
-                        {isCameraActive && availableCameras.length > 1 && (
-                            <Button
-                                onClick={switchCamera}
-                                variant="secondary"
-                                size="icon"
-                                title="Flip Camera"
-                                className="h-14 w-14 rounded-2xl bg-white/20 hover:bg-white/30 text-white backdrop-blur-md shadow-2xl transition-all"
-                            >
-                                <SwitchCamera className="h-5 w-5" />
-                            </Button>
-                        )}
-                    </div>
-                </Card>
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6);
+      doc.text((business?.name || "Business").toUpperCase(), 25, 4, { align: 'center' });
+      doc.setFontSize(9);
+      doc.text(item.product_name.toUpperCase().substring(0, 22), 25, 8, { align: 'center' });
+      doc.setFontSize(7);
+      doc.text(item.variant_name.toUpperCase(), 25, 11, { align: 'center' });
+      doc.addImage(barcodeImg, 'PNG', 5, 12, 40, 8);
+      doc.setLineWidth(0.1);
+      doc.line(5, 21, 45, 21);
+      doc.setFontSize(10);
+      doc.text(`${business?.currency} ${item.price.toLocaleString()}`, 25, 24, { align: 'center' });
 
-                <Card className="p-8 bg-white border border-slate-100 rounded-[2rem] shadow-xl flex justify-between items-center ring-1 ring-slate-100">
-                    <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cycle Volume</p>
-                        <h3 className="text-4xl font-black text-slate-900">{sessionLog.reduce((a, b) => a + b.qtyAdded, 0)} <span className="text-xs text-slate-300 font-bold">UNITS</span></h3>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl">
-                       <Activity className="h-6 w-6 text-blue-600" />
-                    </div>
-                </Card>
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    };
+
+    toast.promise(promise(), {
+      loading: 'Generating label...',
+      success: 'Label ready',
+      error: 'Could not generate label'
+    });
+  };
+
+  const processScan = async (code: string) => {
+    setIsScanning(true);
+
+    const { data: result, error } = await supabase.rpc('fn_sovereign_barcode_handshake', {
+      p_barcode: code,
+      p_business_id: businessId
+    });
+
+    if (error || !result) {
+      try { DeepAudioEngine.playError(); } catch (e) {}
+      toast.error("Lookup failed", { description: `Could not find a match for ${code}.` });
+      setIsScanning(false);
+
+      if (scannerRef.current && scannerRef.current.isPaused()) {
+        setTimeout(() => { scannerRef.current?.resume(); }, 2000);
+      }
+      return;
+    }
+
+    if (result.status === 'LOCAL_FOUND') {
+      const item = result.data;
+      const qtyToInject = Number(item.units_per_pack) || 1;
+
+      const { error: rpcError } = await supabase.rpc('process_enterprise_inbound_scan', {
+        p_variant_id: item.variant_id,
+        p_location_id: item.location_id,
+        p_business_id: businessId,
+        p_tenant_id: item.tenant_id,
+        p_qty_to_add: qtyToInject,
+        p_cost: item.cost_price
+      });
+
+      if (rpcError) {
+        try { DeepAudioEngine.playError(); } catch (e) {}
+        toast.error("Could not update stock");
+      } else {
+        try { DeepAudioEngine.playSuccess(); } catch (e) {}
+        const logEntry: ScannedSessionItem = {
+          variant_id: item.variant_id,
+          product_name: item.product_name,
+          variant_name: item.variant_name,
+          sku: item.sku,
+          price: item.cost_price,
+          qtyAdded: qtyToInject,
+          timestamp: new Date(),
+          location_id: item.location_id,
+          tenant_id: item.tenant_id
+        };
+        setSessionLog(prev => [logEntry, ...prev]);
+        toast.success(`Added ${qtyToInject} × ${item.product_name}`);
+      }
+
+      if (scannerRef.current && scannerRef.current.isPaused()) {
+        setTimeout(() => { scannerRef.current?.resume(); }, 2500);
+      }
+    }
+    else if (result.status === 'GLOBAL_FOUND') {
+      try { DeepAudioEngine.playSuccess(); } catch (e) {}
+      setScanBridgeData({
+        barcode: code,
+        name: result.data.product_name || '',
+        price: Number(result.data.suggested_price) || 0,
+        costPrice: Number(result.data.suggested_cost) || 0,
+        isGlobal: true
+      });
+    }
+    else {
+      try { DeepAudioEngine.playError(); } catch (e) {}
+      setScanBridgeData({
+        barcode: code,
+        name: '',
+        price: 0,
+        costPrice: 0,
+        isGlobal: false
+      });
+    }
+
+    setIsScanning(false);
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 py-6 h-[calc(100vh-180px)]">
+
+      {/* Camera panel */}
+      <div className="lg:col-span-5 flex flex-col gap-4">
+        <Card className="flex-1 border border-slate-200 bg-slate-900 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden rounded-lg">
+
+          <div id="scanner-viewport" className={cn(
+            "w-full h-full rounded-md overflow-hidden transition-opacity duration-500",
+            isCameraActive ? "opacity-100" : "opacity-0 absolute"
+          )} />
+
+          {!isCameraActive && (
+            <div>
+              <Barcode size={72} strokeWidth={1.25} className={isScanning ? "animate-pulse text-blue-400" : "text-slate-600"} />
+              <div className="mt-6 space-y-1.5">
+                <h2 className="text-base font-semibold text-white">Camera off</h2>
+                <p className="text-sm text-slate-400 max-w-xs mx-auto">
+                  Start the camera to scan barcodes and add stock automatically.
+                </p>
+              </div>
             </div>
+          )}
 
-            {/* LOGISTICS FEED */}
-            <div className="lg:col-span-7 flex flex-col gap-4 overflow-hidden">
-                <div className="flex items-center justify-between px-4">
-                    <div className="flex items-center gap-3">
-                        <History className="h-4 w-4 text-slate-400" />
-                        <h3 className="font-black uppercase text-[11px] tracking-widest text-slate-500">Live Logistics Handshake</h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Globe className="h-3 w-3 text-blue-400" />
-                        <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">BBU1 GLOBAL SYNC ACTIVE</span>
-                    </div>
-                </div>
-
-                <ScrollArea className="flex-1 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-6">
-                    {sessionLog.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center opacity-10 py-32 space-y-6">
-                            <ArrowDownToLine size={80} strokeWidth={1} />
-                            <p className="text-[11px] font-black uppercase tracking-[0.5em] text-center">Awaiting Entry</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {sessionLog.map((log, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-6 bg-slate-50/50 rounded-[1.5rem] border border-transparent hover:border-blue-100 transition-all group animate-in slide-in-from-bottom-2">
-                                    <div className="flex items-center gap-6">
-                                        <div className="h-12 w-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-emerald-500 border border-emerald-50">
-                                            <CheckCircle2 size={24} />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <h4 className="font-bold text-slate-900 text-base uppercase tracking-tight">{log.product_name}</h4>
-                                            <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                                <span className="flex items-center gap-1.5"><ShieldCheck size={12} className="text-blue-500" /> {log.sku}</span>
-                                                <span>•</span>
-                                                <span>{log.timestamp.toLocaleTimeString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-10">
-                                        <div className="text-right">
-                                            <span className="text-3xl font-black text-blue-600">+{log.qtyAdded}</span>
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Injected</p>
-                                        </div>
-                                        <Button 
-                                            onClick={() => printSovereignLabel(log)}
-                                            variant="secondary" 
-                                            size="icon" 
-                                            className="h-14 w-14 rounded-3xl bg-slate-900 text-white shadow-xl hover:bg-black transition-all opacity-0 group-hover:opacity-100"
-                                        >
-                                            <Printer size={24} />
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </ScrollArea>
+          {isScanning && !isCameraActive && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+              <Loader2 className="animate-spin text-blue-400 h-6 w-6" />
             </div>
+          )}
 
-            {/* AUTOMATIC PRODUCT REGISTRY DIALOGUE BRIDGE */}
-            {scanBridgeData && (
-                <ProductManagementConsole 
-                    categories={categories}
-                    initialScanData={scanBridgeData}
-                    onClose={handleCloseBridgeModal}
-                />
+          <div className="absolute bottom-5 flex items-center gap-2">
+            <Button
+              onClick={isCameraActive ? stopCamera : startCamera}
+              className={cn(
+                "h-10 px-5 rounded-md text-sm font-medium",
+                isCameraActive ? "bg-red-600 hover:bg-red-700 text-white" : "bg-white text-slate-900 hover:bg-slate-100"
+              )}
+            >
+              {isCameraActive ? <><XCircle className="mr-2 h-4 w-4" /> Stop camera</> : <><Camera className="mr-2 h-4 w-4" /> Start camera</>}
+            </Button>
+
+            {isCameraActive && availableCameras.length > 1 && (
+              <Button
+                onClick={switchCamera}
+                variant="secondary"
+                size="icon"
+                title="Switch camera"
+                className="h-10 w-10 rounded-md bg-white/10 hover:bg-white/20 text-white"
+              >
+                <SwitchCamera className="h-4 w-4" />
+              </Button>
             )}
+          </div>
+        </Card>
 
+        <Card className="p-5 bg-white border border-slate-200 rounded-lg flex justify-between items-center">
+          <div>
+            <p className="text-xs text-slate-500 mb-1">Units scanned this session</p>
+            <h3 className="text-2xl font-semibold text-slate-900">{sessionLog.reduce((a, b) => a + b.qtyAdded, 0)}</h3>
+          </div>
+          <div className="bg-slate-100 p-3 rounded-md">
+            <Activity className="h-5 w-5 text-slate-600" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Scan history */}
+      <div className="lg:col-span-7 flex flex-col gap-3 overflow-hidden">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-slate-400" />
+            <h3 className="text-sm font-semibold text-slate-900">Recent scans</h3>
+          </div>
+          <span className="text-xs text-slate-400">{business?.name}</span>
         </div>
-    );
+
+        <ScrollArea className="flex-1 bg-white rounded-lg border border-slate-200 p-4">
+          {sessionLog.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-slate-300 py-24 space-y-3">
+              <ArrowDownToLine size={40} strokeWidth={1.25} />
+              <p className="text-sm text-slate-400">No scans yet this session</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {sessionLog.map((log, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4 rounded-md border border-slate-100 hover:border-slate-200 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="h-9 w-9 bg-emerald-50 rounded-md flex items-center justify-center text-emerald-600 border border-emerald-100">
+                      <CheckCircle2 size={18} />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-slate-900 text-sm">{log.product_name}</h4>
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <span className="font-mono">{log.sku}</span>
+                        <span>·</span>
+                        <span>{log.timestamp.toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <span className="text-lg font-semibold text-slate-900">+{log.qtyAdded}</span>
+                      <p className="text-xs text-slate-400">added</p>
+                    </div>
+                    <Button
+                      onClick={() => printProductLabel(log)}
+                      variant="outline"
+                      size="icon"
+                      title="Print label"
+                      className="h-9 w-9 rounded-md border-slate-200 text-slate-500 hover:text-slate-900"
+                    >
+                      <Printer size={16} />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+
+      {scanBridgeData && (
+        <ProductManagementConsole
+          categories={categories}
+          initialScanData={scanBridgeData}
+          onClose={handleCloseBridgeModal}
+        />
+      )}
+
+    </div>
+  );
 }

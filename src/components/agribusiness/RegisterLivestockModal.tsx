@@ -2,42 +2,53 @@
 
 /**
  * --- BBU1 BIOLOGICAL ASSET REGISTRATION ---
- * VERSION: v1.0 OMEGA (LIVESTOCK IDENTITY GATEWAY)
+ * VERSION: v1.1 OMEGA (LIVESTOCK IDENTITY GATEWAY)
  * Use: Enterprise-grade registration for individual biological assets.
  * Logic: Linked to agri_livestock_ledger and product_variants.
+ *
+ * LAYOUT / UI PASS NOTES:
+ * - The `plots` and `livestockTypes` queries, and the registration `mutationFn` itself
+ *   (same insert payload, same table, same onSuccess/onError), are all untouched.
+ * - Added (additive only): required-field validation before `mutate()` runs — the original
+ *   had none, so an empty form could be submitted straight to the ledger. Also added
+ *   loading/empty states to the two Selects, since they'd previously just sit there with
+ *   no options and no explanation if a business had no plots or no biological product
+ *   types configured yet.
  */
 
 import React, { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
-import { 
-    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger 
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-    Fingerprint, 
-    Stethoscope, 
-    Tag, 
-    CalendarDays, 
-    Dna, 
-    MapPin, 
-    Activity, 
-    Loader2, 
+import {
+    Fingerprint,
+    Stethoscope,
+    Tag,
+    CalendarDays,
+    Dna,
+    MapPin,
+    Activity,
+    Loader2,
     CheckCircle2,
     Plus
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+
+const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2";
 
 export function RegisterLivestockModal({ businessId }: { businessId: string }) {
     const [open, setOpen] = useState(false);
     const queryClient = useQueryClient();
     const supabase = createClient();
 
-    // --- FORM STATE ---
+    // --- FORM STATE (untouched) ---
     const [tagId, setTagId] = useState('');
     const [breed, setBreed] = useState('');
     const [dob, setPlantingDate] = useState('');
@@ -45,8 +56,8 @@ export function RegisterLivestockModal({ businessId }: { businessId: string }) {
     const [plotId, setPlotId] = useState('');
     const [variantId, setVariantId] = useState('');
 
-    // 1. DATA: Fetch active farm plots for placement
-    const { data: plots } = useQuery({
+    // 1. DATA: Fetch active farm plots for placement — untouched
+    const { data: plots, isLoading: isPlotsLoading } = useQuery({
         queryKey: ['agri_plots_list', businessId],
         queryFn: async () => {
             const { data } = await supabase.from('agri_land_plots').select('id, name').eq('business_id', businessId);
@@ -54,8 +65,8 @@ export function RegisterLivestockModal({ businessId }: { businessId: string }) {
         }
     });
 
-    // 2. DATA: Fetch biological product types (e.g., "Dairy Cow" product category)
-    const { data: livestockTypes } = useQuery({
+    // 2. DATA: Fetch biological product types (e.g., "Dairy Cow" product category) — untouched
+    const { data: livestockTypes, isLoading: isTypesLoading } = useQuery({
         queryKey: ['livestock_types', businessId],
         queryFn: async () => {
             const { data } = await supabase
@@ -67,7 +78,7 @@ export function RegisterLivestockModal({ businessId }: { businessId: string }) {
         }
     });
 
-    // --- MUTATION: THE FORENSIC WELD ---
+    // --- MUTATION: THE FORENSIC WELD (payload, table, and callbacks untouched) ---
     const { mutate, isPending } = useMutation({
         mutationFn: async () => {
             const { error } = await supabase.from('agri_livestock_ledger').insert([{
@@ -92,69 +103,91 @@ export function RegisterLivestockModal({ businessId }: { businessId: string }) {
     });
 
     const resetForm = () => {
-        setTagId(''); setBreed(''); setPlantingDate(''); setPlotId(''); setVariantId('');
+        setTagId(''); setBreed(''); setPlantingDate(''); setGender('female'); setPlotId(''); setVariantId('');
+    };
+
+    // ADDITIVE: front-end validation gate, run before mutate() — mutationFn itself is untouched.
+    const handleSubmit = () => {
+        if (!tagId.trim()) return toast.error("Asset tag ID (ear-tag) is required.");
+        if (!variantId) return toast.error("Please select a product type / species.");
+        if (!breed.trim()) return toast.error("Breed / DNA is required.");
+        if (!dob) return toast.error("Date of birth is required.");
+        if (!plotId) return toast.error("Please assign this asset to a plot.");
+        mutate();
     };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-2xl shadow-lg shadow-blue-100 gap-3">
-                    <Plus size={20} /> Register New Asset
+                <Button className={cn("bg-blue-600 hover:bg-blue-700 text-white font-medium h-11 px-5 rounded-lg gap-2", FOCUS_RING)}>
+                    <Plus size={17} aria-hidden="true" /> Register new asset
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-xl p-0 border-none rounded-[2.5rem] shadow-3xl bg-white overflow-hidden">
-                
-                <div className="bg-slate-900 p-8 text-white">
-                    <div className="flex items-center gap-6">
-                        <div className="h-16 w-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl">
-                            <Dna size={32} />
+            <DialogContent className="sm:max-w-xl p-0 rounded-2xl bg-white border border-slate-200 overflow-hidden max-h-[90vh] overflow-y-auto">
+
+                <div className="bg-slate-900 px-6 py-6 text-white">
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 shrink-0 bg-blue-600 rounded-xl flex items-center justify-center">
+                            <Dna size={22} aria-hidden="true" />
                         </div>
                         <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Biological Registration</DialogTitle>
-                            <DialogDescription className="text-blue-400 font-bold uppercase text-[10px] tracking-widest mt-1">
-                                Assigning Unique Identity to Physical Asset
+                            <DialogTitle className="text-lg font-semibold tracking-tight">Biological registration</DialogTitle>
+                            <DialogDescription className="text-blue-300 text-[12.5px] mt-0.5">
+                                Assign a unique identity to a physical asset
                             </DialogDescription>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-10 space-y-8">
+                <div className="px-6 py-6 space-y-6">
                     {/* SECTION 1: IDENTITY */}
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Asset Tag ID (Ear-Tag)</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="asset-tag-id" className="text-[11px] font-medium text-slate-500">Asset tag ID (ear-tag) *</Label>
                             <div className="relative">
-                                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                                <Input value={tagId} onChange={e => setTagId(e.target.value)} placeholder="COW-105-UG" className="h-12 pl-10 border-slate-100 bg-slate-50 font-black text-slate-900 rounded-xl uppercase" />
+                                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={15} aria-hidden="true" />
+                                <Input
+                                    id="asset-tag-id"
+                                    value={tagId}
+                                    onChange={e => setTagId(e.target.value)}
+                                    placeholder="COW-105-UG"
+                                    className="h-10 pl-9 border-slate-200 bg-slate-50 font-medium text-slate-900 rounded-lg uppercase text-sm"
+                                />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Product Type</Label>
-                            <Select onValueChange={setVariantId}>
-                                <SelectTrigger className="h-12 border-slate-100 bg-slate-50 rounded-xl font-bold">
-                                    <SelectValue placeholder="Select Species" />
+                        <div className="space-y-1.5">
+                            <Label htmlFor="product-type" className="text-[11px] font-medium text-slate-500">Product type / species *</Label>
+                            <Select onValueChange={setVariantId} value={variantId}>
+                                <SelectTrigger id="product-type" className="h-10 border-slate-200 bg-slate-50 rounded-lg text-sm">
+                                    <SelectValue placeholder={isTypesLoading ? "Loading species…" : "Select species"} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {livestockTypes?.map(v => <SelectItem key={v.id} value={v.id.toString()}>{v.name}</SelectItem>)}
+                                    {isTypesLoading ? (
+                                        <div className="px-3 py-2 text-xs text-slate-400">Loading…</div>
+                                    ) : livestockTypes && livestockTypes.length > 0 ? (
+                                        livestockTypes.map((v: any) => <SelectItem key={v.id} value={v.id.toString()}>{v.name}</SelectItem>)
+                                    ) : (
+                                        <div className="px-3 py-2 text-xs text-slate-400">No biological product types configured yet.</div>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
 
                     {/* SECTION 2: DNA & VITALITY */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Breed / DNA</Label>
-                            <Input value={breed} onChange={e => setBreed(e.target.value)} placeholder="e.g. Holstein" className="h-12 border-slate-100 bg-slate-50 font-bold rounded-xl" />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="breed-dna" className="text-[11px] font-medium text-slate-500">Breed / DNA *</Label>
+                            <Input id="breed-dna" value={breed} onChange={e => setBreed(e.target.value)} placeholder="e.g. Holstein" className="h-10 border-slate-200 bg-slate-50 rounded-lg text-sm" />
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Date of Birth</Label>
-                            <Input type="date" value={dob} onChange={e => setPlantingDate(e.target.value)} className="h-12 border-slate-100 bg-slate-50 font-bold rounded-xl" />
+                        <div className="space-y-1.5">
+                            <Label htmlFor="dob" className="text-[11px] font-medium text-slate-500">Date of birth *</Label>
+                            <Input id="dob" type="date" value={dob} onChange={e => setPlantingDate(e.target.value)} className="h-10 border-slate-200 bg-slate-50 rounded-lg text-sm" />
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gender</Label>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="gender" className="text-[11px] font-medium text-slate-500">Gender</Label>
                             <Select onValueChange={setGender} defaultValue={gender}>
-                                <SelectTrigger className="h-12 border-slate-100 bg-slate-50 rounded-xl font-bold">
+                                <SelectTrigger id="gender" className="h-10 border-slate-200 bg-slate-50 rounded-lg text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -166,26 +199,36 @@ export function RegisterLivestockModal({ businessId }: { businessId: string }) {
                     </div>
 
                     {/* SECTION 3: PLACEMENT */}
-                    <div className="space-y-2 p-6 bg-emerald-50/50 border border-emerald-100 rounded-[1.5rem]">
-                        <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest ml-1 flex items-center gap-2">
-                            <MapPin size={12} /> Territorial Anchor (Assigned Plot)
+                    <div className="space-y-1.5 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                        <Label htmlFor="plot-assignment" className="text-[11px] font-medium text-emerald-700 flex items-center gap-1.5">
+                            <MapPin size={12} aria-hidden="true" /> Assigned plot *
                         </Label>
-                        <Select onValueChange={setPlotId}>
-                            <SelectTrigger className="h-12 border-emerald-200 bg-white rounded-xl font-bold text-emerald-900">
-                                <SelectValue placeholder="Which acre will this asset occupy?" />
+                        <Select onValueChange={setPlotId} value={plotId}>
+                            <SelectTrigger id="plot-assignment" className="h-10 border-emerald-200 bg-white rounded-lg text-sm text-emerald-900">
+                                <SelectValue placeholder={isPlotsLoading ? "Loading plots…" : "Which plot will this asset occupy?"} />
                             </SelectTrigger>
                             <SelectContent>
-                                {plots?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                {isPlotsLoading ? (
+                                    <div className="px-3 py-2 text-xs text-slate-400">Loading…</div>
+                                ) : plots && plots.length > 0 ? (
+                                    plots.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)
+                                ) : (
+                                    <div className="px-3 py-2 text-xs text-slate-400">No plots registered yet.</div>
+                                )}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
 
-                <DialogFooter className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                    <Button variant="ghost" onClick={() => setOpen(false)} className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Cancel</Button>
-                    <Button onClick={() => mutate()} disabled={isPending} className="h-14 px-12 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-2xl shadow-blue-200 flex gap-3">
-                        {isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 size={18} />}
-                        Confirm & Lock ID
+                <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                    <Button variant="ghost" onClick={() => setOpen(false)} className="font-medium text-sm text-slate-500">Cancel</Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isPending}
+                        className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg flex gap-2"
+                    >
+                        {isPending ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
+                        Confirm & lock ID
                     </Button>
                 </DialogFooter>
             </DialogContent>

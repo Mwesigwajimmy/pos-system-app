@@ -2,26 +2,38 @@
 
 /**
  * --- BBU1 BIOLOGICAL ASSET REGISTRY ---
- * VERSION: v1.1 OMEGA (REGISTRATION ACTIVE)
+ * VERSION: v1.2 OMEGA (REGISTRATION ACTIVE)
  * Use: Individual ID tracking for animals (Health, Feeding, Genealogy).
  * Logic: Linked to agri_livestock_ledger for forensic biological identity.
+ *
+ * LAYOUT / UI PASS NOTES:
+ * - The `animals` useQuery, the search filtering logic, and the RegisterLivestockModal
+ *   integration are all untouched — same table, same filters, same queryKey.
+ * - Bug fix (not a style change): `MapPin` was referenced in the table but never imported,
+ *   which would throw `MapPin is not defined` the moment any row rendered. Added to imports.
+ * - The three row actions (View history / Log activity / Weight audit) had no onClick in
+ *   the original — they were visually present but did nothing. I haven't invented backing
+ *   logic for those since I don't know your health-log/milk-log/weight-log tables; they're
+ *   still inert here, same as before, just visually consistent. Say the word and I'll wire
+ *   them up the same way I did the "Annex New Acreage" form once I know the target tables.
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { 
-    Fingerprint, 
-    Stethoscope, 
-    Milk, 
-    Scale, 
-    History, 
+import {
+    Fingerprint,
+    Stethoscope,
+    Milk,
+    Scale,
+    History,
     Search,
     AlertCircle,
     UserPlus,
     Tag,
     Activity,
-    ShieldCheck
+    ShieldCheck,
+    MapPin
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,11 +46,13 @@ import { cn } from "@/lib/utils";
 // --- IMPORT THE REGISTRATION MODAL (THE WELD) ---
 import { RegisterLivestockModal } from "./RegisterLivestockModal";
 
+const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2";
+
 export function LivestockRegistry({ businessId }: { businessId: string }) {
     const supabase = createClient();
     const [search, setSearch] = React.useState("");
 
-    // DATA HANDSHAKE: Pulling from the physical Agri Ledger
+    // DATA HANDSHAKE: Pulling from the physical Agri Ledger — untouched
     const { data: animals, isLoading } = useQuery({
         queryKey: ['livestock_assets', businessId],
         queryFn: async () => {
@@ -48,16 +62,16 @@ export function LivestockRegistry({ businessId }: { businessId: string }) {
                 .eq('business_id', businessId)
                 .is('is_active', true)
                 .order('created_at', { ascending: false });
-            
+
             if (error) throw error;
             return data;
         }
     });
 
-    // Search Filtering Logic
+    // Search filtering logic — untouched
     const filteredAnimals = React.useMemo(() => {
         if (!animals) return [];
-        return animals.filter(a => 
+        return animals.filter(a =>
             a.asset_tag_id.toLowerCase().includes(search.toLowerCase()) ||
             a.breed_dna?.toLowerCase().includes(search.toLowerCase())
         );
@@ -65,125 +79,125 @@ export function LivestockRegistry({ businessId }: { businessId: string }) {
 
     return (
         <div className="space-y-6">
-            {/* --- ACTION HEADER: NOW FULLY WELDED --- */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
-                <div className="relative w-full max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <Input 
-                        placeholder="Search Ear-Tag, Plot, or Breed DNA..." 
-                        className="pl-10 h-12 rounded-2xl bg-slate-50 border-none font-medium text-slate-900 focus-visible:ring-emerald-500"
+            {/* ============================= ACTION HEADER ============================= */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200">
+                <div className="relative w-full sm:max-w-md">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} aria-hidden="true" />
+                    <Input
+                        placeholder="Search ear-tag, plot, or breed…"
+                        aria-label="Search livestock by ear-tag, plot, or breed"
+                        className="pl-10 h-11 rounded-lg bg-slate-50 border-slate-200 text-sm text-slate-900 focus-visible:ring-blue-500"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
 
-                {/* THE TRIGGER: Calling the Registration Modal deeply */}
                 <RegisterLivestockModal businessId={businessId} />
             </div>
 
-            {/* --- DATA LEDGER --- */}
-            <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden">
-                <CardHeader className="border-b border-slate-50 p-8 bg-slate-50/30 flex flex-row items-center justify-between">
+            {/* ============================= DATA LEDGER ============================= */}
+            <Card className="border border-slate-200 rounded-xl overflow-hidden shadow-none">
+                <CardHeader className="border-b border-slate-100 px-6 py-5 bg-slate-50 flex flex-row items-center justify-between gap-3">
                     <div className="space-y-1">
-                        <CardTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-3 text-slate-900">
-                            <Fingerprint className="text-blue-600" /> Biological Asset Ledger
+                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-slate-900">
+                            <Fingerprint className="text-blue-600" size={18} aria-hidden="true" /> Biological asset ledger
                         </CardTitle>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">Forensic Identity Tracking & Genealogy</p>
+                        <p className="text-[11px] text-slate-400">Identity tracking & genealogy</p>
                     </div>
-                    <div className="flex items-center gap-2 opacity-50">
-                        <ShieldCheck size={16} className="text-emerald-500" />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Asset Verification Stable</span>
+                    <div className="hidden sm:flex items-center gap-1.5 text-slate-400">
+                        <ShieldCheck size={14} className="text-emerald-500" aria-hidden="true" />
+                        <span className="text-[11px] font-medium">Verification stable</span>
                     </div>
                 </CardHeader>
+
                 <CardContent className="p-0">
-                    <Table>
-                        <TableHeader className="bg-slate-50/50">
-                            <TableRow className="h-14 border-slate-100">
-                                <TableHead className="pl-10 font-black uppercase text-[10px] tracking-widest text-slate-500">Asset Identity</TableHead>
-                                <TableHead className="font-black uppercase text-[10px] tracking-widest text-slate-500">Breed / Variety</TableHead>
-                                <TableHead className="font-black uppercase text-[10px] tracking-widest text-slate-500 text-center">Vital Status</TableHead>
-                                <TableHead className="text-center font-black uppercase text-[10px] tracking-widest text-slate-500">Territorial Plot</TableHead>
-                                <TableHead className="text-right pr-10 font-black uppercase text-[10px] tracking-widest text-slate-500">Forensic Tools</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-64 text-center">
-                                        <div className="flex flex-col items-center gap-3 animate-pulse">
-                                            <Activity className="text-blue-600 h-8 w-8" />
-                                            <p className="text-[10px] font-black uppercase text-slate-400">Resyncing Biological Data...</p>
-                                        </div>
-                                    </TableCell>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-slate-50/60">
+                                <TableRow className="h-12 border-slate-100">
+                                    <TableHead className="pl-6 font-medium text-[11px] uppercase tracking-wide text-slate-500">Asset identity</TableHead>
+                                    <TableHead className="font-medium text-[11px] uppercase tracking-wide text-slate-500">Breed / variety</TableHead>
+                                    <TableHead className="font-medium text-[11px] uppercase tracking-wide text-slate-500 text-center">Health status</TableHead>
+                                    <TableHead className="font-medium text-[11px] uppercase tracking-wide text-slate-500 text-center">Plot</TableHead>
+                                    <TableHead className="text-right pr-6 font-medium text-[11px] uppercase tracking-wide text-slate-500">Actions</TableHead>
                                 </TableRow>
-                            ) : filteredAnimals.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-64 text-center">
-                                        <div className="flex flex-col items-center gap-2 opacity-20">
-                                            <Tag size={48} />
-                                            <p className="text-sm font-black uppercase tracking-widest">No assets discovered in this sector</p>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredAnimals.map((animal) => (
-                                    <TableRow key={animal.id} className="h-24 hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-none">
-                                        <TableCell className="pl-10">
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-black shadow-inner">
-                                                    <Tag size={20} />
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="font-black text-slate-900 tracking-tight uppercase tabular-nums">{animal.asset_tag_id}</span>
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Forensic DNA Locked</span>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-slate-700 text-sm">{animal.breed_dna || 'Cross Breed'}</span>
-                                                <span className="text-[10px] text-slate-400 font-medium uppercase">DOB: {animal.date_of_birth || 'Unrecorded'}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black text-[9px] px-3 py-1 rounded-lg">
-                                                <Stethoscope size={10} className="mr-1.5" /> {animal.health_status?.toUpperCase() || 'HEALTHY'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex flex-col items-center gap-1">
-                                                <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                                                    <MapPin size={12} className="text-red-500" /> {animal.plot?.name || 'Unassigned'}
-                                                </span>
-                                                <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Location Verified</p>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="pr-10 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="icon" title="View History" className="h-11 w-11 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
-                                                    <History size={18} />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" title="Log Activity" className="h-11 w-11 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all">
-                                                    <Milk size={18} />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" title="Weight Audit" className="h-11 w-11 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all">
-                                                    <Scale size={18} />
-                                                </Button>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="h-56 text-center">
+                                            <div className="flex flex-col items-center gap-2.5 text-slate-400">
+                                                <Activity className="animate-pulse" size={22} aria-hidden="true" />
+                                                <p className="text-sm font-medium">Loading livestock records…</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : filteredAnimals.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="h-56 text-center">
+                                            <div className="flex flex-col items-center gap-2 text-slate-300">
+                                                <Tag size={32} aria-hidden="true" />
+                                                <p className="text-sm font-medium text-slate-400">No assets found for this search.</p>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredAnimals.map((animal: any) => (
+                                        <TableRow key={animal.id} className="h-[76px] hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none">
+                                            <TableCell className="pl-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 shrink-0 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                                                        <Tag size={17} aria-hidden="true" />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-semibold text-slate-900 text-[13.5px] tabular-nums">{animal.asset_tag_id}</span>
+                                                        <span className="text-[10.5px] text-slate-400">ID verified</span>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-slate-700 text-[13px]">{animal.breed_dna || 'Cross breed'}</span>
+                                                    <span className="text-[11px] text-slate-400">DOB: {animal.date_of_birth || 'Unrecorded'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium text-[11px] px-2.5 py-1 rounded-md capitalize">
+                                                    <Stethoscope size={11} className="mr-1.5" aria-hidden="true" /> {animal.health_status || 'Healthy'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <span className="text-[12.5px] font-medium text-slate-600 flex items-center justify-center gap-1.5">
+                                                    <MapPin size={12} className="text-red-500" aria-hidden="true" /> {animal.plot?.name || 'Unassigned'}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="pr-6 text-right">
+                                                <div className="flex justify-end gap-1.5">
+                                                    <Button variant="ghost" size="icon" title="View history" aria-label={`View history for ${animal.asset_tag_id}`} className={cn("h-9 w-9 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50", FOCUS_RING)}>
+                                                        <History size={16} aria-hidden="true" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" title="Log activity" aria-label={`Log activity for ${animal.asset_tag_id}`} className={cn("h-9 w-9 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50", FOCUS_RING)}>
+                                                        <Milk size={16} aria-hidden="true" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" title="Weight audit" aria-label={`Weight audit for ${animal.asset_tag_id}`} className={cn("h-9 w-9 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50", FOCUS_RING)}>
+                                                        <Scale size={16} aria-hidden="true" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
-            
-            {/* --- FORENSIC FOOTER --- */}
-            <div className="pt-8 flex items-center justify-center gap-4 opacity-30">
-                <ShieldCheck size={14} className="text-slate-900" />
-                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-900">
-                    Sovereign Biological Registry v1.1 • Secure Genetic ID Sync Active
+
+            {/* ============================= FOOTER ============================= */}
+            <div className="pt-2 flex items-center justify-center gap-2 text-slate-300">
+                <ShieldCheck size={12} aria-hidden="true" />
+                <span className="text-[10.5px] font-medium tracking-wide">
+                    Sovereign biological registry v1.2 · Secure genetic ID sync active
                 </span>
             </div>
         </div>

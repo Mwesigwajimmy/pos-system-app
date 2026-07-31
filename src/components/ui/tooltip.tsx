@@ -28,10 +28,33 @@ function Tooltip({
   )
 }
 
+// Radix's Trigger only understands `children` (its own button) or
+// `asChild` + a single child element (merges props onto that element).
+// Some call sites in this codebase pass a `render` prop instead, following
+// a different library's API — without this, that prop is silently dropped,
+// no `children` ever reaches Radix, and the trigger renders empty.
+// Accepting `render` here and forwarding it as the `asChild` child keeps
+// every existing `<TooltipTrigger render={...} />` call working unchanged.
 function TooltipTrigger({
+  render,
+  children,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger> & {
+  render?: React.ReactElement
+}) {
+  if (render) {
+    return (
+      <TooltipPrimitive.Trigger asChild data-slot="tooltip-trigger" {...props}>
+        {render}
+      </TooltipPrimitive.Trigger>
+    )
+  }
+
+  return (
+    <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props}>
+      {children}
+    </TooltipPrimitive.Trigger>
+  )
 }
 
 function TooltipContent({
