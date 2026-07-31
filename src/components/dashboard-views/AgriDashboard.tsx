@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cn } from '@/lib/utils';
 
 export default function AgriDashboard({ businessId }: { businessId: string }) {
     return (
