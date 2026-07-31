@@ -11,9 +11,6 @@ import FooterNewsletter from '@/components/FooterNewsletter';
 export default function SiteFooter() {
   return (
     <footer className="relative bg-blue-600 text-white pt-24 pb-12 border-t-0 z-10 selection:bg-white/30">
-      {/* Smooth blend from above */}
-      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white to-transparent pointer-events-none" />
-
       <div className="container mx-auto px-6 relative">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-16 mb-20">
 

@@ -20,7 +20,7 @@ const defaultLocale = 'en';
 const publicPaths = [
     '/', '/login', '/signup','/forgot-password','/update-password', '/accept-invite', '/callback', 
     '/blog', '/careers', '/contact', '/pricing', '/about', 
-    '/aura-ai', '/industries', '/courses', '/donate', 
+    '/aura-ai', '/industries', '/courses', '/donate', '/terms', '/privacy',
     '/newsletter', '/help-centre', '/download', '/store', '/network', '/features'
 ];
 
