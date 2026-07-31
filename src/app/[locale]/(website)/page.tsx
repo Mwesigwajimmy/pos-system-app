@@ -19,7 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, LucideIcon, Menu, ArrowRight, ChevronDown, WifiOff, Rocket, Send, Signal, Users, X, ShieldHalf, LayoutGrid, Sparkles, Loader2, CheckCircle, CheckCircle2, Briefcase, Globe, Building, Megaphone, Settings, GitBranch, Warehouse, MessageSquareText, HelpCircle, DownloadCloud, Truck, Globe2, Target, Layers, BookOpen, Home, Moon, Sun
+    Banknote, Bot, BrainCircuit, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, LucideIcon, Menu, ArrowRight, ChevronDown, WifiOff, Send, Signal, Users, X, ShieldHalf, LayoutGrid, Sparkles, Loader2, CheckCircle, CheckCircle2, Briefcase, Globe, Building, Megaphone, Settings, GitBranch, Warehouse, MessageSquareText, HelpCircle, DownloadCloud, Truck, Globe2, Target, Layers, BookOpen, Home, Moon, Sun
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -460,7 +460,6 @@ const MegaMenuHeader = () => {
                     className="shrink-0"
                 >
                     <Link href="/" className="group flex items-center gap-2 font-bold text-lg">
-                        <Rocket className={cn("h-5 w-5 transition-colors duration-300", scrolled ? "text-blue-600" : "text-blue-400")} />
                         <span className={cn("font-extrabold tracking-tight transition-colors duration-300", scrolled ? "text-blue-600" : "text-white")}>
                             {siteConfig.name}
                         </span>
@@ -1702,7 +1701,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
             });
             if (dbError && dbError.code !== '23505') throw dbError;
             const { error: fnError } = await supabase.functions.invoke('sovereign-broadcaster', {
-                body: { action: 'send_bulk_comms', payload: { recipients: [{ email }], channel: 'EMAIL', subject: 'Welcome to BBU1', content: `<h1>Welcome to BBU1</h1><p>Thanks for your interest — our team has been notified.</p>` } }
+                body: { action: 'send_bulk_comms', payload: { recipients: [{ email }], channel: 'EMAIL', subject: 'Welcome to BBU1', content: `<h1>Welcome to BBU1</h1><p>Thanks for your interest. Our team has been notified.</p>` } }
             });
             if (fnError) console.warn("Comms delay:", fnError);
             showToast("Welcome packet sent to your email!");
@@ -1765,11 +1764,23 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
         trackVisitor();
 
         const textInt = setInterval(() => setCurrentTextIndex(p => (p + 1) % memoizedRotatingTexts.length), TEXT_ROTATION_INTERVAL);
-        const imageInt = setInterval(() => setCurrentSlideIndex(p => (p + 1) % memoizedSlideshowContent.length), SLIDESHOW_INTERVAL);
         const pillarInt = setInterval(() => setActivePillarIndex(p => (p + 1) % memoizedPlatformPillars.length), PILLAR_INTERVAL);
         
-        return () => { clearInterval(textInt); clearInterval(imageInt); clearInterval(pillarInt); };
-    }, [supabase, isSSR, memoizedRotatingTexts.length, memoizedSlideshowContent.length, memoizedPlatformPillars.length]);
+        return () => { clearInterval(textInt); clearInterval(pillarInt); };
+    }, [supabase, isSSR, memoizedRotatingTexts.length, memoizedPlatformPillars.length]);
+
+    // 6b. SLIDESHOW ADVANCE (image slides use a fixed timer; the video slide
+    // advances itself once playback reaches the end, via onEnded below, so it
+    // is never cut off mid-play).
+    useEffect(() => {
+        if (isSSR) return;
+        const current = memoizedSlideshowContent[currentSlideIndex];
+        if (current?.is_video) return; // handled by the video's onEnded handler
+        const t = setTimeout(() => {
+            setCurrentSlideIndex(p => (p + 1) % memoizedSlideshowContent.length);
+        }, SLIDESHOW_INTERVAL);
+        return () => clearTimeout(t);
+    }, [currentSlideIndex, isSSR, memoizedSlideshowContent]);
 
     // 7. COOKIE INITIALIZATION
     useEffect(() => {
@@ -1794,7 +1805,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                {/* HERO SECTION */}
 <section id="hero" className="relative overflow-hidden text-center flex items-center justify-center" style={{ minHeight: '100svh' }}>
 
-    {/* ── Background layers ── */}
+    {/* Background layers */}
     <div className="absolute inset-0 bg-[#020617]" />
 
     {/* Ambient blue glows */}
@@ -1816,7 +1827,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
     {/* Central spotlight card */}
     <div className="absolute inset-x-4 sm:inset-x-12 lg:inset-x-24 top-16 bottom-0 rounded-t-3xl border border-white/[0.06] bg-white/[0.015] pointer-events-none" />
 
-    {/* ── Content ── */}
+    {/* Content */}
     <div className="relative z-10 text-white px-5 sm:px-8 max-w-4xl mx-auto w-full pt-28 pb-24 sm:pt-36 sm:pb-32">
         <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.15 } } }}>
 
@@ -2017,8 +2028,8 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                                 <video
                                     autoPlay
                                     muted
-                                    loop
                                     playsInline
+                                    onEnded={() => setCurrentSlideIndex(p => (p + 1) % memoizedSlideshowContent.length)}
                                     className="w-full h-full object-contain" 
                                 >
                                     <source src={memoizedSlideshowContent[currentSlideIndex].src} type="video/mp4" />
