@@ -1,19 +1,13 @@
 'use client';
 
-/**
- * --- BBU1 SOVEREIGN PATIENT 360 REGISTRY & EHR HUB ---
- * VERSION: v11.0 OMEGA (COMPLETE INTAKE FIELDS + EDIT FILE + FACILITY NAV)
- * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Health System
- */
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -21,19 +15,22 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 
 import {
-  Users, Search, UserPlus,
-  Droplets, Activity, Loader2,
-  Eye, Edit3, Phone, MapPin, AlertCircle,
-  ShieldAlert, Pill, FlaskConical,
-  Building2, CreditCard, Bell,
-  Printer, Stethoscope, Briefcase, HeartHandshake,
-  ChevronRight, ListFilter, IdCard,
+  Search,
+  UserPlus,
+  Loader2,
+  Eye,
+  Pencil,
+  Printer,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,80 +40,127 @@ interface PatientRegistryProps {
 
 const supabase = createClient();
 
+const GENDERS = ['Male', 'Female', 'Other'];
+const BLOOD_GROUPS = ['Unknown', 'O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 const MARITAL_STATUSES = ['Single', 'Married', 'Divorced', 'Widowed', 'Prefer not to say'];
 const RELATIONSHIPS = ['Spouse', 'Parent', 'Sibling', 'Child', 'Guardian', 'Friend', 'Other'];
-const STATUS_FILTERS = ['All Patients', 'Active Only', 'Archived Only'];
+const PAYER_TYPES = ['Self paying', 'Insurance', 'Employer', 'NGO or programme'];
+const STATUS_FILTERS = ['All patients', 'Active only', 'Archived only'];
+const PAGE_SIZES = [10, 20, 50, 100];
+
+const emptyPatientForm = {
+  full_name: '',
+  gender: 'Male',
+  dob: '',
+  age_estimate: '',
+  phone: '',
+  alternate_phone: '',
+  address: '',
+  district: '',
+  national_id: '',
+  blood_group: 'Unknown',
+  allergies: '',
+  chronic_conditions: '',
+  current_medications: '',
+  medical_history: '',
+  marital_status: 'Single',
+  occupation: '',
+  referring_facility: '',
+  payer_type: 'Self paying',
+  insurance_provider: '',
+  insurance_policy_no: '',
+  coverage_percentage: 100,
+  emergency_contact_name: '',
+  emergency_contact_phone: '',
+  emergency_contact_relationship: 'Spouse',
+  emergency_contact_address: '',
+  is_active: true,
+};
+
+const calculateAge = (dob?: string) => {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
+  return age >= 0 ? age : null;
+};
+
+const displayAge = (patient: any) => {
+  const fromDob = calculateAge(patient?.dob);
+  if (fromDob !== null) return `${fromDob} yrs`;
+  const estimate = patient?.medical_history_summary?.age_estimate;
+  return estimate ? `${estimate} yrs (est.)` : 'Age unknown';
+};
+
+function Field({
+  label,
+  required,
+  hint,
+  wide,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn('space-y-2', wide && 'sm:col-span-2')}>
+      <Label className="text-xs font-medium text-slate-500">
+        {label}
+        {required ? <span className="ml-1 text-red-600">*</span> : null}
+      </Label>
+      {children}
+      {hint ? <p className="text-xs text-slate-400">{hint}</p> : null}
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="sm:col-span-2">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{children}</p>
+    </div>
+  );
+}
 
 export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All Patients');
 
-  // --- MODAL STATES ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All patients');
+  const [pageSize, setPageSize] = useState(20);
+  const [pageIndex, setPageIndex] = useState(0);
+
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isPatientFileOpen, setIsPatientFileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // --- ACTIVE SELECTED PATIENT ---
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [newPatient, setNewPatient] = useState({ ...emptyPatientForm });
+  const [editPatient, setEditPatient] = useState({ ...emptyPatientForm });
 
-  // --- NEW PATIENT FORM STATE ---
-  const [newPatient, setNewPatient] = useState({
-    full_name: '',
-    gender: 'Male',
-    dob: '',
-    phone: '',
-    address: '',
-    national_id: '',
-    blood_group: 'O+',
-    allergies: '',
-    medical_history: '',
-    marital_status: 'Single',
-    occupation: '',
-    referring_facility: '',
-    insurance_provider: '',
-    insurance_policy_no: '',
-    coverage_percentage: 100,
-    emergency_contact_name: '',
-    emergency_contact_phone: '',
-    emergency_contact_relationship: 'Spouse'
-  });
-
-  // --- EDIT PATIENT FORM STATE ---
-  const [editPatient, setEditPatient] = useState({
-    full_name: '',
-    phone: '',
-    address: '',
-    national_id: '',
-    blood_group: 'O+',
-    allergies: '',
-    medical_history: '',
-    marital_status: 'Single',
-    occupation: '',
-    insurance_provider: '',
-    insurance_policy_no: '',
-    coverage_percentage: 100,
-    emergency_contact_name: '',
-    emergency_contact_phone: '',
-    emergency_contact_relationship: 'Spouse',
-    is_active: true
-  });
-
-  // 1. DATA: Identity Context & Currency
   const { data: profile } = useQuery({
     queryKey: ['active_profile_patient_registry', tenantId],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data } = await supabase.from('profiles').select('*, business_name, currency, business_id').eq('id', user?.id).limit(1).single();
+      const { data } = await supabase
+        .from('profiles')
+        .select('*, business_name, currency, business_id')
+        .eq('id', user?.id)
+        .limit(1)
+        .single();
       return data;
-    }
+    },
   });
 
-  const businessCurrency = profile?.currency || 'UGX';
   const activeBusinessId = profile?.business_id || tenantId;
 
-  // 2. DATA: Pull Patient Ledger
-  const { data: patients, isLoading } = useQuery({
+  const { data: patients, isLoading, isError } = useQuery({
     queryKey: ['medical_patients', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -127,10 +171,9 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!tenantId
+    enabled: !!tenantId,
   });
 
-  // 3. DATA: Pull Selected Patient Encounters (For 360 File)
   const { data: patientEncounters } = useQuery({
     queryKey: ['patient_encounters_360', selectedPatient?.id],
     enabled: !!selectedPatient?.id,
@@ -142,10 +185,9 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
         .order('created_at', { ascending: false });
       if (error) return [];
       return data || [];
-    }
+    },
   });
 
-  // 4. DATA: Pull Selected Patient Lab Orders & Results (For 360 File)
   const { data: patientLabs } = useQuery({
     queryKey: ['patient_labs_360', selectedPatient?.id],
     enabled: !!selectedPatient?.id,
@@ -157,10 +199,9 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
         .order('created_at', { ascending: false });
       if (error) return [];
       return data || [];
-    }
+    },
   });
 
-  // 5. DATA: Pull Selected Patient Prescriptions (For 360 File)
   const { data: patientPrescriptions } = useQuery({
     queryKey: ['patient_prescriptions_360', selectedPatient?.id],
     enabled: !!selectedPatient?.id,
@@ -172,69 +213,98 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
         .order('created_at', { ascending: false });
       if (error) return [];
       return data || [];
-    }
+    },
   });
 
-  // FILTERED PATIENT LIST (search + status)
   const filteredPatients = useMemo(() => {
-    if (!patients) return [];
-    return patients
-      .filter(p => {
-        if (statusFilter === 'Active Only') return p.is_active;
-        if (statusFilter === 'Archived Only') return !p.is_active;
+    const term = searchTerm.trim().toLowerCase();
+    const list = patients || [];
+
+    return list
+      .filter((p: any) => {
+        if (statusFilter === 'Active only') return p.is_active;
+        if (statusFilter === 'Archived only') return !p.is_active;
         return true;
       })
-      .filter(p =>
-        p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.patient_uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.insurance_provider?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      .filter((p: any) => {
+        if (!term) return true;
+        const summary = p.medical_history_summary || {};
+        return (
+          (p.full_name || '').toLowerCase().includes(term) ||
+          (p.patient_uid || '').toLowerCase().includes(term) ||
+          (p.insurance_provider || '').toLowerCase().includes(term) ||
+          (summary.phone || '').toLowerCase().includes(term) ||
+          (summary.national_id || '').toLowerCase().includes(term)
+        );
+      });
   }, [patients, searchTerm, statusFilter]);
 
-  const activeCount = useMemo(() => patients?.filter(p => p.is_active).length || 0, [patients]);
+  useEffect(() => {
+    setPageIndex(0);
+  }, [searchTerm, statusFilter, pageSize]);
 
-  // MUTATION: Register New Patient
+  const pageCount = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
+  const pagedPatients = useMemo(
+    () => filteredPatients.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize),
+    [filteredPatients, pageIndex, pageSize]
+  );
+
+  const activeCount = useMemo(
+    () => (patients || []).filter((p: any) => p.is_active).length,
+    [patients]
+  );
+
+  const buildSummary = (form: typeof emptyPatientForm, existing: any = {}) => ({
+    ...existing,
+    notes: form.medical_history,
+    phone: form.phone,
+    alternate_phone: form.alternate_phone,
+    address: form.address,
+    district: form.district,
+    national_id: form.national_id,
+    marital_status: form.marital_status,
+    occupation: form.occupation,
+    referring_facility: form.referring_facility,
+    age_estimate: form.age_estimate,
+    payer_type: form.payer_type,
+    chronic_conditions: form.chronic_conditions,
+    current_medications: form.current_medications,
+    emergency_contact: {
+      name: form.emergency_contact_name,
+      phone: form.emergency_contact_phone,
+      relationship: form.emergency_contact_relationship,
+      address: form.emergency_contact_address,
+    },
+  });
+
+  const splitAllergies = (value: string) =>
+    value ? value.split(',').map(a => a.trim()).filter(Boolean) : [];
+
   const registerPatientMutation = useMutation({
     mutationFn: async () => {
-      if (!newPatient.full_name.trim()) throw new Error("Patient Full Name is required.");
+      if (!newPatient.full_name.trim()) throw new Error("Enter the patient's name.");
+      if (!newPatient.dob && !newPatient.age_estimate) {
+        throw new Error("Enter a date of birth or an estimated age.");
+      }
 
-      const generatedUid = `PAT-UG-${toYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const generatedUid = `PAT-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
-      // Split allergies array
-      const allergyArray = newPatient.allergies
-        ? newPatient.allergies.split(',').map(a => a.trim()).filter(Boolean)
-        : [];
-
-      // 1. Create Patient Record
       const { data: patient, error } = await supabase
         .from('medical_patients')
         .insert([{
           tenant_id: tenantId,
           business_id: activeBusinessId,
-          full_name: newPatient.full_name,
+          full_name: newPatient.full_name.trim(),
           patient_uid: generatedUid,
           dob: newPatient.dob || null,
           gender: newPatient.gender,
-          blood_group: newPatient.blood_group,
-          allergies: allergyArray,
+          blood_group: newPatient.blood_group === 'Unknown' ? null : newPatient.blood_group,
+          allergies: splitAllergies(newPatient.allergies),
           insurance_provider: newPatient.insurance_provider || null,
           insurance_policy_no: newPatient.insurance_policy_no || null,
           coverage_percentage: Number(newPatient.coverage_percentage) || 100,
-          medical_history_summary: {
-            notes: newPatient.medical_history,
-            phone: newPatient.phone,
-            address: newPatient.address,
-            national_id: newPatient.national_id,
-            marital_status: newPatient.marital_status,
-            occupation: newPatient.occupation,
-            referring_facility: newPatient.referring_facility,
-            emergency_contact: {
-              name: newPatient.emergency_contact_name,
-              phone: newPatient.emergency_contact_phone,
-              relationship: newPatient.emergency_contact_relationship
-            }
-          },
-          is_active: true
+          medical_history_summary: buildSummary(newPatient),
+          is_active: true,
         }])
         .select()
         .single();
@@ -243,69 +313,35 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
       return patient;
     },
     onSuccess: (patient) => {
-      toast.success(`Patient Registered: ${patient?.full_name} (${patient?.patient_uid})`);
+      toast.success(`Registered ${patient?.full_name} · ${patient?.patient_uid}`);
       setIsRegisterOpen(false);
-      setNewPatient({
-        full_name: '',
-        gender: 'Male',
-        dob: '',
-        phone: '',
-        address: '',
-        national_id: '',
-        blood_group: 'O+',
-        allergies: '',
-        medical_history: '',
-        marital_status: 'Single',
-        occupation: '',
-        referring_facility: '',
-        insurance_provider: '',
-        insurance_policy_no: '',
-        coverage_percentage: 100,
-        emergency_contact_name: '',
-        emergency_contact_phone: '',
-        emergency_contact_relationship: 'Spouse'
-      });
+      setNewPatient({ ...emptyPatientForm });
       queryClient.invalidateQueries({ queryKey: ['medical_patients'] });
     },
-    onError: (e: any) => toast.error(`Registration Failed: ${e.message}`)
+    onError: (e: any) => toast.error(e.message),
   });
 
-  // MUTATION: Update Existing Patient File (new — additive, does not alter existing calls above)
   const updatePatientMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedPatient?.id) throw new Error("No patient selected for edit.");
-      if (!editPatient.full_name.trim()) throw new Error("Patient Full Name is required.");
-
-      const allergyArray = editPatient.allergies
-        ? editPatient.allergies.split(',').map(a => a.trim()).filter(Boolean)
-        : [];
-
-      const existingSummary = selectedPatient.medical_history_summary || {};
+      if (!selectedPatient?.id) throw new Error("No patient selected.");
+      if (!editPatient.full_name.trim()) throw new Error("Enter the patient's name.");
 
       const { data, error } = await supabase
         .from('medical_patients')
         .update({
-          full_name: editPatient.full_name,
-          blood_group: editPatient.blood_group,
-          allergies: allergyArray,
+          full_name: editPatient.full_name.trim(),
+          gender: editPatient.gender,
+          dob: editPatient.dob || null,
+          blood_group: editPatient.blood_group === 'Unknown' ? null : editPatient.blood_group,
+          allergies: splitAllergies(editPatient.allergies),
           insurance_provider: editPatient.insurance_provider || null,
           insurance_policy_no: editPatient.insurance_policy_no || null,
           coverage_percentage: Number(editPatient.coverage_percentage) || 100,
           is_active: editPatient.is_active,
-          medical_history_summary: {
-            ...existingSummary,
-            notes: editPatient.medical_history,
-            phone: editPatient.phone,
-            address: editPatient.address,
-            national_id: editPatient.national_id,
-            marital_status: editPatient.marital_status,
-            occupation: editPatient.occupation,
-            emergency_contact: {
-              name: editPatient.emergency_contact_name,
-              phone: editPatient.emergency_contact_phone,
-              relationship: editPatient.emergency_contact_relationship
-            }
-          }
+          medical_history_summary: buildSummary(
+            editPatient,
+            selectedPatient.medical_history_summary || {}
+          ),
         })
         .eq('id', selectedPatient.id)
         .select()
@@ -315,787 +351,1031 @@ export default function PatientRegistry({ tenantId }: PatientRegistryProps) {
       return data;
     },
     onSuccess: (patient) => {
-      toast.success(`Patient File Updated: ${patient?.full_name}`);
+      toast.success("Patient record updated");
       setIsEditModalOpen(false);
+      setSelectedPatient(patient);
       queryClient.invalidateQueries({ queryKey: ['medical_patients'] });
     },
-    onError: (e: any) => toast.error(`Update Failed: ${e.message}`)
+    onError: (e: any) => toast.error(e.message),
   });
 
-  // Open the Edit modal, hydrating form state from the selected patient record
   const openEditModal = (p: any) => {
+    if (!p) return;
     const summary = p.medical_history_summary || {};
     setSelectedPatient(p);
     setEditPatient({
       full_name: p.full_name || '',
+      gender: p.gender || 'Male',
+      dob: p.dob || '',
+      age_estimate: summary.age_estimate || '',
       phone: summary.phone || '',
+      alternate_phone: summary.alternate_phone || '',
       address: summary.address || '',
+      district: summary.district || '',
       national_id: summary.national_id || '',
-      blood_group: p.blood_group || 'O+',
-      allergies: p.allergies?.join(', ') || '',
+      blood_group: p.blood_group || 'Unknown',
+      allergies: Array.isArray(p.allergies) ? p.allergies.join(', ') : '',
+      chronic_conditions: summary.chronic_conditions || '',
+      current_medications: summary.current_medications || '',
       medical_history: summary.notes || '',
       marital_status: summary.marital_status || 'Single',
       occupation: summary.occupation || '',
+      referring_facility: summary.referring_facility || '',
+      payer_type: summary.payer_type || 'Self paying',
       insurance_provider: p.insurance_provider || '',
       insurance_policy_no: p.insurance_policy_no || '',
-      coverage_percentage: p.coverage_percentage || 100,
+      coverage_percentage: p.coverage_percentage ?? 100,
       emergency_contact_name: summary.emergency_contact?.name || '',
       emergency_contact_phone: summary.emergency_contact?.phone || '',
       emergency_contact_relationship: summary.emergency_contact?.relationship || 'Spouse',
-      is_active: p.is_active ?? true
+      emergency_contact_address: summary.emergency_contact?.address || '',
+      is_active: p.is_active ?? true,
     });
     setIsEditModalOpen(true);
   };
 
-  // EXPORT PATIENT 360 MEDICAL SUMMARY PDF
   const exportPatientEhrPdf = (patient: any) => {
+    if (!patient) return;
+    const notRecorded = 'Not recorded';
+    const summary = patient.medical_history_summary || {};
     const doc = new jsPDF();
-    doc.setFontSize(18);
+
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text((profile?.business_name || "BBU1 MEDICAL CENTER").toUpperCase(), 14, 20);
+    doc.text((profile?.business_name || 'Medical records').toUpperCase(), 14, 20);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text("OFFICIAL PATIENT ELECTRONIC HEALTH RECORD (EHR)", 14, 27);
-    doc.text(`Generated: ${new Date().toLocaleString()} | Currency: ${businessCurrency}`, 14, 33);
-    doc.line(14, 36, 196, 36);
+    doc.text('Patient record', 14, 28);
+    doc.text(`Printed ${new Date().toLocaleString()}`, 14, 34);
+    doc.line(14, 38, 196, 38);
 
-    // Patient Profile Table
     autoTable(doc, {
-      startY: 40,
-      head: [['Patient Identifier', 'Full Name', 'Gender / DOB', 'Blood Group']],
+      startY: 44,
+      head: [['Patient number', 'Name', 'Sex', 'Age', 'Blood group']],
       body: [[
-        patient.patient_uid || 'N/A',
-        patient.full_name,
-        `${patient.gender || 'N/A'} (DOB: ${patient.dob || 'N/A'})`,
-        `Group ${patient.blood_group || 'N/A'}`
+        patient.patient_uid || notRecorded,
+        patient.full_name || notRecorded,
+        patient.gender || notRecorded,
+        displayAge(patient),
+        patient.blood_group || notRecorded,
       ]],
-      headStyles: { fillColor: [15, 23, 42] }
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
     });
 
-    // Contact & Occupation
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 8,
+      startY: ((doc as any).lastAutoTable?.finalY || 60) + 6,
       head: [['Phone', 'Address', 'National ID', 'Occupation']],
       body: [[
-        patient.medical_history_summary?.phone || 'N/A',
-        patient.medical_history_summary?.address || 'N/A',
-        patient.medical_history_summary?.national_id || 'N/A',
-        patient.medical_history_summary?.occupation || 'N/A'
+        summary.phone || notRecorded,
+        [summary.address, summary.district].filter(Boolean).join(', ') || notRecorded,
+        summary.national_id || notRecorded,
+        summary.occupation || notRecorded,
       ]],
-      headStyles: { fillColor: [30, 41, 59] }
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
     });
 
-    // Medical Alerts & Insurance
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Known Allergies', 'Insurance Provider', 'Policy Number', 'Coverage']],
+      startY: ((doc as any).lastAutoTable?.finalY || 80) + 6,
+      head: [['Allergies', 'Chronic conditions', 'Current medication']],
       body: [[
-        patient.allergies?.join(', ') || 'No Known Allergies (NKA)',
-        patient.insurance_provider || 'Private Cash Pay',
-        patient.insurance_policy_no || 'N/A',
-        `${patient.coverage_percentage || 100}%`
+        Array.isArray(patient.allergies) && patient.allergies.length
+          ? patient.allergies.join(', ')
+          : 'None recorded',
+        summary.chronic_conditions || 'None recorded',
+        summary.current_medications || 'None recorded',
       ]],
-      headStyles: { fillColor: [30, 41, 59] }
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
     });
 
-    // Emergency Contact
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Emergency Contact', 'Relationship', 'Phone']],
+      startY: ((doc as any).lastAutoTable?.finalY || 100) + 6,
+      head: [['Payer', 'Insurer', 'Policy number', 'Coverage']],
       body: [[
-        patient.medical_history_summary?.emergency_contact?.name || 'N/A',
-        patient.medical_history_summary?.emergency_contact?.relationship || 'N/A',
-        patient.medical_history_summary?.emergency_contact?.phone || 'N/A'
+        summary.payer_type || notRecorded,
+        patient.insurance_provider || notRecorded,
+        patient.insurance_policy_no || notRecorded,
+        `${patient.coverage_percentage ?? 100}%`,
       ]],
-      headStyles: { fillColor: [30, 41, 59] }
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
     });
 
-    doc.save(`Patient_EHR_${patient.patient_uid || 'RECORD'}.pdf`);
-    toast.success("Patient EHR Record Exported!");
+    autoTable(doc, {
+      startY: ((doc as any).lastAutoTable?.finalY || 120) + 6,
+      head: [['Next of kin', 'Relationship', 'Phone']],
+      body: [[
+        summary.emergency_contact?.name || notRecorded,
+        summary.emergency_contact?.relationship || notRecorded,
+        summary.emergency_contact?.phone || notRecorded,
+      ]],
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+    });
+
+    doc.save(`Patient_${patient.patient_uid || 'record'}.pdf`);
   };
 
-  function toYear() {
-    return new Date().getFullYear();
-  }
+  const renderPatientForm = (
+    form: typeof emptyPatientForm,
+    setForm: (value: typeof emptyPatientForm) => void,
+    mode: 'create' | 'edit'
+  ) => (
+    <div className="grid gap-5 sm:grid-cols-2">
+      <SectionTitle>Identity</SectionTitle>
+
+      <Field label="Full name" required wide>
+        <Input
+          placeholder="Mukasa David"
+          value={form.full_name}
+          onChange={e => setForm({ ...form, full_name: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Sex" required>
+        <Select value={form.gender} onValueChange={v => setForm({ ...form, gender: v })}>
+          <SelectTrigger className="h-11 rounded-lg border-slate-200 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="rounded-lg">
+            {GENDERS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      <Field
+        label="Date of birth"
+        hint={form.dob ? `${calculateAge(form.dob) ?? '—'} years old` : 'Leave blank if unknown'}
+      >
+        <Input
+          type="date"
+          max={new Date().toISOString().split('T')[0]}
+          value={form.dob}
+          onChange={e => setForm({ ...form, dob: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Estimated age" hint="Use when the date of birth is not known.">
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={130}
+          placeholder="45"
+          value={form.age_estimate}
+          onChange={e => setForm({ ...form, age_estimate: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm tabular-nums"
+        />
+      </Field>
+
+      <Field label="National ID or passport">
+        <Input
+          placeholder="CM8901234XXXXX"
+          value={form.national_id}
+          onChange={e => setForm({ ...form, national_id: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 font-mono text-sm"
+        />
+      </Field>
+
+      <Field label="Marital status">
+        <Select value={form.marital_status} onValueChange={v => setForm({ ...form, marital_status: v })}>
+          <SelectTrigger className="h-11 rounded-lg border-slate-200 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="rounded-lg">
+            {MARITAL_STATUSES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      <Field label="Occupation">
+        <Input
+          placeholder="Teacher, trader, farmer"
+          value={form.occupation}
+          onChange={e => setForm({ ...form, occupation: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <SectionTitle>Contact</SectionTitle>
+
+      <Field label="Phone number">
+        <Input
+          type="tel"
+          inputMode="tel"
+          placeholder="0770000000"
+          value={form.phone}
+          onChange={e => setForm({ ...form, phone: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Alternative phone">
+        <Input
+          type="tel"
+          inputMode="tel"
+          placeholder="Another number that reaches them"
+          value={form.alternate_phone}
+          onChange={e => setForm({ ...form, alternate_phone: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Village or street">
+        <Input
+          placeholder="Plot 24, Kanjokya Street"
+          value={form.address}
+          onChange={e => setForm({ ...form, address: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="District">
+        <Input
+          placeholder="Kampala"
+          value={form.district}
+          onChange={e => setForm({ ...form, district: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Referred from" wide hint="Facility that sent this patient, if any.">
+        <Input
+          placeholder="Mulago Regional Referral Hospital"
+          value={form.referring_facility}
+          onChange={e => setForm({ ...form, referring_facility: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <SectionTitle>Clinical</SectionTitle>
+
+      <Field label="Blood group">
+        <Select value={form.blood_group} onValueChange={v => setForm({ ...form, blood_group: v })}>
+          <SelectTrigger className="h-11 rounded-lg border-slate-200 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="rounded-lg">
+            {BLOOD_GROUPS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      <Field label="Allergies" hint="Separate each one with a comma.">
+        <Input
+          placeholder="Penicillin, sulphur, latex"
+          value={form.allergies}
+          onChange={e => setForm({ ...form, allergies: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Chronic conditions" wide>
+        <Input
+          placeholder="Diabetes, hypertension, asthma"
+          value={form.chronic_conditions}
+          onChange={e => setForm({ ...form, chronic_conditions: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Current medication" wide>
+        <Input
+          placeholder="What the patient is already taking"
+          value={form.current_medications}
+          onChange={e => setForm({ ...form, current_medications: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Medical history" wide>
+        <Textarea
+          placeholder="Past admissions, surgeries, family history"
+          value={form.medical_history}
+          onChange={e => setForm({ ...form, medical_history: e.target.value })}
+          className="min-h-[90px] resize-none rounded-lg border-slate-200 p-4 text-sm leading-relaxed"
+        />
+      </Field>
+
+      <SectionTitle>Billing</SectionTitle>
+
+      <Field label="Who pays">
+        <Select value={form.payer_type} onValueChange={v => setForm({ ...form, payer_type: v })}>
+          <SelectTrigger className="h-11 rounded-lg border-slate-200 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="rounded-lg">
+            {PAYER_TYPES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      <Field label="Coverage">
+        <div className="relative">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={100}
+            value={form.coverage_percentage}
+            onChange={e => setForm({ ...form, coverage_percentage: Number(e.target.value) })}
+            className="h-11 rounded-lg border-slate-200 pr-8 text-sm tabular-nums"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
+        </div>
+      </Field>
+
+      {form.payer_type !== 'Self paying' ? (
+        <>
+          <Field label="Insurer or payer name">
+            <Input
+              placeholder="Jubilee, UAP, employer name"
+              value={form.insurance_provider}
+              onChange={e => setForm({ ...form, insurance_provider: e.target.value })}
+              className="h-11 rounded-lg border-slate-200 text-sm"
+            />
+          </Field>
+
+          <Field label="Policy or member number">
+            <Input
+              placeholder="Policy number"
+              value={form.insurance_policy_no}
+              onChange={e => setForm({ ...form, insurance_policy_no: e.target.value })}
+              className="h-11 rounded-lg border-slate-200 font-mono text-sm"
+            />
+          </Field>
+        </>
+      ) : null}
+
+      <SectionTitle>Next of kin</SectionTitle>
+
+      <Field label="Name">
+        <Input
+          placeholder="Full name"
+          value={form.emergency_contact_name}
+          onChange={e => setForm({ ...form, emergency_contact_name: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Phone">
+        <Input
+          type="tel"
+          inputMode="tel"
+          placeholder="0770000000"
+          value={form.emergency_contact_phone}
+          onChange={e => setForm({ ...form, emergency_contact_phone: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      <Field label="Relationship">
+        <Select
+          value={form.emergency_contact_relationship}
+          onValueChange={v => setForm({ ...form, emergency_contact_relationship: v })}
+        >
+          <SelectTrigger className="h-11 rounded-lg border-slate-200 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="rounded-lg">
+            {RELATIONSHIPS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      <Field label="Where they can be found">
+        <Input
+          placeholder="Village, workplace or landmark"
+          value={form.emergency_contact_address}
+          onChange={e => setForm({ ...form, emergency_contact_address: e.target.value })}
+          className="h-11 rounded-lg border-slate-200 text-sm"
+        />
+      </Field>
+
+      {mode === 'edit' ? (
+        <>
+          <SectionTitle>Record status</SectionTitle>
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-4 py-3 sm:col-span-2">
+            <div>
+              <p className="text-sm text-slate-900">
+                {form.is_active ? 'Active' : 'Archived'}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                Archived patients stay on record but are hidden from daily lists.
+              </p>
+            </div>
+            <Switch
+              checked={form.is_active}
+              onCheckedChange={(v) => setForm({ ...form, is_active: v === true })}
+            />
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
 
   return (
-    <div className="min-h-full bg-slate-50/50">
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 px-4 pb-16 pt-6 sm:space-y-6 xl:px-8">
 
-      {/* ---------------------------------------------------------------- */}
-      {/* FACILITY NAVIGATION BAR — persistent utility bar for context switching */}
-      {/* ---------------------------------------------------------------- */}
-      <div className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950">
-        <div className="flex h-14 items-center justify-between px-6">
-          {/* Left: facility identity + breadcrumb */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shrink-0">
-              <Building2 size={16} className="text-white" />
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0 text-sm">
-              <span className="font-bold text-white truncate max-w-[160px]">
-                {profile?.business_name || 'Clinical Facility'}
-              </span>
-              <ChevronRight size={14} className="text-slate-600 shrink-0" />
-              <span className="text-slate-400 font-medium hidden sm:inline">Records</span>
-              <ChevronRight size={14} className="text-slate-600 shrink-0 hidden sm:inline" />
-              <span className="text-slate-200 font-semibold">Patient 360 Registry</span>
-            </div>
-          </div>
-
-          {/* Right: status filter + clinician */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 w-auto gap-2 rounded-md border-slate-800 bg-slate-900 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 focus:ring-0">
-                <ListFilter size={12} className="text-slate-400" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-lg z-[10000]">
-                {STATUS_FILTERS.map(s => (
-                  <SelectItem key={s} value={s} className="text-xs font-medium">{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="mx-1 h-5 w-px bg-slate-800 hidden md:block" />
-
-            <button className="hidden md:flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-900 hover:text-white transition-colors">
-              <Bell size={15} />
-            </button>
-
-            <div className="flex items-center gap-2 rounded-md bg-slate-900 py-1 pl-1 pr-3">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700">
-                <Users size={12} className="text-slate-300" />
-              </div>
-              <span className="text-xs font-semibold text-slate-200 hidden lg:inline max-w-[120px] truncate">
-                {profile?.full_name || 'Records Officer'}
-              </span>
-            </div>
-          </div>
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Patients</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {activeCount} active {activeCount === 1 ? 'record' : 'records'}
+          </p>
         </div>
+
+        <Button
+          onClick={() => setIsRegisterOpen(true)}
+          className="h-10 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          <UserPlus size={15} className="mr-2" />
+          Register patient
+        </Button>
       </div>
 
-      <div className="space-y-8 animate-in fade-in duration-500 p-6 lg:p-8 pb-20">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Search name, number, phone or ID"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="h-10 rounded-lg border-slate-200 pl-9 text-sm"
+          />
+        </div>
 
-        {/* MAIN CARD CONTAINER */}
-        <Card className="border border-slate-200 shadow-xl bg-white rounded-[2.5rem] overflow-hidden">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-10 w-full rounded-lg border-slate-200 text-sm sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="rounded-lg">
+            {STATUS_FILTERS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
 
-          {/* HEADER & SEARCH BAR */}
-          <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 p-8 bg-slate-50/30">
-            <div>
-              <CardTitle className="text-2xl font-black tracking-tight flex items-center gap-3 text-slate-900">
-                <Users className="text-blue-600" size={28} /> PATIENT 360 REGISTRY
-              </CardTitle>
-              <CardDescription className="text-xs font-medium text-slate-500 mt-1">
-                Electronic Health Records (EHR), Insurance, Allergies & Patient History
-                <span className="ml-2 font-bold text-emerald-600">{activeCount} Active Files</span>
-              </CardDescription>
-            </div>
+      {isError ? (
+        <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-600" />
+          <p className="text-sm text-red-900">Patient records could not be loaded. Refresh the page.</p>
+        </div>
+      ) : null}
 
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search Name, UID or Insurance..."
-                  className="pl-10 h-11 bg-white border-slate-200 rounded-xl font-bold text-xs"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <Button onClick={() => setIsRegisterOpen(true)} className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200">
-                <UserPlus size={18} className="mr-2" /> Register Patient
+      <Card className="overflow-hidden rounded-xl border-slate-200 shadow-none">
+        {isLoading ? (
+          <div className="py-20 text-center">
+            <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
+            <p className="mt-3 text-sm text-slate-400">Loading</p>
+          </div>
+        ) : filteredPatients.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="text-sm text-slate-500">No patients found</p>
+            {searchTerm || statusFilter !== 'All patients' ? (
+              <Button
+                variant="outline"
+                onClick={() => { setSearchTerm(''); setStatusFilter('All patients'); }}
+                className="mt-5 h-9 rounded-lg border-slate-200 px-4 text-xs font-medium"
+              >
+                Clear search
               </Button>
-            </div>
-          </CardHeader>
-
-          {/* PATIENT LEDGER TABLE */}
-          <CardContent className="p-0">
-            <ScrollArea className="w-full">
+            ) : (
+              <Button
+                onClick={() => setIsRegisterOpen(true)}
+                className="mt-5 h-9 rounded-lg bg-slate-900 px-4 text-xs font-medium text-white hover:bg-slate-800"
+              >
+                Register the first patient
+              </Button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto lg:block">
               <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow className="h-14">
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500 pl-8">Identity & UID</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Bio Data & Blood</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Contact</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Allergy Warnings</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500">Insurance Protocol</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-slate-500 text-center">Status</TableHead>
-                    <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-slate-500 pr-8">Actions</TableHead>
+                <TableHeader>
+                  <TableRow className="border-b border-slate-200 hover:bg-transparent">
+                    <TableHead className="h-11 px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Patient</TableHead>
+                    <TableHead className="h-11 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Sex and age</TableHead>
+                    <TableHead className="h-11 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Contact</TableHead>
+                    <TableHead className="h-11 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Allergies</TableHead>
+                    <TableHead className="h-11 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Payer</TableHead>
+                    <TableHead className="h-11 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Status</TableHead>
+                    <TableHead className="h-11 px-5 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
-                    <TableRow><TableCell colSpan={7} className="h-64 text-center"><Loader2 className="animate-spin inline-block mr-2 text-blue-600" /> Syncing Patient Ledger...</TableCell></TableRow>
-                  ) : filteredPatients?.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="h-48 text-center text-xs font-bold text-slate-400">No patients match the current search & filter.</TableCell></TableRow>
-                  ) : filteredPatients?.map(p => (
-                    <TableRow key={p.id} className="hover:bg-slate-50/50 transition-colors group h-20">
+                  {pagedPatients.map((p: any) => {
+                    const summary = p.medical_history_summary || {};
+                    const allergies = Array.isArray(p.allergies) ? p.allergies : [];
 
-                      {/* IDENTITY & UID */}
-                      <TableCell className="pl-8 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-11 w-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-black text-lg shadow-sm">
-                            {p.full_name.charAt(0)}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-900 text-sm">{p.full_name}</span>
-                            <span className="text-[10px] font-mono text-slate-400 font-bold uppercase">UID: {p.patient_uid || 'TEMP-ID'}</span>
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      {/* BIO DATA */}
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                            <Activity size={12} className="text-blue-500" /> {p.gender} • {p.dob || 'DOB N/A'}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs font-black text-rose-600">
-                            <Droplets size={12} className="text-rose-500" /> GROUP {p.blood_group || 'N/A'}
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      {/* CONTACT */}
-                      <TableCell>
-                        <div className="flex flex-col gap-1 max-w-[160px]">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                            <Phone size={12} className="text-slate-400 shrink-0" /> {p.medical_history_summary?.phone || 'N/A'}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 truncate">
-                            <MapPin size={12} className="text-slate-300 shrink-0" /> {p.medical_history_summary?.address || 'No address on file'}
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      {/* ALLERGY WARNINGS */}
-                      <TableCell>
-                        {p.allergies && p.allergies.length > 0 ? (
-                          <div className="flex items-center gap-1.5 p-2 bg-rose-50 border border-rose-100 rounded-xl max-w-xs">
-                            <ShieldAlert size={14} className="text-rose-600 shrink-0 animate-pulse" />
-                            <span className="text-[10px] font-bold text-rose-800 truncate">{p.allergies.join(', ')}</span>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">No Known Allergies</span>
-                        )}
-                      </TableCell>
-
-                      {/* INSURANCE */}
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-800">{p.insurance_provider || 'Private Cash Pay'}</span>
-                          <span className="text-[10px] text-slate-400 font-mono italic">{p.insurance_policy_no || 'NO POLICY'} • {p.coverage_percentage ?? 100}%</span>
-                        </div>
-                      </TableCell>
-
-                      {/* STATUS */}
-                      <TableCell className="text-center">
-                        <Badge className={cn("border-none text-[9px] font-bold uppercase px-3 py-1", p.is_active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>
-                          {p.is_active ? 'ACTIVE FILE' : 'ARCHIVED'}
-                        </Badge>
-                      </TableCell>
-
-                      {/* ACTIONS */}
-                      <TableCell className="text-right pr-8">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            onClick={() => { setSelectedPatient(p); setIsPatientFileOpen(true); }}
-                            variant="outline" size="sm"
-                            className="h-9 px-3 font-bold text-xs text-blue-600 border-blue-200 hover:bg-blue-50 rounded-xl"
+                    return (
+                      <TableRow key={p.id} className="border-b border-slate-100 last:border-0">
+                        <TableCell className="px-5 py-3.5">
+                          <p className="text-sm font-medium text-slate-900">{p.full_name || 'Unnamed'}</p>
+                          <p className="mt-0.5 font-mono text-xs text-slate-400">{p.patient_uid || '—'}</p>
+                        </TableCell>
+                        <TableCell className="py-3.5">
+                          <p className="text-sm text-slate-600">{p.gender || '—'}</p>
+                          <p className="mt-0.5 text-xs text-slate-400">{displayAge(p)}</p>
+                        </TableCell>
+                        <TableCell className="py-3.5">
+                          <p className="text-sm text-slate-600">{summary.phone || '—'}</p>
+                          <p className="mt-0.5 max-w-[180px] truncate text-xs text-slate-400">
+                            {[summary.address, summary.district].filter(Boolean).join(', ') || 'No address'}
+                          </p>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] py-3.5">
+                          {allergies.length > 0 ? (
+                            <Badge className="rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                              {allergies.join(', ')}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-slate-400">None recorded</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3.5">
+                          <p className="text-sm text-slate-600">
+                            {p.insurance_provider || summary.payer_type || 'Self paying'}
+                          </p>
+                          {p.insurance_policy_no ? (
+                            <p className="mt-0.5 font-mono text-xs text-slate-400">
+                              {p.insurance_policy_no} · {p.coverage_percentage ?? 100}%
+                            </p>
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="py-3.5">
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "rounded-md px-2 py-0.5 text-xs font-medium",
+                              p.is_active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                            )}
                           >
-                            <Eye size={14} className="mr-1.5" /> 360 File
-                          </Button>
-
-                          <Button
-                            onClick={() => openEditModal(p)}
-                            variant="ghost" size="icon"
-                            className="h-9 w-9 text-slate-400 hover:text-blue-600 rounded-xl"
-                          >
-                            <Edit3 size={16} />
-                          </Button>
-
-                          <Button
-                            onClick={() => exportPatientEhrPdf(p)}
-                            variant="ghost" size="icon"
-                            className="h-9 w-9 text-slate-400 hover:text-slate-900 rounded-xl"
-                          >
-                            <Printer size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
-
-                    </TableRow>
-                  ))}
+                            {p.is_active ? 'Active' : 'Archived'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-5 py-3.5">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              onClick={() => { setSelectedPatient(p); setIsPatientFileOpen(true); }}
+                              variant="outline"
+                              className="h-8 rounded-lg border-slate-200 px-3 text-xs font-medium"
+                            >
+                              <Eye size={13} className="mr-1.5 text-slate-400" />
+                              File
+                            </Button>
+                            <Button
+                              onClick={() => openEditModal(p)}
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-slate-900"
+                              aria-label="Edit"
+                            >
+                              <Pencil size={14} />
+                            </Button>
+                            <Button
+                              onClick={() => exportPatientEhrPdf(p)}
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-slate-900"
+                              aria-label="Print"
+                            >
+                              <Printer size={14} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ==================================================================== */}
-      {/* MODAL 1: REGISTER NEW PATIENT FORM */}
-      {/* ==================================================================== */}
-      <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
-        <DialogContent className="max-w-2xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-none shadow-3xl">
-          <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-xl font-black uppercase tracking-wider flex items-center gap-3">
-                <UserPlus className="text-blue-500" /> Patient Registration Master
-              </DialogTitle>
-              <DialogDescription className="text-slate-400 text-xs mt-1 uppercase font-medium">Create electronic health file & insurance mapping</DialogDescription>
             </div>
-          </div>
 
-          <ScrollArea className="max-h-[75vh] bg-white">
-            <div className="p-8 space-y-8">
+            <div className="divide-y divide-slate-100 lg:hidden">
+              {pagedPatients.map((p: any) => {
+                const summary = p.medical_history_summary || {};
+                const allergies = Array.isArray(p.allergies) ? p.allergies : [];
 
-              {/* SECTION: IDENTITY */}
-              <div className="space-y-4">
-                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Identity</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Full Patient Name *</Label>
-                    <Input placeholder="e.g. Mukasa David" value={newPatient.full_name} onChange={e => setNewPatient({ ...newPatient, full_name: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                  </div>
+                return (
+                  <div key={p.id} className="space-y-3 px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-900">{p.full_name || 'Unnamed'}</p>
+                        <p className="mt-0.5 font-mono text-xs text-slate-400">{p.patient_uid || '—'}</p>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "shrink-0 rounded-md px-2 py-0.5 text-xs font-medium",
+                          p.is_active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                        )}
+                      >
+                        {p.is_active ? 'Active' : 'Archived'}
+                      </Badge>
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Gender *</Label>
-                    <Select value={newPatient.gender} onValueChange={v => setNewPatient({ ...newPatient, gender: v })}>
-                      <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Male" className="font-bold">Male</SelectItem>
-                        <SelectItem value="Female" className="font-bold">Female</SelectItem>
-                        <SelectItem value="Other" className="font-bold">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <p className="text-sm text-slate-600">
+                      {p.gender || '—'} · {displayAge(p)} · {summary.phone || 'No phone'}
+                    </p>
 
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Date of Birth (DOB)</Label>
-                    <Input type="date" value={newPatient.dob} onChange={e => setNewPatient({ ...newPatient, dob: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                  </div>
+                    {allergies.length > 0 ? (
+                      <Badge className="rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                        Allergies: {allergies.join(', ')}
+                      </Badge>
+                    ) : null}
 
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Blood Group</Label>
-                    <Select value={newPatient.blood_group} onValueChange={v => setNewPatient({ ...newPatient, blood_group: v })}>
-                      <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(b => (
-                          <SelectItem key={b} value={b} className="font-bold">Group {b}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Marital Status</Label>
-                    <Select value={newPatient.marital_status} onValueChange={v => setNewPatient({ ...newPatient, marital_status: v })}>
-                      <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MARITAL_STATUSES.map(m => (
-                          <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
-                      <IdCard size={12} /> National ID / Passport No.
-                    </Label>
-                    <Input placeholder="e.g. CM8901234XXXXX" value={newPatient.national_id} onChange={e => setNewPatient({ ...newPatient, national_id: e.target.value })} className="h-12 rounded-2xl font-mono font-bold" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
-                      <Briefcase size={12} /> Occupation
-                    </Label>
-                    <Input placeholder="e.g. Teacher, Boda Rider, Trader" value={newPatient.occupation} onChange={e => setNewPatient({ ...newPatient, occupation: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION: CONTACT */}
-              <div className="space-y-4">
-                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Contact Details</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
-                      <Phone size={12} /> Phone Number
-                    </Label>
-                    <Input placeholder="e.g. +256 700 000000" value={newPatient.phone} onChange={e => setNewPatient({ ...newPatient, phone: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Referring Facility (if any)</Label>
-                    <Input placeholder="e.g. Mulago Regional Referral Hospital" value={newPatient.referring_facility} onChange={e => setNewPatient({ ...newPatient, referring_facility: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                  </div>
-
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
-                      <MapPin size={12} /> Residential Address
-                    </Label>
-                    <Textarea placeholder="e.g. Plot 24, Kanjokya Street, Kampala" value={newPatient.address} onChange={e => setNewPatient({ ...newPatient, address: e.target.value })} className="min-h-[72px] rounded-2xl font-medium resize-none" />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION: CLINICAL */}
-              <div className="space-y-4">
-                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Clinical Background</Label>
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-black text-rose-500 uppercase ml-1">Known Allergies (Comma Separated)</Label>
-                    <Input placeholder="e.g. Penicillin, Sulphur, Nuts, Latex" value={newPatient.allergies} onChange={e => setNewPatient({ ...newPatient, allergies: e.target.value })} className="h-12 rounded-2xl font-bold border-rose-200 bg-rose-50/20 text-rose-900" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Medical History Summary</Label>
-                    <Textarea placeholder="Chronic conditions, past surgeries, ongoing medication, family history..." value={newPatient.medical_history} onChange={e => setNewPatient({ ...newPatient, medical_history: e.target.value })} className="min-h-[96px] rounded-2xl font-medium resize-none" />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION: INSURANCE */}
-              <div className="space-y-4">
-                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Insurance & Billing</Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase ml-1">
-                      <CreditCard size={12} /> Insurance Provider & Policy No
-                    </Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input placeholder="e.g. Prudential / UAP / Jubilee" value={newPatient.insurance_provider} onChange={e => setNewPatient({ ...newPatient, insurance_provider: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                      <Input placeholder="Policy #" value={newPatient.insurance_policy_no} onChange={e => setNewPatient({ ...newPatient, insurance_policy_no: e.target.value })} className="h-12 rounded-2xl font-mono font-bold" />
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => { setSelectedPatient(p); setIsPatientFileOpen(true); }}
+                        variant="outline"
+                        className="h-9 flex-1 rounded-lg border-slate-200 text-xs font-medium"
+                      >
+                        Open file
+                      </Button>
+                      <Button
+                        onClick={() => openEditModal(p)}
+                        variant="outline"
+                        className="h-9 rounded-lg border-slate-200 px-3 text-xs font-medium"
+                      >
+                        <Pencil size={13} />
+                      </Button>
+                      <Button
+                        onClick={() => exportPatientEhrPdf(p)}
+                        variant="outline"
+                        className="h-9 rounded-lg border-slate-200 px-3 text-xs font-medium"
+                      >
+                        <Printer size={13} />
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Coverage %</Label>
-                    <div className="relative">
-                      <Input type="number" min="0" max="100" value={newPatient.coverage_percentage} onChange={e => setNewPatient({ ...newPatient, coverage_percentage: Number(e.target.value) })} className="h-12 rounded-2xl font-black" />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-xs">%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION: NEXT OF KIN */}
-              <div className="space-y-4">
-                <Label className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase tracking-widest">
-                  <HeartHandshake size={12} /> Next of Kin / Emergency Contact
-                </Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Input placeholder="Contact Name" value={newPatient.emergency_contact_name} onChange={e => setNewPatient({ ...newPatient, emergency_contact_name: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                  <Input placeholder="Contact Phone" value={newPatient.emergency_contact_phone} onChange={e => setNewPatient({ ...newPatient, emergency_contact_phone: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                  <Select value={newPatient.emergency_contact_relationship} onValueChange={v => setNewPatient({ ...newPatient, emergency_contact_relationship: v })}>
-                    <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {RELATIONSHIPS.map(r => (
-                        <SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
+                );
+              })}
             </div>
-          </ScrollArea>
+          </>
+        )}
+      </Card>
 
-          <DialogFooter className="p-6 bg-slate-50 border-t flex gap-4">
-            <Button variant="ghost" onClick={() => setIsRegisterOpen(false)} className="h-12 font-bold uppercase text-xs text-slate-400">Cancel</Button>
-            <Button onClick={() => registerPatientMutation.mutate()} disabled={registerPatientMutation.isPending} className="h-12 px-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-xl uppercase text-xs flex-1">
-              {registerPatientMutation.isPending ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : "Authorize Patient File"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {filteredPatients.length > 0 ? (
+        <div className="flex flex-col gap-4 px-1 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-500">
+            Showing {pageIndex * pageSize + 1} to {Math.min((pageIndex + 1) * pageSize, filteredPatients.length)} of {filteredPatients.length}
+          </p>
 
-      {/* ==================================================================== */}
-      {/* MODAL 2: EDIT EXISTING PATIENT FILE */}
-      {/* ==================================================================== */}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-2xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-none shadow-3xl">
-          <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-xl font-black uppercase tracking-wider flex items-center gap-3">
-                <Edit3 className="text-blue-500" /> Edit Patient File
-              </DialogTitle>
-              <DialogDescription className="text-slate-400 text-xs mt-1 uppercase font-medium">
-                {selectedPatient?.patient_uid} • Update record & archive status
-              </DialogDescription>
-            </div>
-          </div>
-
-          <ScrollArea className="max-h-[75vh] bg-white">
-            <div className="p-8 space-y-8">
-
-              {/* ARCHIVE / ACTIVE TOGGLE */}
-              <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                <div>
-                  <Label className="text-xs font-black uppercase text-slate-700">File Status</Label>
-                  <p className="text-[10px] font-medium text-slate-400 mt-0.5">Archived patients are hidden from active workflows but retained for records.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={cn("text-[10px] font-black uppercase", editPatient.is_active ? "text-emerald-600" : "text-slate-400")}>
-                    {editPatient.is_active ? 'Active' : 'Archived'}
-                  </span>
-                  <Switch checked={editPatient.is_active} onCheckedChange={v => setEditPatient({ ...editPatient, is_active: v })} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Full Patient Name *</Label>
-                  <Input value={editPatient.full_name} onChange={e => setEditPatient({ ...editPatient, full_name: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Blood Group</Label>
-                  <Select value={editPatient.blood_group} onValueChange={v => setEditPatient({ ...editPatient, blood_group: v })}>
-                    <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(b => (
-                        <SelectItem key={b} value={b} className="font-bold">Group {b}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Marital Status</Label>
-                  <Select value={editPatient.marital_status} onValueChange={v => setEditPatient({ ...editPatient, marital_status: v })}>
-                    <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MARITAL_STATUSES.map(m => (
-                        <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Phone Number</Label>
-                  <Input value={editPatient.phone} onChange={e => setEditPatient({ ...editPatient, phone: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">National ID / Passport No.</Label>
-                  <Input value={editPatient.national_id} onChange={e => setEditPatient({ ...editPatient, national_id: e.target.value })} className="h-12 rounded-2xl font-mono font-bold" />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Residential Address</Label>
-                  <Textarea value={editPatient.address} onChange={e => setEditPatient({ ...editPatient, address: e.target.value })} className="min-h-[72px] rounded-2xl font-medium resize-none" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Occupation</Label>
-                  <Input value={editPatient.occupation} onChange={e => setEditPatient({ ...editPatient, occupation: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Coverage %</Label>
-                  <Input type="number" min="0" max="100" value={editPatient.coverage_percentage} onChange={e => setEditPatient({ ...editPatient, coverage_percentage: Number(e.target.value) })} className="h-12 rounded-2xl font-black" />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-[11px] font-black text-rose-500 uppercase ml-1">Known Allergies (Comma Separated)</Label>
-                  <Input value={editPatient.allergies} onChange={e => setEditPatient({ ...editPatient, allergies: e.target.value })} className="h-12 rounded-2xl font-bold border-rose-200 bg-rose-50/20 text-rose-900" />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Medical History Summary</Label>
-                  <Textarea value={editPatient.medical_history} onChange={e => setEditPatient({ ...editPatient, medical_history: e.target.value })} className="min-h-[96px] rounded-2xl font-medium resize-none" />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Insurance Provider & Policy No</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input value={editPatient.insurance_provider} onChange={e => setEditPatient({ ...editPatient, insurance_provider: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                    <Input value={editPatient.insurance_policy_no} onChange={e => setEditPatient({ ...editPatient, insurance_policy_no: e.target.value })} className="h-12 rounded-2xl font-mono font-bold" />
-                  </div>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-[11px] font-black text-slate-400 uppercase ml-1">Next of Kin / Emergency Contact</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Input placeholder="Contact Name" value={editPatient.emergency_contact_name} onChange={e => setEditPatient({ ...editPatient, emergency_contact_name: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                    <Input placeholder="Contact Phone" value={editPatient.emergency_contact_phone} onChange={e => setEditPatient({ ...editPatient, emergency_contact_phone: e.target.value })} className="h-12 rounded-2xl font-bold" />
-                    <Select value={editPatient.emergency_contact_relationship} onValueChange={v => setEditPatient({ ...editPatient, emergency_contact_relationship: v })}>
-                      <SelectTrigger className="h-12 rounded-2xl font-bold border-slate-200">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RELATIONSHIPS.map(r => (
-                          <SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </ScrollArea>
-
-          <DialogFooter className="p-6 bg-slate-50 border-t flex gap-4">
-            <Button variant="ghost" onClick={() => setIsEditModalOpen(false)} className="h-12 font-bold uppercase text-xs text-slate-400">Cancel</Button>
-            <Button onClick={() => updatePatientMutation.mutate()} disabled={updatePatientMutation.isPending} className="h-12 px-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-xl uppercase text-xs flex-1">
-              {updatePatientMutation.isPending ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : "Save Patient File"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ==================================================================== */}
-      {/* MODAL 3: DEEP PATIENT 360 FILE DRAWER */}
-      {/* ==================================================================== */}
-      <Dialog open={isPatientFileOpen} onOpenChange={setIsPatientFileOpen}>
-        <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-none shadow-3xl">
-          <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-2xl text-white">
-                {selectedPatient?.full_name?.charAt(0)}
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-black uppercase">{selectedPatient?.full_name}</DialogTitle>
-                <DialogDescription className="text-slate-400 text-xs font-mono font-bold mt-1">
-                  UID: {selectedPatient?.patient_uid} • {selectedPatient?.gender} • Group {selectedPatient?.blood_group}
-                </DialogDescription>
-              </div>
-            </div>
-
+          <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <Button onClick={() => openEditModal(selectedPatient)} variant="outline" className="bg-transparent border-slate-700 text-white hover:bg-slate-800 font-bold text-xs">
-                <Edit3 size={16} className="mr-2" /> Edit File
+              <Label className="text-xs font-medium text-slate-500">Rows</Label>
+              <Select value={String(pageSize)} onValueChange={v => setPageSize(Number(v))}>
+                <SelectTrigger className="h-9 w-20 rounded-lg border-slate-200 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg">
+                  {PAGE_SIZES.map(size => <SelectItem key={size} value={String(size)}>{size}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <p className="text-sm text-slate-500">Page {pageIndex + 1} of {pageCount}</p>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                className="h-9 w-9 rounded-lg border-slate-200 p-0"
+                onClick={() => setPageIndex(0)}
+                disabled={pageIndex === 0}
+              >
+                <ChevronsLeft className="h-4 w-4" />
               </Button>
-              <Button onClick={() => exportPatientEhrPdf(selectedPatient)} variant="outline" className="bg-transparent border-slate-700 text-white hover:bg-slate-800 font-bold text-xs">
-                <Printer size={16} className="mr-2" /> Export EHR PDF
+              <Button
+                variant="outline"
+                className="h-9 w-9 rounded-lg border-slate-200 p-0"
+                onClick={() => setPageIndex(p => Math.max(0, p - 1))}
+                disabled={pageIndex === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="h-9 w-9 rounded-lg border-slate-200 p-0"
+                onClick={() => setPageIndex(p => Math.min(pageCount - 1, p + 1))}
+                disabled={pageIndex >= pageCount - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="h-9 w-9 rounded-lg border-slate-200 p-0"
+                onClick={() => setPageIndex(pageCount - 1)}
+                disabled={pageIndex >= pageCount - 1}
+              >
+                <ChevronsRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
+        </div>
+      ) : null}
 
-          <ScrollArea className="max-h-[75vh] p-8 bg-white">
+      <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[92vh] sm:w-[calc(100%-2rem)] sm:max-w-3xl sm:rounded-xl">
+          <DialogHeader className="shrink-0 border-b border-slate-200 px-5 py-4 text-left sm:px-6">
+            <DialogTitle className="text-base font-semibold text-slate-900">Register patient</DialogTitle>
+            <p className="mt-0.5 text-sm text-slate-500">A patient number is created automatically</p>
+          </DialogHeader>
 
-            {/* QUICK BIO STRIP */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                <span className="text-[9px] font-black uppercase text-slate-400">Phone</span>
-                <p className="text-xs font-bold text-slate-800 mt-1">{selectedPatient?.medical_history_summary?.phone || 'N/A'}</p>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-6">
+            {renderPatientForm(newPatient, setNewPatient, 'create')}
+          </div>
+
+          <DialogFooter className="shrink-0 flex-col gap-2 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <Button
+              variant="ghost"
+              onClick={() => setIsRegisterOpen(false)}
+              className="h-11 rounded-lg px-4 text-sm font-medium text-slate-500"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => registerPatientMutation.mutate()}
+              disabled={registerPatientMutation.isPending}
+              className="h-11 rounded-lg bg-slate-900 px-6 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              {registerPatientMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Register
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[92vh] sm:w-[calc(100%-2rem)] sm:max-w-3xl sm:rounded-xl">
+          <DialogHeader className="shrink-0 border-b border-slate-200 px-5 py-4 text-left sm:px-6">
+            <DialogTitle className="text-base font-semibold text-slate-900">Edit patient</DialogTitle>
+            <p className="mt-0.5 font-mono text-sm text-slate-500">{selectedPatient?.patient_uid}</p>
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-6">
+            {renderPatientForm(editPatient, setEditPatient, 'edit')}
+          </div>
+
+          <DialogFooter className="shrink-0 flex-col gap-2 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <Button
+              variant="ghost"
+              onClick={() => setIsEditModalOpen(false)}
+              className="h-11 rounded-lg px-4 text-sm font-medium text-slate-500"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => updatePatientMutation.mutate()}
+              disabled={updatePatientMutation.isPending}
+              className="h-11 rounded-lg bg-slate-900 px-6 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              {updatePatientMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPatientFileOpen} onOpenChange={setIsPatientFileOpen}>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[92vh] sm:w-[calc(100%-2rem)] sm:max-w-4xl sm:rounded-xl">
+          <DialogHeader className="shrink-0 border-b border-slate-200 px-5 py-4 text-left sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <DialogTitle className="truncate text-base font-semibold text-slate-900">
+                  {selectedPatient?.full_name || 'Patient'}
+                </DialogTitle>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  <span className="font-mono">{selectedPatient?.patient_uid || '—'}</span>
+                  {' · '}{selectedPatient?.gender || '—'}
+                  {' · '}{displayAge(selectedPatient)}
+                  {selectedPatient?.blood_group ? ` · ${selectedPatient.blood_group}` : ''}
+                </p>
               </div>
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                <span className="text-[9px] font-black uppercase text-slate-400">Occupation</span>
-                <p className="text-xs font-bold text-slate-800 mt-1">{selectedPatient?.medical_history_summary?.occupation || 'N/A'}</p>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => { setIsPatientFileOpen(false); openEditModal(selectedPatient); }}
+                  variant="outline"
+                  className="h-9 rounded-lg border-slate-200 px-4 text-xs font-medium"
+                >
+                  <Pencil size={13} className="mr-1.5 text-slate-400" />
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => exportPatientEhrPdf(selectedPatient)}
+                  variant="outline"
+                  className="h-9 rounded-lg border-slate-200 px-4 text-xs font-medium"
+                >
+                  <Printer size={13} className="mr-1.5 text-slate-400" />
+                  Print
+                </Button>
               </div>
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                <span className="text-[9px] font-black uppercase text-slate-400">Marital Status</span>
-                <p className="text-xs font-bold text-slate-800 mt-1">{selectedPatient?.medical_history_summary?.marital_status || 'N/A'}</p>
+            </div>
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-6">
+            {Array.isArray(selectedPatient?.allergies) && selectedPatient.allergies.length > 0 ? (
+              <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-600" />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Allergies</p>
+                  <p className="text-sm font-medium text-red-900">{selectedPatient.allergies.join(', ')}</p>
+                </div>
               </div>
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                <span className="text-[9px] font-black uppercase text-slate-400">Next of Kin</span>
-                <p className="text-xs font-bold text-slate-800 mt-1 truncate">
-                  {selectedPatient?.medical_history_summary?.emergency_contact?.name || 'N/A'}
-                  {selectedPatient?.medical_history_summary?.emergency_contact?.relationship ? ` (${selectedPatient.medical_history_summary.emergency_contact.relationship})` : ''}
+            ) : null}
+
+            <div className="mb-6 grid divide-y divide-slate-200 rounded-lg border border-slate-200 sm:grid-cols-2 sm:divide-y-0 sm:[&>*:nth-child(n+3)]:border-t lg:grid-cols-4 lg:[&>*:nth-child(n+3)]:border-t-0 sm:divide-x">
+              <div className="px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Phone</p>
+                <p className="mt-1 text-sm text-slate-900">
+                  {selectedPatient?.medical_history_summary?.phone || 'Not recorded'}
+                </p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Address</p>
+                <p className="mt-1 truncate text-sm text-slate-900">
+                  {[selectedPatient?.medical_history_summary?.address, selectedPatient?.medical_history_summary?.district]
+                    .filter(Boolean).join(', ') || 'Not recorded'}
+                </p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Payer</p>
+                <p className="mt-1 truncate text-sm text-slate-900">
+                  {selectedPatient?.insurance_provider
+                    || selectedPatient?.medical_history_summary?.payer_type
+                    || 'Self paying'}
+                </p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Next of kin</p>
+                <p className="mt-1 truncate text-sm text-slate-900">
+                  {selectedPatient?.medical_history_summary?.emergency_contact?.name || 'Not recorded'}
                 </p>
               </div>
             </div>
 
-            {selectedPatient?.medical_history_summary?.notes && (
-              <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
-                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-[9px] font-black uppercase text-amber-700">Medical History Summary</span>
-                  <p className="text-xs font-medium text-amber-900 mt-1">{selectedPatient.medical_history_summary.notes}</p>
-                </div>
+            {selectedPatient?.medical_history_summary?.chronic_conditions
+              || selectedPatient?.medical_history_summary?.current_medications
+              || selectedPatient?.medical_history_summary?.notes ? (
+              <div className="mb-6 space-y-3 rounded-lg border border-slate-200 px-4 py-4">
+                {selectedPatient?.medical_history_summary?.chronic_conditions ? (
+                  <div>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Chronic conditions</p>
+                    <p className="mt-1 text-sm text-slate-700">{selectedPatient.medical_history_summary.chronic_conditions}</p>
+                  </div>
+                ) : null}
+                {selectedPatient?.medical_history_summary?.current_medications ? (
+                  <div>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Current medication</p>
+                    <p className="mt-1 text-sm text-slate-700">{selectedPatient.medical_history_summary.current_medications}</p>
+                  </div>
+                ) : null}
+                {selectedPatient?.medical_history_summary?.notes ? (
+                  <div>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">History</p>
+                    <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{selectedPatient.medical_history_summary.notes}</p>
+                  </div>
+                ) : null}
               </div>
-            )}
+            ) : null}
 
-            <Tabs defaultValue="labs" className="space-y-6">
-              <TabsList className="bg-slate-100 p-1 rounded-2xl h-12 w-full justify-start">
-                <TabsTrigger value="labs" className="rounded-xl font-bold text-xs uppercase px-6"><FlaskConical size={14} className="mr-2"/> Lab History ({patientLabs?.length || 0})</TabsTrigger>
-                <TabsTrigger value="encounters" className="rounded-xl font-bold text-xs uppercase px-6"><Stethoscope size={14} className="mr-2"/> Encounters ({patientEncounters?.length || 0})</TabsTrigger>
-                <TabsTrigger value="prescriptions" className="rounded-xl font-bold text-xs uppercase px-6"><Pill size={14} className="mr-2"/> Pharmacy ({patientPrescriptions?.length || 0})</TabsTrigger>
+            <Tabs defaultValue="encounters" className="space-y-4">
+              <TabsList className="grid h-10 w-full grid-cols-3 rounded-lg bg-slate-100 p-1 sm:inline-flex sm:w-auto">
+                <TabsTrigger value="encounters" className="rounded-md px-5 text-xs font-medium">
+                  Visits ({patientEncounters?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="labs" className="rounded-md px-5 text-xs font-medium">
+                  Lab ({patientLabs?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="prescriptions" className="rounded-md px-5 text-xs font-medium">
+                  Medicine ({patientPrescriptions?.length || 0})
+                </TabsTrigger>
               </TabsList>
 
-              {/* TAB 1: LAB HISTORY */}
-              <TabsContent value="labs">
-                <div className="space-y-3">
-                  {patientLabs?.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-8 font-bold">No lab diagnostic orders found for this patient.</p>
-                  ) : patientLabs?.map(lab => (
-                    <div key={lab.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-xs text-slate-900">{lab.test_name}</p>
-                        <p className="text-[10px] text-slate-400">Date: {new Date(lab.created_at).toLocaleDateString()} • Ref: {lab.requested_by || 'Self'}</p>
-                      </div>
-                      <Badge className={cn("border-none text-[9px] font-bold uppercase", lab.status === 'completed' ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800")}>
-                        {lab.status || 'PENDING'}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              {/* TAB 2: ENCOUNTERS */}
               <TabsContent value="encounters">
-                <div className="space-y-3">
-                  {patientEncounters?.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-8 font-bold">No historical consultation encounters logged.</p>
-                  ) : patientEncounters?.map(enc => (
-                    <div key={enc.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                      <div className="flex justify-between items-center">
-                        <p className="font-bold text-xs text-blue-600">{enc.department_name} • {enc.encounter_type}</p>
-                        <span className="text-[10px] font-bold text-slate-400">{new Date(enc.created_at).toLocaleDateString()}</span>
+                {!patientEncounters?.length ? (
+                  <p className="py-12 text-center text-sm text-slate-400">No visits recorded</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                    {patientEncounters.map((enc: any) => (
+                      <div key={enc.id} className="space-y-1.5 px-4 py-3.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-medium text-slate-900">
+                            {enc.department_name || 'Consultation'}
+                            {enc.encounter_type ? ` · ${enc.encounter_type}` : ''}
+                          </p>
+                          <span className="shrink-0 text-xs text-slate-400">
+                            {new Date(enc.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {enc.diagnosis_icd10 ? (
+                          <p className="text-sm text-slate-700">Diagnosis: {enc.diagnosis_icd10}</p>
+                        ) : null}
+                        {enc.symptoms ? (
+                          <p className="line-clamp-3 whitespace-pre-line text-sm text-slate-500">{enc.symptoms}</p>
+                        ) : null}
                       </div>
-                      <p className="text-xs font-medium text-slate-700">Diagnosis: <strong className="text-slate-900">{enc.diagnosis_icd10 || 'N/A'}</strong></p>
-                      <p className="text-xs font-medium text-slate-600">Symptoms: {enc.symptoms}</p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
 
-              {/* TAB 3: PRESCRIPTIONS */}
+              <TabsContent value="labs">
+                {!patientLabs?.length ? (
+                  <p className="py-12 text-center text-sm text-slate-400">No lab tests recorded</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                    {patientLabs.map((lab: any) => {
+                      const result = Array.isArray(lab.medical_lab_results) ? lab.medical_lab_results[0] : null;
+                      return (
+                        <div key={lab.id} className="space-y-1.5 px-4 py-3.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-slate-900">{lab.test_name}</p>
+                              <p className="mt-0.5 text-xs text-slate-400">
+                                {new Date(lab.created_at).toLocaleDateString()}
+                                {lab.requested_by ? ` · ${lab.requested_by}` : ''}
+                              </p>
+                            </div>
+                            <Badge
+                              variant="secondary"
+                              className={cn(
+                                "shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize",
+                                lab.status === 'completed' ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                              )}
+                            >
+                              {lab.status || 'pending'}
+                            </Badge>
+                          </div>
+                          {result ? (
+                            <p className={cn(
+                              "text-sm",
+                              result.is_critical ? "font-medium text-red-700" : "text-slate-700"
+                            )}>
+                              {result.result_value || 'Result recorded'}
+                              {result.interpretation ? ` · ${result.interpretation}` : ''}
+                              {result.reference_range ? ` (ref ${result.reference_range})` : ''}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
               <TabsContent value="prescriptions">
-                <div className="space-y-3">
-                  {patientPrescriptions?.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-8 font-bold">No prescription records logged.</p>
-                  ) : patientPrescriptions?.map(rx => (
-                    <div key={rx.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-xs text-slate-900">{rx.product_variants?.products?.name || 'Medication'}</p>
-                        <p className="text-[10px] font-medium text-emerald-700">Instructions: {rx.dosage_instruction} (Qty: {rx.quantity_prescribed})</p>
+                {!patientPrescriptions?.length ? (
+                  <p className="py-12 text-center text-sm text-slate-400">No medicine recorded</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                    {patientPrescriptions.map((rx: any) => (
+                      <div key={rx.id} className="flex items-start justify-between gap-3 px-4 py-3.5">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-900">
+                            {rx.product_variants?.products?.name || rx.product_variants?.name || 'Medication'}
+                          </p>
+                          <p className="mt-0.5 text-sm text-slate-500">{rx.dosage_instruction}</p>
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            Qty {rx.quantity_prescribed} · {new Date(rx.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize",
+                            rx.status === 'dispensed' ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                          )}
+                        >
+                          {rx.status || 'pending'}
+                        </Badge>
                       </div>
-                      <Badge className="bg-blue-100 text-blue-800 border-none text-[9px] font-bold uppercase">{rx.status || 'PENDING'}</Badge>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
-          </ScrollArea>
+          </div>
 
-          <DialogFooter className="p-6 bg-slate-50 border-t">
-            <Button onClick={() => setIsPatientFileOpen(false)} className="w-full h-12 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl uppercase text-xs">
-              Close Patient 360 File
+          <DialogFooter className="shrink-0 border-t border-slate-200 px-5 py-4 sm:px-6">
+            <Button
+              onClick={() => setIsPatientFileOpen(false)}
+              variant="outline"
+              className="h-11 w-full rounded-lg border-slate-200 text-sm font-medium sm:w-auto sm:px-6"
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
