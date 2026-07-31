@@ -1,135 +1,184 @@
 import React from 'react';
-import { Metadata } from "next";
-import { Heart, Target, Globe, Users, Sparkles, Award } from 'lucide-react';
+import type { Metadata } from "next";
+import { Heart, Target, Globe, Users, LayoutGrid } from 'lucide-react';
 import BackNavbar from '@/components/BackNavbar';
 
 export const metadata: Metadata = {
-    title: "About BBU1",
-    description: "BBU1 is a unified operating system for business — accounting, CRM, inventory, HR, and AI insights in one platform.",
+    title: "About",
+    description:
+        "BBU1 is one system for running a business: accounting, sales, stock, staff and reporting in a single place.",
 };
+
+const VALUES = [
+    { icon: Target, title: "Focus", desc: "We would rather do a few things well than everything at once." },
+    { icon: Users, title: "Community", desc: "We build alongside the businesses using this, not at a distance from them." },
+    { icon: Globe, title: "Reach", desc: "Built for businesses across Africa, useful anywhere." },
+    { icon: Heart, title: "Straight talk", desc: "We tell you what the product does and what it does not do." },
+];
+
+const COMMITMENTS = [
+    {
+        num: "01",
+        title: "We grow when you grow",
+        desc: "We are not a vendor you hear from once a year. If your business does not work on this, neither do we.",
+    },
+    {
+        num: "02",
+        title: "Built to be depended on",
+        desc: "Encrypted connections, daily backups and a system designed to keep working as you add branches.",
+    },
+    {
+        num: "03",
+        title: "Your data stays yours",
+        desc: "Custom fields, custom workflows and an API, so you can export or integrate whenever you want.",
+    },
+    {
+        num: "04",
+        title: "Clear pricing",
+        desc: "No hidden fees and no surprise upgrades. What is on the page is what you pay.",
+    },
+];
 
 export default function AboutPage() {
     return (
-        <div className="flex flex-col min-h-screen bg-white text-slate-900 selection:bg-blue-500/30 font-sans">
+        <div className="flex min-h-screen flex-col bg-white font-sans text-slate-900 selection:bg-blue-500/20">
             <BackNavbar backHref="/" backLabel="Home" />
-            <main className="flex-grow pt-20 pb-24">
-                <div className="container mx-auto px-6 max-w-7xl">
 
-                    {/* --- HEADER --- */}
-                    <header className="mb-24">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full mb-6">
-                            <Sparkles className="h-4 w-4 text-blue-600" />
-                            <span className="text-blue-700 text-xs font-bold tracking-widest uppercase">About</span>
+            <main className="flex-grow pb-24 pt-20">
+                <div className="container mx-auto max-w-7xl px-4 sm:px-6">
+
+                    <header className="pt-8">
+                        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">
+                            <LayoutGrid className="h-3.5 w-3.5 text-slate-500" />
+                            <span className="text-xs font-medium text-slate-600">About</span>
                         </div>
 
-                        <h1 className="text-4xl md:text-6xl font-bold text-slate-900 tracking-tight leading-tight mb-10">
-                            Who we are.
+                        <h1 className="text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+                            Who we are
                         </h1>
 
-                        <div className="grid lg:grid-cols-12 gap-10 items-start">
+                        <div className="mt-10 grid items-start gap-6 lg:grid-cols-12">
                             <div className="lg:col-span-8">
-                                <p className="text-lg md:text-xl text-slate-600 leading-relaxed border-l-4 border-blue-600 pl-6 mb-6">
-                                    BBU1 is a unified operating system for business — one platform for accounting, CRM, inventory, HR, and AI insights, instead of five disconnected tools.
+                                <p className="max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
+                                    BBU1 is one system for running a business. Accounting, sales, stock, staff and
+                                    reporting in a single place, instead of five tools that do not talk to each other.
                                 </p>
-                                <p className="text-slate-500 text-base leading-relaxed max-w-2xl">
-                                    We started BBU1 because we kept seeing the same problem: businesses paying for good software that didn't talk to each other. Our goal is a platform solid enough to run a business on, wherever that business is.
+                                <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-600">
+                                    We started it because we kept meeting the same problem. Businesses were paying for
+                                    good software that would not connect, then spending hours every week reconciling
+                                    the gaps by hand. We wanted something solid enough to run a business on, wherever
+                                    that business is.
                                 </p>
                             </div>
-                            <div className="lg:col-span-4 p-7 bg-slate-50 border border-slate-200 rounded-2xl">
-                                <p className="text-blue-600 text-[11px] font-bold uppercase tracking-widest mb-3">Founder & CEO</p>
-                                <h3 className="text-slate-900 text-xl font-bold mb-2">Mwesigwa Jimmy</h3>
-                                <p className="text-slate-600 text-sm leading-relaxed">
-                                    Building infrastructure for African and global commerce.
+
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 lg:col-span-4">
+                                <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                                    Founder
+                                </p>
+                                <h2 className="mt-3 text-lg font-semibold tracking-tight text-slate-900">
+                                    Mwesigwa Jimmy
+                                </h2>
+                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                                    Building the software layer that African businesses can run their operations on.
                                 </p>
                             </div>
                         </div>
                     </header>
 
-                    {/* --- MISSION & VISION --- */}
-                    <section className="grid md:grid-cols-2 gap-16 mb-24">
+                    <section className="mt-20 grid gap-10 md:mt-28 md:grid-cols-2 md:gap-16">
                         <div>
-                            <div className="flex items-center gap-3 text-blue-600 mb-4">
-                                <Target className="h-6 w-6" />
-                                <span className="text-xs font-bold uppercase tracking-widest">Our Mission</span>
-                            </div>
-                            <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-4">Fewer tools, less friction.</h2>
-                            <p className="text-base md:text-lg text-slate-600 leading-relaxed">
-                                We help businesses scale from a single location to multiple branches without the hidden cost of stitching disconnected tools together — so teams spend time on the business, not on reconciling three different systems.
+                            <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                                Mission
+                            </p>
+                            <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">
+                                Fewer tools, less friction
+                            </h2>
+                            <p className="mt-4 text-base leading-relaxed text-slate-600">
+                                Help a business go from one shop to several without the hidden cost of stitching
+                                systems together, so the time goes into the business rather than into reconciling
+                                three different spreadsheets.
                             </p>
                         </div>
 
                         <div>
-                            <div className="flex items-center gap-3 text-blue-600 mb-4">
-                                <Globe className="h-6 w-6" />
-                                <span className="text-xs font-bold uppercase tracking-widest">Our Vision</span>
-                            </div>
-                            <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-4">The same tools, everywhere.</h2>
-                            <p className="text-base md:text-lg text-slate-600 leading-relaxed">
-                                We want a shop in a small town to have access to the same quality of business tools as a large firm in a major city — built for African markets first, and useful anywhere.
+                            <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                                Vision
+                            </p>
+                            <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">
+                                The same tools, everywhere
+                            </h2>
+                            <p className="mt-4 text-base leading-relaxed text-slate-600">
+                                A shop in a small town should have the same quality of software as a large firm in a
+                                capital city. Built for African markets first, and useful anywhere.
                             </p>
                         </div>
                     </section>
 
-                    {/* --- CORE VALUES --- */}
-                    <section className="mb-24">
-                        <div className="mb-12 text-center">
-                            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">What we care about</h2>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                            {[
-                                { icon: Target, title: "Focus", desc: "We'd rather do a few things well than everything at once." },
-                                { icon: Users, title: "Community", desc: "We build for the businesses we work alongside, not just for them." },
-                                { icon: Globe, title: "Reach", desc: "Built for businesses across Africa, useful anywhere in the world." },
-                                { icon: Heart, title: "Integrity", desc: "We tell you what the product does and doesn't do, plainly." }
-                            ].map((value, i) => (
-                                <div key={i} className="p-8 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:shadow-md hover:border-blue-200 transition-all duration-300 group">
-                                    <value.icon className="h-8 w-8 text-blue-600 mb-5 group-hover:scale-110 transition-transform" />
-                                    <h3 className="text-slate-900 text-lg font-bold mb-2.5">{value.title}</h3>
-                                    <p className="text-slate-600 text-sm leading-relaxed">{value.desc}</p>
-                                </div>
-                            ))}
+                    <section className="mt-20 md:mt-28">
+                        <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">
+                            What we care about
+                        </h2>
+
+                        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+                            {VALUES.map((value, i) => {
+                                const Icon = value.icon;
+                                return (
+                                    <div key={i} className="rounded-2xl border border-slate-200 bg-white p-6">
+                                        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                                            {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+                                        </div>
+                                        <h3 className="text-base font-semibold tracking-tight text-slate-900">
+                                            {value.title}
+                                        </h3>
+                                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{value.desc}</p>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </section>
 
-                    {/* --- COMMITMENTS --- */}
-                    <section className="mb-24 py-20 border-y border-slate-100">
-                        <div className="text-center mb-16">
-                            <h2 className="text-2xl md:text-4xl font-bold text-slate-900 tracking-tight">What you can expect from us</h2>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {[
-                                { num: "01", title: "We grow when you grow.", desc: "We're not a vendor you talk to once a year. Our incentive is your business succeeding on the platform." },
-                                { num: "02", title: "Reliable at any scale.", desc: "Bank-level security, a 99.9% uptime target, and infrastructure that scales as you add locations." },
-                                { num: "03", title: "No vendor lock-in.", desc: "Custom fields, workflows, and open APIs so your data and integrations stay portable." },
-                                { num: "04", title: "Transparent pricing.", desc: "No hidden fees, no surprise upgrades. What you see is what you pay." }
-                            ].map((item, i) => (
-                                <div key={i} className="flex gap-6 p-8 bg-slate-50 border border-slate-200 rounded-2xl hover:border-blue-300 hover:bg-white hover:shadow-sm transition-all">
-                                    <span className="text-2xl font-bold text-blue-200 shrink-0">{item.num}</span>
+                    <section className="mt-20 md:mt-28">
+                        <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">
+                            What you can expect from us
+                        </h2>
+
+                        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
+                            {COMMITMENTS.map((item, i) => (
+                                <div
+                                    key={i}
+                                    className="flex gap-5 rounded-2xl border border-slate-200 bg-white p-6"
+                                >
+                                    <span className="text-sm font-semibold tabular-nums text-slate-300">
+                                        {item.num}
+                                    </span>
                                     <div>
-                                        <h4 className="text-slate-900 text-lg font-bold mb-2 leading-snug">{item.title}</h4>
-                                        <p className="text-slate-600 text-sm leading-relaxed">{item.desc}</p>
+                                        <h3 className="text-base font-semibold leading-snug tracking-tight text-slate-900">
+                                            {item.title}
+                                        </h3>
+                                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.desc}</p>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </section>
 
-                    {/* --- GIVING BACK --- */}
-                    <section className="relative p-10 md:p-16 bg-blue-600 rounded-3xl text-white">
+                    <section className="mt-20 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-12 sm:px-10 sm:py-14 md:mt-28">
                         <div className="max-w-3xl">
-                            <div className="flex items-center gap-3 text-blue-100 mb-6">
-                                <Award className="h-5 w-5" />
-                                <span className="text-xs font-bold uppercase tracking-widest">Giving Back</span>
-                            </div>
-                            <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight mb-8 leading-tight">
-                                Giving back to the community.
+                            <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                                Giving back
+                            </p>
+                            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+                                One percent of profits
                             </h2>
-                            <div className="space-y-6 text-blue-50 text-base md:text-lg leading-relaxed">
+                            <div className="mt-5 space-y-4 text-base leading-relaxed text-slate-600">
                                 <p>
-                                    Since August 2024, BBU1 has committed 1% of annual profits to SOS Children's Villages, supporting children and families in the communities we operate in.
+                                    Since August 2024 we have committed one percent of annual profits to SOS
+                                    Children&apos;s Villages, supporting children and families in the communities we
+                                    work in.
                                 </p>
-                                <p className="font-semibold text-white">
-                                    We're part of the businesses we serve, and those businesses are part of the world. Giving back is how we honor that.
+                                <p>
+                                    We are part of the businesses we serve, and those businesses are part of the
+                                    places they operate in. This is how we hold up our end of that.
                                 </p>
                             </div>
                         </div>

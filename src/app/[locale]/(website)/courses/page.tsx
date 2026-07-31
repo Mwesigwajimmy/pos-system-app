@@ -1,168 +1,254 @@
 import React from 'react';
-import { Metadata } from "next";
-import Link from "next/link";
+import type { Metadata } from "next";
 import { courses } from '@/lib/data/courses';
 import BackNavbar from '@/components/BackNavbar';
-import { 
-  Award, 
-  BookOpen, 
-  Zap, 
-  Users, 
-  ArrowRight, 
-  Sparkles, 
-  CheckCircle, 
+import {
+  Award,
+  BookOpen,
+  Zap,
+  Users,
+  Check,
   GraduationCap,
-  Target
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import LeadForm from "@/components/LeadForm";
 
-export async function generateStaticParams() {
-  return [{ locale: 'en' }]; 
-}
-
 export const metadata: Metadata = {
-  title: "BBU1 Academy - Business & Operations Training",
-  description: "Free and certified courses on business automation, finance, and operations, taught for the people running the business.",
+  title: "Academy",
+  description:
+    "Free and certified courses on business automation, finance and operations, taught for the people running the business.",
 };
 
-export default async function CoursesPage({ 
-  params 
-}: { 
-  params: Promise<{ locale: string }> 
-}) {
-  const { locale } = await params;
+const BENEFITS = [
+  { icon: Award, title: "Certified", desc: "Credentials that show you can run a modern business platform." },
+  { icon: BookOpen, title: "Practical", desc: "Taught by the team who built BBU1, around real workflows." },
+  { icon: Zap, title: "Hands on", desc: "You work through real scenarios, not slides and quizzes." },
+  { icon: Users, title: "Community", desc: "A group of other owners and operators taking the same courses." },
+];
 
-  const freeTracks = courses.filter(c => c.category === "Free");
-  const certTracks = courses.filter(c => c.category === "Certification");
+type PageProps = {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ course?: string }>;
+};
+
+export async function generateStaticParams() {
+  return [{ locale: 'en' }];
+}
+
+export default async function CoursesPage({ searchParams }: PageProps) {
+  const { course: courseId } = await searchParams;
+
+  const freeTracks = courses.filter((c: any) => c.category === "Free");
+  const certTracks = courses.filter((c: any) => c.category === "Certification");
+  const selectedCourse = courses.find((c: any) => String(c.id) === courseId);
 
   return (
-    <div className="flex flex-col min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-white font-sans text-slate-900 selection:bg-blue-500/20">
       <BackNavbar backHref="/" backLabel="Home" />
-      <main className="flex-grow pt-20 pb-24">
-        <div className="container mx-auto px-6 max-w-7xl">
-          
-          {/* --- HEADER --- */}
-          <header className="max-w-3xl mb-24">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full mb-6">
-              <GraduationCap className="h-4 w-4 text-blue-600" />
-              <span className="text-blue-700 text-xs font-bold tracking-widest uppercase">BBU1 Academy</span>
+
+      <main className="flex-grow pb-24 pt-20">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6">
+
+          <header className="max-w-3xl pt-8">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">
+              <GraduationCap className="h-3.5 w-3.5 text-slate-500" />
+              <span className="text-xs font-medium text-slate-600">Academy</span>
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold text-slate-900 tracking-tight leading-tight mb-6">
-              Learn to run your business better.
+
+            <h1 className="text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+              Learn to run your business better
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-2xl">
-              Free and certified courses on automation, finance, and operations — built for people running a business, not writing code.
+
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
+              Free and certified courses on automation, finance and operations, built for people
+              running a business rather than writing code.
             </p>
           </header>
 
-          {/* --- BENEFITS GRID --- */}
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-24">
-            {[
-              { icon: Award, title: "Certified", desc: "Recognized credentials that show you know how to run a modern business platform." },
-              { icon: BookOpen, title: "Practical", desc: "Taught by the team who built BBU1, focused on real workflows, not theory." },
-              { icon: Zap, title: "Hands-On", desc: "Work through real scenarios, not just slides and quizzes." },
-              { icon: Users, title: "Community", desc: "Access to a group of other business owners and operators taking the same courses." }
-            ].map((ben, i) => (
-              <div key={i} className="p-8 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
-                <ben.icon className="h-8 w-8 text-blue-600 mb-5 group-hover:scale-110 transition-transform" />
-                <h3 className="text-slate-900 text-lg font-bold mb-2.5">{ben.title}</h3>
-                <p className="text-slate-600 text-sm leading-relaxed">{ben.desc}</p>
-              </div>
-            ))}
-          </section>
-
-          {/* --- FREE TRACKS --- */}
-          <section className="mb-24">
-            <div className="flex flex-wrap items-center gap-3 mb-10">
-              <h2 className="text-2xl md:text-4xl font-bold tracking-tight text-slate-900">Free courses</h2>
-              <span className="bg-green-50 text-green-700 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest border border-green-100">No cost</span>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {freeTracks.map((course) => (
-                <Card key={course.id} className="bg-slate-50 border-slate-200 rounded-2xl overflow-hidden hover:bg-white hover:shadow-lg hover:border-blue-100 transition-all duration-300 border group">
-                  <div className="p-8 md:p-10">
-                    <course.icon className="h-9 w-9 text-blue-600 mb-6" />
-                    <h3 className="text-xl md:text-2xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors mb-3 tracking-tight leading-tight">{course.title}</h3>
-                    <p className="text-slate-600 text-base mb-6 leading-relaxed">{course.description}</p>
-                    <div className="flex flex-wrap gap-3 mb-8">
-                       {course.topics.map((t, idx) => (
-                         <span key={idx} className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                           <CheckCircle className="h-3.5 w-3.5 text-blue-600" /> {t}
-                         </span>
-                       ))}
-                    </div>
-                    <Button className="h-12 px-8 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all" asChild>
-                       <a href="#enroll">Enroll now</a>
-                    </Button>
+          <section className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {BENEFITS.map((ben, i) => {
+              const Icon = ben.icon;
+              return (
+                <div key={i} className="rounded-2xl border border-slate-200 bg-white p-6">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                    {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
                   </div>
-                </Card>
-              ))}
-            </div>
-          </section>
-
-          {/* --- CERTIFICATIONS --- */}
-          <section className="mb-24">
-            <div className="mb-10">
-              <h2 className="text-2xl md:text-4xl font-bold tracking-tight text-slate-900">Certification tracks</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {certTracks.map((course) => (
-                <Card key={course.id} className="bg-white border-slate-200 rounded-2xl overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all border flex flex-col h-full group">
-                  <div className="p-8 flex-grow">
-                    <div className="flex justify-between items-start mb-6">
-                       <course.icon className="h-8 w-8 text-blue-600" />
-                       <span className="text-slate-900 text-xl font-bold tracking-tight">{course.price}</span>
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-3 tracking-tight leading-tight">{course.title}</h3>
-                    <p className="text-slate-600 text-sm leading-relaxed mb-6">{course.description}</p>
-                    <div className="space-y-2.5">
-                       {course.topics.slice(0,3).map((t, idx) => (
-                         <div key={idx} className="flex items-center gap-2.5 text-xs font-medium text-slate-500">
-                            <Sparkles className="h-3.5 w-3.5 text-blue-500" /> {t}
-                         </div>
-                       ))}
-                    </div>
-                  </div>
-                  <div className="p-8 pt-0 mt-auto">
-                    <Button variant="outline" className="w-full h-12 border-blue-600 text-blue-600 font-semibold rounded-xl hover:bg-blue-600 hover:text-white transition-all" asChild>
-                       <a href="#enroll">Apply</a>
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
-
-          {/* --- ENROLLMENT --- */}
-          <section id="enroll" className="mt-24 p-8 md:p-16 bg-slate-50 border border-slate-200 rounded-3xl max-w-5xl mx-auto scroll-mt-24">
-             <div className="text-center mb-12">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-100 border border-blue-200 rounded-full mb-6">
-                    <Target className="h-4 w-4 text-blue-600" />
-                    <span className="text-blue-700 text-xs font-bold tracking-widest uppercase">Enrollment</span>
+                  <h2 className="text-base font-semibold tracking-tight text-slate-900">{ben.title}</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{ben.desc}</p>
                 </div>
-                <h2 className="text-2xl md:text-4xl font-bold text-slate-900 tracking-tight mb-4">Save your spot</h2>
-                <p className="text-slate-600 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-                    Tell us a bit about yourself and we'll confirm your access.
-                </p>
-             </div>
-
-             <div className="max-w-2xl mx-auto bg-white p-6 md:p-10 rounded-2xl border border-slate-100 shadow-sm">
-                <LeadForm intent="ACADEMY_ENROLL" ctaText="Submit application" />
-             </div>
+              );
+            })}
           </section>
 
-          {/* --- FINAL CTA --- */}
-          <section className="mt-24 p-12 md:p-16 bg-blue-600 rounded-3xl text-center text-white">
-             <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-4">Start learning today.</h2>
-             <p className="text-blue-50 text-base md:text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
-               Join the BBU1 Academy and pick up practical skills for running a modern business.
-             </p>
-             <Button size="lg" className="h-13 px-10 bg-white text-blue-600 text-base font-semibold rounded-xl hover:bg-slate-50 transition-all" asChild>
-                <a href="#enroll">Browse courses</a>
-             </Button>
+          <section className="mt-20 md:mt-24">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">
+                Free courses
+              </h2>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                No cost
+              </span>
+            </div>
+
+            {freeTracks.length === 0 ? (
+              <p className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+                Free courses are being prepared.
+              </p>
+            ) : (
+              <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                {freeTracks.map((course: any) => {
+                  const Icon = course.icon;
+                  const topics: string[] = Array.isArray(course.topics) ? course.topics : [];
+
+                  return (
+                    <div
+                      key={course.id}
+                      className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 sm:p-8"
+                    >
+                      <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                        {Icon ? <Icon className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}
+                      </div>
+
+                      <h3 className="text-lg font-semibold leading-tight tracking-tight text-slate-900 md:text-xl">
+                        {course.title}
+                      </h3>
+
+                      <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                        {course.description}
+                      </p>
+
+                      {topics.length > 0 ? (
+                        <div className="mt-5 flex flex-1 flex-wrap gap-x-4 gap-y-2">
+                          {topics.map((t, idx) => (
+                            <span key={idx} className="flex items-center gap-1.5 text-sm text-slate-500">
+                              <Check className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex-1" />
+                      )}
+
+                      <Button
+                        className="mt-7 h-11 w-full rounded-xl bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 sm:w-auto sm:px-8"
+                        asChild
+                      >
+                        <a href={`?course=${course.id}#enroll`}>Enroll</a>
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
+
+          <section className="mt-20 md:mt-24">
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">
+              Certification tracks
+            </h2>
+
+            {certTracks.length === 0 ? (
+              <p className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+                Certification tracks are being prepared.
+              </p>
+            ) : (
+              <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {certTracks.map((course: any) => {
+                  const Icon = course.icon;
+                  const topics: string[] = Array.isArray(course.topics) ? course.topics : [];
+
+                  return (
+                    <div
+                      key={course.id}
+                      className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                          {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+                        </div>
+                        {course.price ? (
+                          <span className="text-base font-semibold tracking-tight text-slate-900">
+                            {course.price}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <h3 className="mt-5 text-base font-semibold leading-tight tracking-tight text-slate-900">
+                        {course.title}
+                      </h3>
+
+                      <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                        {course.description}
+                      </p>
+
+                      <div className="mt-5 flex-1 space-y-2">
+                        {topics.slice(0, 3).map((t, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-sm text-slate-500">
+                            <Check className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                            {t}
+                          </div>
+                        ))}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        className="mt-7 h-11 w-full rounded-xl border-slate-200 text-sm font-medium text-slate-900 hover:bg-slate-50"
+                        asChild
+                      >
+                        <a href={`?course=${course.id}#enroll`}>Apply</a>
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section
+            id="enroll"
+            className="mx-auto mt-20 max-w-3xl scroll-mt-24 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-12 sm:px-10 sm:py-16 md:mt-28"
+          >
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+                Save your spot
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-600">
+                Tell us a little about yourself and we will confirm your access.
+              </p>
+
+              {selectedCourse ? (
+                <div className="mx-auto mt-6 inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2">
+                  <Check className="h-3.5 w-3.5 text-slate-500" />
+                  <span className="text-sm text-slate-700">{selectedCourse.title}</span>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+              <LeadForm
+                intent={selectedCourse ? `ACADEMY_ENROLL_${selectedCourse.id}` : "ACADEMY_ENROLL"}
+                ctaText="Submit application"
+              />
+            </div>
+          </section>
+
+          <section className="mt-20 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-12 text-center sm:px-12 sm:py-16 md:mt-28">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+              Start learning
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-600">
+              Pick up practical skills for running a modern business.
+            </p>
+            <Button
+              className="mt-8 h-12 rounded-xl bg-slate-900 px-8 text-sm font-medium text-white hover:bg-slate-800"
+              asChild
+            >
+              <a href="#enroll">Enroll now</a>
+            </Button>
+          </section>
+
         </div>
       </main>
     </div>

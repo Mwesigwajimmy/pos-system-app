@@ -1,168 +1,262 @@
-import { Metadata } from "next";
-import Link from "next/link";
+import React from 'react';
+import type { Metadata } from "next";
 import {
-  Globe, Heart, Users, Zap, Code, Wrench, TrendingUp,
-  FileText, Sparkles, Building2, ArrowRight, MapPin, Clock
+  Globe, Users, TrendingUp, Code, Wrench,
+  MapPin, Clock, ArrowRight, LayoutGrid, GraduationCap, Layers
 } from "lucide-react";
 import BackNavbar from '@/components/BackNavbar';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Careers at BBU1 - Global Talent Acquisition",
-  description: "Join the core team building the Business Base Universe. We are hiring across engineering, product, and operations. 100% remote. 100% sovereign.",
+  title: "Careers",
+  description:
+    "Join the team building BBU1. We are hiring across engineering, product and operations. Fully remote.",
 };
 
-const jobCategories = [
+const VALUES = [
+  { icon: Globe, title: "Fully remote", desc: "Work from wherever you are. We care about what you ship." },
+  { icon: Users, title: "Small team", desc: "Few people, real ownership. Your work is visible from day one." },
+  { icon: GraduationCap, title: "You will learn", desc: "You will touch parts of the system well outside your title." },
+  { icon: Layers, title: "Real users", desc: "Shops, clinics and pharmacies run their day on what we build." },
+];
+
+const JOB_CATEGORIES = [
   {
     title: "Engineering",
     icon: Code,
     roles: [
-      { title: "Backend Developer", description: "Build scalable APIs and backend services for our next-generation business operating system. Expertise in Go, Node.js, or Rust required." },
-      { title: "Frontend Developer", description: "Create beautiful, responsive interfaces using React, TypeScript, and Tailwind. Build the dashboards that power global decision-making." },
-      { title: "DevOps / Infrastructure Engineer", description: "Manage global cloud infrastructure. Build CI/CD pipelines and ensure 99.99% reliability for our enterprise clients." },
-      { title: "QA / Testing Engineer", description: "Ensure BBU1 quality through automated testing strategies. Lead the effort in maintaining our Zero-Math integrity." }
-    ]
+      {
+        title: "Backend Developer",
+        description: "Build the APIs and database logic behind the platform. Strong SQL and Postgres experience matters more than any particular language.",
+      },
+      {
+        title: "Frontend Developer",
+        description: "Build the screens people use all day. React, TypeScript and Tailwind, with real care for how a form behaves on a cheap phone.",
+      },
+      {
+        title: "DevOps Engineer",
+        description: "Own deployment, monitoring and backups. Keep the platform up for businesses that cannot afford downtime.",
+      },
+      {
+        title: "QA Engineer",
+        description: "Test the money paths. Accounting, stock and dispensing all have to be right every time, and we need someone who thinks that way.",
+      },
+    ],
   },
   {
-    title: "Product & Growth",
+    title: "Product and growth",
     icon: TrendingUp,
     roles: [
-      { title: "Product Manager", description: "Drive our roadmap and shape the future of business automation across 15+ industry verticals." },
-      { title: "Sales Manager", description: "Lead our enterprise sales cycle. Develop strategic partnerships in African and global markets." },
-      { title: "Marketing Manager", description: "Lead our brand development and content strategy. Build thought leadership in AI and automation." }
-    ]
+      {
+        title: "Product Manager",
+        description: "Sit with the businesses using BBU1, work out what they actually need, and turn that into a roadmap the team can build.",
+      },
+      {
+        title: "Sales Manager",
+        description: "Take the product to businesses across the region. You will do demos, handle objections and close.",
+      },
+      {
+        title: "Marketing Manager",
+        description: "Explain what we do in plain language. Content, positioning and the material the sales team uses.",
+      },
+    ],
   },
   {
-    title: "Operations & Support",
+    title: "Operations and support",
     icon: Wrench,
     roles: [
-      { title: "Technical Support Specialist", description: "Help customers succeed through expert technical guidance via our advanced chat and phone systems." },
-      { title: "Technical Writer", description: "Create the documentation that defines the BBU1 standard. Write API docs and user tutorials." }
-    ]
-  }
+      {
+        title: "Support Specialist",
+        description: "Answer the people using the product. You will be the first to know when something is wrong, and the reason customers stay.",
+      },
+      {
+        title: "Technical Writer",
+        description: "Write the guides and help articles. Make a complicated system understandable to someone running a shop.",
+      },
+    ],
+  },
+];
+
+const VOLUNTEER_ROLES = [
+  { title: "Backend contributor", desc: "Pick up scoped issues on the open parts of the codebase." },
+  { title: "Design contributor", desc: "Improve the screens people spend the most time in." },
+  { title: "Documentation", desc: "Write and edit guides for features you have used yourself." },
+  { title: "Beta testing", desc: "Try new modules before release and report what breaks." },
+  { title: "Translation", desc: "Translate the interface into Luganda, Swahili or another local language." },
+  { title: "Community", desc: "Answer questions and help new users find their way around." },
+];
+
+const HIRING_STEPS = [
+  { step: "1", title: "Send an email", desc: "Tell us what you have built. A link beats a long CV." },
+  { step: "2", title: "A conversation", desc: "Half an hour on what you have done and what you want to do." },
+  { step: "3", title: "A paid task", desc: "A small real piece of work, paid at your rate." },
+  { step: "4", title: "Offer", desc: "We come back with terms within a week." },
 ];
 
 export default function CareersPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-white text-slate-900 selection:bg-blue-500/30 font-sans overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-white font-sans text-slate-900 selection:bg-blue-500/20">
       <BackNavbar backHref="/" backLabel="Home" />
-      <main className="flex-grow pt-20 pb-24">
-        <div className="container mx-auto px-6 max-w-7xl">
-          
-          {/* --- HERO SECTION --- */}
-          <header className="max-w-4xl mb-32">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full mb-8">
-              <Sparkles className="h-4 w-4 text-blue-600" />
-              <span className="text-blue-700 text-xs font-bold tracking-widest uppercase">Join the Elite</span>
+
+      <main className="flex-grow pb-24 pt-20">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6">
+
+          <header className="max-w-3xl pt-8">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">
+              <Users className="h-3.5 w-3.5 text-slate-500" />
+              <span className="text-xs font-medium text-slate-600">Careers</span>
             </div>
-            
-            {/* Fixed: Professional size, straight text, no all-caps */}
-            <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-tight mb-10">
-              Engineer the <span className="text-blue-600">Universe.</span>
+
+            <h1 className="text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+              Come and build this with us
             </h1>
-            
-            <p className="text-xl md:text-2xl font-normal text-slate-600 leading-relaxed border-l-4 border-blue-600 pl-8 max-w-3xl">
-              We are building a unified operating system for the world. All positions are fully remote—your talent is global, and your work should be too.
+
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
+              We are building one system that a business can actually run on: accounts, stock, sales,
+              a clinic, a pharmacy. Every role is fully remote.
             </p>
           </header>
 
-          {/* --- VALUES SECTION --- */}
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-40">
-            {[
-              { icon: Globe, title: "Fully Remote", desc: "Work from any coordinates on Earth. We value output over presence." },
-              { icon: Heart, title: "Radical Culture", desc: "A collaborative, high-intensity environment built on mutual respect." },
-              { icon: Users, title: "Hyper Growth", desc: "Continuous learning and rapid professional progression within the OS." },
-              { icon: Zap, title: "Global Impact", desc: "Your code and strategy will power the commerce of entire nations." }
-            ].map((value, i) => (
-              <div key={i} className="p-10 bg-slate-50 border border-slate-100 rounded-3xl hover:bg-white hover:shadow-xl hover:border-blue-100 transition-all duration-300 group">
-                <value.icon className="h-10 w-10 text-blue-600 mb-6 group-hover:scale-110 transition-transform" />
-                <h3 className="text-slate-900 text-xl font-bold mb-4">{value.title}</h3>
-                <p className="text-slate-600 text-sm leading-relaxed font-normal">{value.desc}</p>
-              </div>
-            ))}
+          <section className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {VALUES.map((value, i) => {
+              const Icon = value.icon;
+              return (
+                <div key={i} className="rounded-2xl border border-slate-200 bg-white p-6">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                    {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+                  </div>
+                  <h2 className="text-base font-semibold tracking-tight text-slate-900">{value.title}</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{value.desc}</p>
+                </div>
+              );
+            })}
           </section>
 
-          {/* --- OPEN POSITIONS SECTION --- */}
-          <section className="space-y-24 mb-40">
-            <div className="flex items-center gap-4 text-slate-900 mb-12">
-              <Building2 className="h-8 w-8 text-blue-600" />
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Open Opportunities</h2>
-            </div>
+          <section className="mt-20 md:mt-28">
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">
+              Open roles
+            </h2>
 
-            {jobCategories.map((category, idx) => (
-              <div key={idx} className="space-y-8">
-                <div className="flex items-center gap-3 text-blue-600 border-b border-slate-100 pb-4">
-                  <category.icon className="h-5 w-5" />
-                  <h3 className="text-xl font-bold uppercase tracking-widest">{category.title}</h3>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-6">
-                  {category.roles.map((role, rIdx) => (
-                    <Card key={rIdx} className="bg-slate-50 border-slate-200 rounded-3xl overflow-hidden hover:bg-white hover:shadow-xl hover:border-blue-200 transition-all duration-300 group border">
-                      <div className="p-8 md:p-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-                        <div className="space-y-4">
-                          <div className="flex flex-wrap gap-4 text-[10px] font-bold uppercase tracking-widest text-blue-600">
-                            <span className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-md border border-blue-100"><MapPin className="h-3 w-3" /> Fully Remote</span>
-                            <span className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-md border border-slate-200 text-slate-600"><Clock className="h-3 w-3" /> Full-time</span>
+            <div className="mt-8 space-y-12">
+              {JOB_CATEGORIES.map((category, idx) => {
+                const Icon = category.icon;
+                return (
+                  <div key={idx}>
+                    <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
+                      {Icon ? (
+                        <Icon className="h-4 w-4 text-slate-400" />
+                      ) : (
+                        <LayoutGrid className="h-4 w-4 text-slate-400" />
+                      )}
+                      <h3 className="text-sm font-semibold tracking-tight text-slate-900">
+                        {category.title}
+                      </h3>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
+                      {category.roles.map((role, rIdx) => (
+                        <div
+                          key={rIdx}
+                          className="flex flex-col gap-5 py-6 lg:flex-row lg:items-center lg:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <h4 className="text-lg font-semibold tracking-tight text-slate-900">
+                              {role.title}
+                            </h4>
+                            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                              <span className="flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                                Remote
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5 text-slate-400" />
+                                Full time
+                              </span>
+                            </div>
+                            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+                              {role.description}
+                            </p>
                           </div>
-                          <h4 className="text-2xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors tracking-tight">{role.title}</h4>
-                          <p className="text-slate-600 text-lg font-normal max-w-2xl leading-relaxed">{role.description}</p>
+
+                          <a
+                            href={`mailto:careers@bbu1.com?subject=${encodeURIComponent(`Application: ${role.title}`)}`}
+                            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-50"
+                          >
+                            Apply
+                            <ArrowRight className="h-4 w-4 text-slate-400" />
+                          </a>
                         </div>
-                        <Button className="bg-blue-600 text-white font-bold py-6 px-8 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/10" asChild>
-                          <Link href={`mailto:careers@bbu1.com?subject=Application: ${role.title}`}>
-                            Apply Now <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ))}
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
 
-          {/* --- VOLUNTEERING SECTION --- */}
-          <section className="py-24 border-t border-slate-100">
-            <div className="max-w-4xl mb-16">
-                <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-6">Volunteer Opportunities</h2>
-                <p className="text-lg text-slate-600 font-normal leading-relaxed">
-                    Contribute to the BBU1 Open Ecosystem. Build your portfolio while helping us democratize enterprise technology.
-                </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                "Backend Architecture Volunteer", 
-                "UI/UX Design Contributor", 
-                "Open Source Evangelist", 
-                "Documentation Specialist", 
-                "Beta Verification Team",
-                "Regional Language Translator"
-              ].map((vol, i) => (
-                <div key={i} className="p-8 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white hover:border-blue-400 hover:shadow-md transition-all group">
-                  <h4 className="text-slate-900 text-lg font-bold mb-3">{vol}</h4>
-                  <p className="text-slate-500 text-sm mb-6 leading-relaxed">Gain hands-on experience with production-grade enterprise systems.</p>
-                  <Link href={`mailto:careers@bbu1.com?subject=Volunteer: ${vol}`} className="text-blue-600 text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:translate-x-1 transition-transform">
-                    Inquire <ArrowRight className="h-3 w-3" />
-                  </Link>
+          <section className="mt-20 md:mt-28">
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">
+              How hiring works
+            </h2>
+            <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
+              Four steps, usually inside three weeks. We tell you where you stand at every stage.
+            </p>
+
+            <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+              {HIRING_STEPS.map((item) => (
+                <div key={item.step} className="rounded-2xl border border-slate-200 bg-white p-6">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-sm font-semibold text-slate-600">
+                    {item.step}
+                  </span>
+                  <h3 className="mt-4 text-base font-semibold tracking-tight text-slate-900">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.desc}</p>
                 </div>
               ))}
             </div>
           </section>
 
-          {/* --- FINAL CTA --- */}
-          <section className="mt-40 p-16 md:p-24 bg-blue-600 rounded-[3rem] text-center shadow-2xl shadow-blue-600/20 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-10 opacity-10">
-                <Users className="h-64 w-64 text-white" />
-             </div>
-             <h2 className="text-4xl md:text-6xl font-bold text-white tracking-tight mb-8 relative z-10">Become an Architect.</h2>
-             <p className="text-blue-50 text-xl md:text-2xl font-normal mb-12 max-w-3xl mx-auto relative z-10">
-               If you don't see your role but you know you belong in the Universe, send us your vision. We hire visionaries, not just resumes.
-             </p>
-             <Button size="lg" className="h-16 px-12 bg-white text-blue-600 text-lg font-bold rounded-xl hover:bg-slate-50 transition-all shadow-xl relative z-10" asChild>
-                <a href="mailto:careers@bbu1.com">General Inquiry</a>
-             </Button>
+          <section className="mt-20 md:mt-28">
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">
+              Volunteer and contribute
+            </h2>
+            <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
+              Unpaid, flexible, and useful if you want experience on a system real businesses depend
+              on. We give references and credit contributors publicly.
+            </p>
+
+            <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {VOLUNTEER_ROLES.map((vol, i) => (
+                <div key={i} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6">
+                  <h3 className="text-base font-semibold tracking-tight text-slate-900">
+                    {vol.title}
+                  </h3>
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">{vol.desc}</p>
+                  <a
+                    href={`mailto:careers@bbu1.com?subject=${encodeURIComponent(`Volunteer: ${vol.title}`)}`}
+                    className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-slate-900"
+                  >
+                    Get in touch
+                    <ArrowRight className="h-4 w-4 text-slate-400" />
+                  </a>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-20 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-12 text-center sm:px-12 sm:py-16 md:mt-28">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+              Nothing here fits you?
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-600">
+              Send us what you have built and what you would want to work on. We read everything.
+            </p>
+            <a
+              href="mailto:careers@bbu1.com"
+              className="mt-8 inline-flex h-12 items-center rounded-xl bg-slate-900 px-8 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+            >
+              Email us
+            </a>
           </section>
 
         </div>
