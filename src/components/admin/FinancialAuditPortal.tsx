@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  DollarSign, Mail, MessageSquare, AlertCircle, 
+import toast from 'react-hot-toast';
+import {
+  DollarSign, Mail, MessageSquare, AlertCircle,
   CheckCircle2, Search, Filter, Loader2, SendHorizontal,
-  ChevronRight, ArrowUpRight, TrendingUp, ShieldCheck, 
-  Fingerprint, Landmark, Receipt
+  ArrowUpRight, TrendingUp, ShieldCheck,
+  Fingerprint, Landmark, Receipt, X, PercentCircle
 } from 'lucide-react';
 
 // Standard Shadcn/UI or similar component library imports
@@ -13,9 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Dialog, DialogContent, DialogHeader, 
-  DialogTitle, DialogDescription, DialogFooter 
+import {
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogDescription, DialogFooter
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -60,7 +61,9 @@ export default function FinancialAuditPortal() {
   const [selectedTenants, setSelectedTenants] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [leakageOnly, setLeakageOnly] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+
   // Action State
   const [isMsgModalOpen, setIsMsgModalOpen] = useState(false);
   const [activeChannel, setActiveChannel] = useState<CommunicationChannel | null>(null);
@@ -93,19 +96,33 @@ export default function FinancialAuditPortal() {
     fetchAudit();
   }, [fetchAudit]);
 
+  // Surface fetch/dispatch failures as a transient toast — purely observational,
+  // does not alter the fetchAudit / handleDispatch logic above or below.
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
+
+  // Tracks when the ledger last successfully synced, for the "as of" indicator.
+  useEffect(() => {
+    if (!loading) setLastRefreshedAt(new Date());
+  }, [auditData]);
+
   // 2. Computed Values
   const filteredData = useMemo(() => {
-    return auditData.filter(d => 
-      d.organization.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [auditData, searchQuery]);
+    return auditData
+      .filter(d =>
+        d.organization.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.email.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      .filter(d => !leakageOnly || d.actually_paid_30d < d.expected_monthly_usd);
+  }, [auditData, searchQuery, leakageOnly]);
 
   const stats = useMemo(() => {
     const totalExpected = auditData.reduce((acc, curr) => acc + curr.expected_monthly_usd, 0);
     const totalActual = auditData.reduce((acc, curr) => acc + curr.actually_paid_30d, 0);
     const leakageCount = auditData.filter(d => d.actually_paid_30d < d.expected_monthly_usd).length;
-    return { totalExpected, totalActual, leakageCount };
+    const collectionRate = totalExpected > 0 ? (totalActual / totalExpected) * 100 : 100;
+    return { totalExpected, totalActual, leakageCount, collectionRate };
   }, [auditData]);
 
   // 3. Selection Handlers
@@ -124,18 +141,25 @@ export default function FinancialAuditPortal() {
     setSelectedTenants(next);
   };
 
+  const clearSelection = () => setSelectedTenants(new Set());
+
+  const selectAllState: boolean | 'indeterminate' =
+    selectedTenants.size === 0 ? false
+    : selectedTenants.size === filteredData.length && filteredData.length > 0 ? true
+    : 'indeterminate';
+
   // 4. Bulk Actions Logic (Untouched Logic)
   const handleDispatch = async () => {
     if (!activeChannel || !messageContent.trim()) return;
-    
+
     setIsProcessing(true);
     try {
       const recipients = auditData
         .filter((d) => selectedTenants.has(d.tenant_id))
-        .map((d) => ({ 
-          email: d.email, 
-          phone: d.phone, 
-          org: d.organization 
+        .map((d) => ({
+          email: d.email,
+          phone: d.phone,
+          org: d.organization
         }));
 
       const { error: fnError } = await supabase.functions.invoke('sovereign-broadcaster', {
@@ -154,7 +178,7 @@ export default function FinancialAuditPortal() {
       setIsMsgModalOpen(false);
       setMessageContent('');
       setSelectedTenants(new Set());
-      console.log('Success: Mass directive dispatched');
+      toast.success(`${activeChannel === 'EMAIL' ? 'Email' : 'WhatsApp'} directive dispatched to ${recipients.length} tenant(s)`);
     } catch (err: any) {
       setError(err.message || 'Failed to dispatch messages');
     } finally {
@@ -163,11 +187,29 @@ export default function FinancialAuditPortal() {
   };
 
   return (
-    <div className="max-w-[1440px] mx-auto space-y-10 animate-in fade-in duration-1000 bg-[#f8fafc] p-10 rounded-[3rem] min-h-screen font-sans">
-      
+    <div className="max-w-[1440px] mx-auto space-y-10 animate-in fade-in duration-1000 bg-[#f8fafc] p-6 md:p-10 rounded-[3rem] min-h-screen font-sans">
+
+      {/* ERROR BANNER — surfaces the `error` state that previously had no visible UI */}
+      {error && (
+        <div className="flex items-center justify-between gap-4 bg-red-50 border border-red-200 rounded-[2rem] px-8 py-5">
+          <div className="flex items-center gap-3">
+            <AlertCircle size={18} className="text-red-500 shrink-0" />
+            <p className="text-xs font-bold text-red-700">{error}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={fetchAudit}
+            className="h-9 px-4 text-red-600 hover:text-red-700 hover:bg-red-100 font-black uppercase tracking-widest text-[10px] rounded-xl shrink-0"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
       {/* 1. TOP HEADER & KPI CARDS (CLEAN WHITE) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[3rem] p-12 shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[3rem] p-8 md:p-12 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-blue-50 p-2 rounded-xl border border-blue-100">
@@ -175,37 +217,63 @@ export default function FinancialAuditPortal() {
               </div>
               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600 leading-none">Live Revenue Ledger</span>
             </div>
-            <h1 className="text-5xl font-black text-slate-900 tracking-tighter leading-tight">
+            <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-tight">
               AUDIT<span className="text-blue-600">_TERMINAL</span>
             </h1>
-            <p className="text-slate-400 font-bold text-sm mt-3 flex items-center gap-2">
-              <Landmark size={14} className="text-slate-300" />
-              Institutional financial health monitoring and revenue synchronization.
-            </p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3">
+              <p className="text-slate-400 font-bold text-sm flex items-center gap-2">
+                <Landmark size={14} className="text-slate-300" />
+                Institutional financial health monitoring and revenue synchronization.
+              </p>
+              {lastRefreshedAt && (
+                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                  As of {lastRefreshedAt.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
           </div>
-          
-          <div className="flex gap-16 mt-16">
+
+          <div className="flex flex-wrap gap-10 md:gap-16 mt-12 md:mt-16">
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Projected Pipeline</p>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-sm font-black text-slate-300 tracking-tighter">$</span>
-                <p className="text-4xl font-mono font-black text-slate-900 tracking-tight">{stats.totalExpected.toLocaleString()}</p>
+                <p className="text-3xl md:text-4xl font-mono font-black text-slate-900 tracking-tight">{stats.totalExpected.toLocaleString()}</p>
               </div>
             </div>
-            <div className="h-16 w-[1px] bg-slate-100 self-center" />
+            <div className="hidden md:block h-16 w-[1px] bg-slate-100 self-center" />
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Collected (30d)</p>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-sm font-black text-slate-300 tracking-tighter">$</span>
+                <p className="text-3xl md:text-4xl font-mono font-black text-emerald-500 tracking-tight">{stats.totalActual.toLocaleString()}</p>
+                <span className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <PercentCircle size={12} /> {stats.collectionRate.toFixed(0)}%
+                </span>
+              </div>
+            </div>
+            <div className="hidden md:block h-16 w-[1px] bg-slate-100 self-center" />
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Leakage Points</p>
               <div className="flex items-center gap-3">
-                <p className="text-4xl font-mono font-black text-red-500 tracking-tight">{stats.leakageCount}</p>
-                <div className="px-3 py-1 bg-red-50 rounded-lg">
-                    <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Action Required</span>
-                </div>
+                <p className="text-3xl md:text-4xl font-mono font-black text-red-500 tracking-tight">{stats.leakageCount}</p>
+                {stats.leakageCount > 0 && (
+                  <button
+                    onClick={() => setLeakageOnly(v => !v)}
+                    className={cn(
+                      "px-3 py-1 rounded-lg transition-colors",
+                      leakageOnly ? "bg-red-500 text-white" : "bg-red-50 text-red-500 hover:bg-red-100"
+                    )}
+                  >
+                    <span className="text-[9px] font-black uppercase tracking-widest">{leakageOnly ? 'Showing Leaks' : 'Action Required'}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-blue-600 rounded-[3rem] p-12 text-white shadow-2xl shadow-blue-100 relative overflow-hidden flex flex-col justify-between group">
+        <div className="bg-blue-600 rounded-[3rem] p-8 md:p-12 text-white shadow-2xl shadow-blue-100 relative overflow-hidden flex flex-col justify-between group">
           <DollarSign className="absolute -right-8 -top-8 w-48 h-48 text-white/10 rotate-12 transition-transform duration-700 group-hover:rotate-0" />
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-8">
@@ -213,19 +281,19 @@ export default function FinancialAuditPortal() {
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-100">Mass Directives</p>
             </div>
             <div className="space-y-4">
-              <Button 
+              <Button
                 onClick={() => { setActiveChannel('EMAIL'); setIsMsgModalOpen(true); }}
                 disabled={selectedTenants.size === 0}
-                className="w-full h-16 bg-white text-blue-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-50 transition-all border-none shadow-lg active:scale-95"
+                className="w-full h-16 bg-white text-blue-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-50 transition-all border-none shadow-lg active:scale-95 disabled:opacity-50"
               >
                 <Mail size={16} className="mr-3" /> Email Selected ({selectedTenants.size})
               </Button>
-              <Button 
+              <Button
                 onClick={() => { setActiveChannel('WHATSAPP'); setIsMsgModalOpen(true); }}
                 disabled={selectedTenants.size === 0}
-                className="w-full h-16 bg-slate-900 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-black transition-all border-none shadow-lg active:scale-95"
+                className="w-full h-16 bg-slate-900 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-black transition-all border-none shadow-lg active:scale-95 disabled:opacity-50"
               >
-                <MessageSquare size={16} className="mr-3" /> WhatsApp Ping
+                <MessageSquare size={16} className="mr-3" /> WhatsApp Selected ({selectedTenants.size})
               </Button>
             </div>
           </div>
@@ -237,22 +305,34 @@ export default function FinancialAuditPortal() {
       </div>
 
       {/* 2. SEARCH & FILTER BAR (CLEAN WHITE) */}
-      <div className="flex flex-col md:flex-row gap-5 items-center justify-between bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
+      <div className="flex flex-col md:flex-row gap-5 items-stretch md:items-center justify-between bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
         <div className="relative w-full md:w-[450px]">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-          <Input 
-            placeholder="Search by organization, ID or administrator email..." 
+          <Input
+            placeholder="Search by organization, ID or administrator email..."
             className="h-14 pl-14 bg-slate-50 border-none text-slate-900 font-bold placeholder:text-slate-300 rounded-2xl focus-visible:ring-2 focus-visible:ring-blue-500/20 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        
-        <div className="flex items-center gap-5">
+
+        <div className="flex flex-wrap items-center gap-3 md:gap-5">
+          {selectedTenants.size > 0 && (
+            <button
+              onClick={clearSelection}
+              className="flex items-center gap-2 px-4 py-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 transition-colors"
+            >
+              <X size={14} className="text-slate-400" />
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none">
+                Clear {selectedTenants.size} Selected
+              </span>
+            </button>
+          )}
+
           <div className="flex items-center gap-4 px-6 py-4 bg-slate-50 rounded-2xl border border-slate-100">
-            <Checkbox 
+            <Checkbox
               id="select-all"
-              checked={selectedTenants.size === filteredData.length && filteredData.length > 0}
+              checked={selectAllState}
               onCheckedChange={toggleAll}
               className="w-5 h-5 rounded-md"
             />
@@ -260,9 +340,9 @@ export default function FinancialAuditPortal() {
               Select Visible
             </label>
           </div>
-          <Button 
-            variant="ghost" 
-            onClick={fetchAudit} 
+          <Button
+            variant="ghost"
+            onClick={fetchAudit}
             className="h-14 px-6 text-slate-400 hover:text-blue-600 font-black uppercase tracking-widest text-[10px] hover:bg-blue-50 transition-all rounded-2xl"
           >
             <Loader2 size={16} className={cn("mr-2", loading && "animate-spin")} /> Refresh Buffer
@@ -281,50 +361,60 @@ export default function FinancialAuditPortal() {
             <div className="bg-slate-50 p-6 rounded-full mb-6">
                 <Filter size={48} className="text-slate-200" />
             </div>
-            <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">No records detected in current stream</p>
+            <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">
+              {leakageOnly ? 'No leakage detected in current stream' : 'No records detected in current stream'}
+            </p>
+            {leakageOnly && (
+              <button onClick={() => setLeakageOnly(false)} className="mt-4 text-[10px] font-black uppercase text-blue-600 tracking-widest hover:underline">
+                Clear leakage filter
+              </button>
+            )}
           </div>
         ) : (
           filteredData.map((row) => (
             <div
               key={row.tenant_id}
               className={cn(
-                "group relative p-10 bg-white rounded-[3rem] border transition-all duration-500 flex flex-col md:flex-row md:items-center justify-between gap-10",
-                selectedTenants.has(row.tenant_id) 
-                    ? "border-blue-500 ring-8 ring-blue-500/5 shadow-xl" 
+                "group relative p-6 md:p-10 bg-white rounded-[3rem] border transition-all duration-500 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-10",
+                selectedTenants.has(row.tenant_id)
+                    ? "border-blue-500 ring-8 ring-blue-500/5 shadow-xl"
                     : "border-slate-100 hover:border-slate-300 shadow-sm hover:shadow-lg hover:-translate-y-1"
               )}
             >
-              <div className="flex items-center gap-10">
-                <Checkbox 
+              <div className="flex items-center gap-6 md:gap-10">
+                <Checkbox
                   checked={selectedTenants.has(row.tenant_id)}
                   onCheckedChange={() => toggleOne(row.tenant_id)}
-                  className="w-6 h-6 rounded-lg border-2"
+                  className="w-6 h-6 rounded-lg border-2 shrink-0"
                 />
-                <div>
-                  <h4 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                    {row.organization}
-                    <ArrowUpRight size={18} className="text-slate-200 group-hover:text-blue-500 transition-all group-hover:translate-x-1 group-hover:-translate-y-1" />
+                <div className="min-w-0">
+                  <h4 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                    <span className="truncate">{row.organization}</span>
+                    <ArrowUpRight size={18} className="text-slate-200 group-hover:text-blue-500 transition-all group-hover:translate-x-1 group-hover:-translate-y-1 shrink-0" />
                   </h4>
-                  <div className="flex items-center gap-5 mt-3">
+                  <div className="flex flex-wrap items-center gap-3 md:gap-5 mt-3">
                     <Badge className="text-[9px] uppercase font-black bg-slate-900 text-white border-none px-4 py-1.5 rounded-full tracking-widest">
                       {row.subscription_plan}
                     </Badge>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                       {row.user_count} Seats Active
                     </span>
+                    <span className="text-[9px] font-mono font-bold text-slate-300 tracking-tight">
+                      {row.tenant_id}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-20 ml-16 md:ml-0">
-                <div className="min-w-[140px]">
+              <div className="flex flex-wrap items-center gap-8 md:gap-20">
+                <div className="min-w-[120px]">
                   <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] mb-3 leading-none">Contractual</p>
                   <div className="flex items-baseline gap-1">
                       <span className="text-[10px] font-black text-slate-300">$</span>
                       <p className="font-mono text-slate-900 font-black text-xl leading-none">{row.expected_monthly_usd.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="min-w-[140px]">
+                <div className="min-w-[120px]">
                   <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] mb-3 leading-none">Settled (30d)</p>
                   <div className="flex items-baseline gap-1">
                       <span className="text-[10px] font-black text-slate-300">$</span>
@@ -336,7 +426,7 @@ export default function FinancialAuditPortal() {
                       </p>
                   </div>
                 </div>
-                <div className="hidden lg:flex min-w-[200px] flex-col items-end">
+                <div className="flex min-w-[160px] flex-col items-start md:items-end">
                   {row.actually_paid_30d < row.expected_monthly_usd ? (
                     <div className="flex items-center gap-3 text-red-500 bg-red-50 px-5 py-2.5 rounded-2xl border border-red-100">
                       <span className="text-[10px] font-black uppercase tracking-widest leading-none">Leakage Detected</span>
@@ -357,7 +447,7 @@ export default function FinancialAuditPortal() {
 
       {/* 4. COMMUNICATIONS MODAL (ELITE CLEAN) */}
       <Dialog open={isMsgModalOpen} onOpenChange={setIsMsgModalOpen}>
-        <DialogContent className="bg-white border-none rounded-[4rem] p-12 max-w-xl shadow-2xl animate-in zoom-in-95">
+        <DialogContent className="bg-white border-none rounded-[4rem] p-8 md:p-12 max-w-xl shadow-2xl animate-in zoom-in-95">
           <DialogHeader>
             <div className="bg-blue-50 w-14 h-14 rounded-2xl flex items-center justify-center mb-6">
                 <SendHorizontal size={24} className="text-blue-600" />
@@ -369,9 +459,9 @@ export default function FinancialAuditPortal() {
               Initiating mass dispatching to {selectedTenants.size} tenant(s). Payload will be synchronized via the Sovereign Audit Security Bridge.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-10">
-            <Textarea 
+            <Textarea
               placeholder={`Construct the ${activeChannel} message directive...`}
               className="min-h-[250px] bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] text-slate-900 font-bold p-8 focus:border-blue-500 focus:bg-white outline-none transition-all shadow-inner placeholder:text-slate-300"
               value={messageContent}
@@ -380,17 +470,17 @@ export default function FinancialAuditPortal() {
           </div>
 
           <DialogFooter className="gap-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => setIsMsgModalOpen(false)} 
+            <Button
+              variant="ghost"
+              onClick={() => setIsMsgModalOpen(false)}
               className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] h-14 px-10 rounded-2xl hover:text-slate-900 transition-colors"
             >
               Abort Signal
             </Button>
-            <Button 
-              onClick={handleDispatch} 
+            <Button
+              onClick={handleDispatch}
               disabled={isProcessing || !messageContent.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-[10px] h-14 px-12 rounded-2xl shadow-xl shadow-blue-100 transition-all active:scale-95"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-[10px] h-14 px-12 rounded-2xl shadow-xl shadow-blue-100 transition-all active:scale-95 disabled:opacity-50"
             >
               {isProcessing ? <Loader2 size={18} className="animate-spin mr-3" /> : <SendHorizontal size={18} className="mr-3" />}
               Execute Dispatch
@@ -400,7 +490,7 @@ export default function FinancialAuditPortal() {
       </Dialog>
 
       {/* SYSTEM FOOTER */}
-      <div className="flex items-center justify-between px-10 opacity-40">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3 px-4 md:px-10 opacity-40">
           <div className="flex items-center gap-3">
               <ShieldCheck size={14} className="text-slate-900" />
               <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-900">Sovereign Audit v10.2</span>

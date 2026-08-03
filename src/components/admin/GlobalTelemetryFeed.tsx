@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { 
-  Globe, User, ShieldAlert, CreditCard, LogIn, 
-  Activity, Search, Terminal, Info, X, 
-  Cpu, Zap, Pulse, Database
+import {
+  Globe, User, ShieldAlert, CreditCard, LogIn,
+  Activity, Search, Terminal, Info, X,
+  Cpu, Zap, Database, AlertCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
@@ -31,7 +31,7 @@ function cn(...inputs: (string | undefined | boolean | null | Record<string, boo
 }
 
 // --- Types ---
-type EventCategory = 'VISIT' | 'SIGNUP' | 'ERROR' | 'PAYMENT' | string;
+type EventCategory = 'VISIT' | 'SIGNUP' | 'ERROR' | 'PAYMENT' | 'LOGIN' | string;
 
 interface TelemetryLog {
   id: string;
@@ -46,9 +46,11 @@ interface TelemetryLog {
 export default function GlobalTelemetryFeed() {
   const [logs, setLogs] = useState<TelemetryLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<TelemetryLog | null>(null);
   const [isLive, setIsLive] = useState(false);
-  
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Cache for tenant names to resolve Realtime payloads that lack joins
   const tenantCache = useRef<Record<string, string>>({});
 
@@ -70,7 +72,7 @@ export default function GlobalTelemetryFeed() {
       });
 
       if (method === 'set') return incoming.slice(0, 50);
-      
+
       // Filter out duplicates (important for real-time edge cases)
       const existingIds = new Set(prev.map(l => l.id));
       const uniqueIncoming = incoming.filter(l => !existingIds.has(l.id));
@@ -84,14 +86,21 @@ export default function GlobalTelemetryFeed() {
 
     const init = async () => {
       setLoading(true);
+      setFetchError(null);
       const { data, error } = await supabase
         .from('system_global_telemetry')
         .select('*, tenants(name)')
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (mounted && data) injectLogs(data as TelemetryLog[], 'set');
-      if (mounted) setLoading(false);
+      if (!mounted) return;
+
+      if (error) {
+        setFetchError(error.message || 'Failed to load telemetry stream.');
+      } else if (data) {
+        injectLogs(data as TelemetryLog[], 'set');
+      }
+      setLoading(false);
     };
 
     init();
@@ -116,53 +125,115 @@ export default function GlobalTelemetryFeed() {
     };
   }, [supabase, injectLogs]);
 
+  // Client-side filter over the already-buffered log window — no extra query.
+  const filteredLogs = useMemo(() => {
+    if (!searchQuery.trim()) return logs;
+    const q = searchQuery.toLowerCase();
+    return logs.filter(log =>
+      log.event_name?.toLowerCase().includes(q) ||
+      log.event_category?.toLowerCase().includes(q) ||
+      log.tenants?.name?.toLowerCase().includes(q)
+    );
+  }, [logs, searchQuery]);
+
+  // Escape closes the side inspector
+  useEffect(() => {
+    if (!selectedLog) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedLog(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedLog]);
+
+  // "Trace Origin Point" — drills the feed down to every signal from this event's tenant
+  const traceOrigin = () => {
+    if (!selectedLog) return;
+    const traceTerm = selectedLog.tenants?.name || selectedLog.tenant_id || '';
+    setSearchQuery(traceTerm);
+    setSelectedLog(null);
+  };
+
   return (
     <div className="flex h-[700px] bg-white border border-slate-200 rounded-[32px] overflow-hidden relative shadow-sm font-sans animate-in fade-in duration-1000">
-      
+
       {/* MAIN FEED SECTION */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#f8fafc]/30">
-        <header className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-20">
-          <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-blue-50 rounded-xl">
-              <Terminal size={18} className="text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Global Telemetry</h3>
-              <div className="flex items-center gap-2 mt-0.5">
-                <div className="relative flex items-center justify-center">
-                   <span className={cn("h-2 w-2 rounded-full", isLive ? "bg-emerald-500" : "bg-slate-300")} />
-                   {isLive && <span className="absolute h-4 w-4 bg-emerald-400 rounded-full animate-ping opacity-20" />}
+        <header className="px-6 py-5 border-b border-slate-200 flex flex-col gap-4 bg-white/80 backdrop-blur-md sticky top-0 z-20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-2.5 bg-blue-50 rounded-xl">
+                <Terminal size={18} className="text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Global Telemetry</h3>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className="relative flex items-center justify-center">
+                     <span className={cn("h-2 w-2 rounded-full", isLive ? "bg-emerald-500" : "bg-slate-300")} />
+                     {isLive && <span className="absolute h-4 w-4 bg-emerald-400 rounded-full animate-ping opacity-20" />}
+                  </div>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                    {isLive ? 'Stream Active' : 'Connecting...'}
+                  </span>
                 </div>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
-                  {isLive ? 'Stream Active' : 'Connecting...'}
-                </span>
               </div>
             </div>
+
+            <div className="flex items-center gap-4">
+               <div className="px-3.5 py-1.5 bg-slate-100/50 rounded-full border border-slate-200 text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest">
+                  Nodes: {logs.length} / 50
+               </div>
+            </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-             <div className="px-3.5 py-1.5 bg-slate-100/50 rounded-full border border-slate-200 text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest">
-                Nodes: {logs.length} / 50
-             </div>
+
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={15} />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filter by event, category, or tenant..."
+              className="w-full h-10 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 placeholder:text-slate-300 outline-none focus:border-blue-400 focus:bg-white transition-all"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600">
+                <X size={14} />
+              </button>
+            )}
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+          {fetchError && (
+            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl">
+              <AlertCircle size={16} className="text-red-500 shrink-0" />
+              <p className="text-xs font-bold text-red-700">{fetchError}</p>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex flex-col gap-3 p-2">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="h-20 w-full bg-slate-100 rounded-[20px] animate-pulse" />
               ))}
             </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <p className="text-xs font-black text-slate-300 uppercase tracking-widest">
+                {searchQuery ? 'No signals match this filter' : 'No telemetry signals yet'}
+              </p>
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="mt-3 text-[10px] font-black uppercase text-blue-600 tracking-widest hover:underline">
+                  Clear filter
+                </button>
+              )}
+            </div>
           ) : (
             <div className="space-y-2">
               <AnimatePresence initial={false}>
-                {logs.map((log) => (
-                  <TelemetryItem 
-                    key={log.id} 
-                    log={log} 
+                {filteredLogs.map((log) => (
+                  <TelemetryItem
+                    key={log.id}
+                    log={log}
                     isSelected={selectedLog?.id === log.id}
-                    onSelect={() => setSelectedLog(log)} 
+                    onSelect={() => setSelectedLog(log)}
                   />
                 ))}
               </AnimatePresence>
@@ -191,6 +262,8 @@ export default function GlobalTelemetryFeed() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+            role="dialog"
+            aria-label="Signal metadata inspector"
             className="absolute right-0 top-0 bottom-0 w-[400px] bg-white border-l border-slate-200 shadow-2xl z-30 flex flex-col"
           >
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -200,21 +273,22 @@ export default function GlobalTelemetryFeed() {
                 </div>
                 <span className="text-xs font-black uppercase text-slate-900 tracking-widest">Signal Metadata</span>
               </div>
-              <button 
-                onClick={() => setSelectedLog(null)} 
+              <button
+                onClick={() => setSelectedLog(null)}
+                aria-label="Close inspector"
                 className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors active:scale-90"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-auto p-8 bg-white">
               <div className="bg-slate-900 rounded-[20px] p-6 shadow-inner relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10">
                     <Database size={60} className="text-white" />
                 </div>
                 <pre className="text-[12px] font-mono text-emerald-400 whitespace-pre-wrap leading-relaxed relative z-10">
-                    {JSON.stringify(selectedLog.metadata, null, 2)}
+                    {JSON.stringify(selectedLog.metadata ?? {}, null, 2)}
                 </pre>
               </div>
 
@@ -232,7 +306,11 @@ export default function GlobalTelemetryFeed() {
                    </div>
                 </div>
                 <div className="pt-6 border-t border-slate-50">
-                    <button className="w-full h-12 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all">
+                    <button
+                      onClick={traceOrigin}
+                      disabled={!selectedLog.tenants?.name && !selectedLog.tenant_id}
+                      className="w-full h-12 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                    >
                         Trace Origin Point
                     </button>
                 </div>
@@ -258,6 +336,7 @@ function TelemetryItem({ log, onSelect, isSelected }: { log: TelemetryLog, onSel
     switch (cat) {
       case 'VISIT': return { icon: <Globe size={16} />, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' };
       case 'SIGNUP': return { icon: <User size={16} />, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' };
+      case 'LOGIN': return { icon: <LogIn size={16} />, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' };
       case 'ERROR': return { icon: <ShieldAlert size={16} />, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100' };
       case 'PAYMENT': return { icon: <CreditCard size={16} />, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' };
       default: return { icon: <Activity size={16} />, color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' };
@@ -274,8 +353,8 @@ function TelemetryItem({ log, onSelect, isSelected }: { log: TelemetryLog, onSel
       onClick={onSelect}
       className={cn(
         "group cursor-pointer p-4 rounded-2xl flex items-center justify-between transition-all duration-300",
-        isSelected 
-            ? "bg-white border-2 border-blue-500 shadow-xl shadow-blue-100 -translate-y-0.5" 
+        isSelected
+            ? "bg-white border-2 border-blue-500 shadow-xl shadow-blue-100 -translate-y-0.5"
             : "bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5"
       )}
     >

@@ -1,56 +1,39 @@
 'use client';
 
 export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect, useRef, useCallback, ReactNode, forwardRef, ElementRef, ComponentPropsWithoutRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-import { useChat } from '@ai-sdk/react';
-// CoreMessage type removed (not exported by installed ai version)
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, LucideIcon, Menu, ArrowRight, ChevronDown, WifiOff, Send, Signal, Users, X, ShieldHalf, LayoutGrid, Sparkles, Loader2, CheckCircle, CheckCircle2, Briefcase, Globe, Building, Megaphone, Settings, GitBranch, Warehouse, MessageSquareText, HelpCircle, DownloadCloud, Truck, Globe2, Target, Layers, BookOpen, Home, Moon, Sun
+    Check, ChevronDown, LucideIcon, Menu, ArrowRight, X, Sparkles, Users, ShieldCheck,
+    WifiOff, Globe, Settings, BrainCircuit, TrendingUp, Megaphone, GitBranch,
+    MessageSquareText, DownloadCloud, Layers, BookOpen, HelpCircle, Home, LayoutGrid,
+    Banknote, Warehouse, Handshake, Landmark, Briefcase, Stethoscope, ShoppingCart, Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import NewsletterPopup from '@/components/NewsletterPopup';
 import { featureSets } from '@/lib/data/features';
-// --- Constants ---
+
 const COOKIE_CONSENT_NAME = 'bbu1_cookie_consent';
 const COOKIE_EXPIRY_DAYS = 365;
-const TOAST_DURATION = 4000;
-const TEXT_ROTATION_INTERVAL = 4000;
-const SLIDESHOW_INTERVAL = 8000;
-const PILLAR_INTERVAL = 8000;
 
-// --- Interfaces ---
-interface FaqItem { q: string; a: ReactNode; }
-
-interface PlatformPillar { 
-    icon: LucideIcon; 
-    title: string; 
-    description: string; 
-    fullDescription: string; 
-    technicalSpecs: string[]; 
-    backgroundImage: string; 
-}
+interface FaqItem { q: string; a: string; }
 
 type CookieCategoryKey = 'essential' | 'analytics' | 'marketing';
 interface CookieCategoryInfo { id: CookieCategoryKey; name: string; description: string; isRequired: boolean; defaultChecked: boolean; }
 type CookiePreferences = { [key in CookieCategoryKey]: boolean; };
-interface ToastState { visible: boolean; message: string; }
 
-// --- Helper Functions ---
 const getCookie = (name: string): string | null => {
     if (typeof document === 'undefined') return null;
     const value = `; ${document.cookie}`;
@@ -63,331 +46,126 @@ const setCookie = (name: string, value: string, days: number) => {
     if (typeof document === 'undefined') return;
     const date = new Date();
     date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-    const expires = "expires=" + date.toUTCString();
-    document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
+    document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/;SameSite=Lax`;
 };
 
-// --- Site Configuration ---
 const siteConfig = {
     name: "BBU1",
-    shortDescription: "The operating system for your business. Accounting, inventory, invoicing, CRM, HR and payroll, and Aura AI insights, in one unified platform.",
     url: "https://www.bbu1.com/",
-   contactInfo: {
+    contactInfo: {
         email: "info@bbu1.com",
-        whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
-        socials: { 
-            linkedin: "https://www.linkedin.com/in/mwesigwa-jimmy-8248a1243", 
-            twitter: "https://x.com/MwesigwaJimmy5", 
-            facebook: "https://facebook.com/bbu1official" // 
+        whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I would like to see a demo for my business.")}`,
+        socials: {
+            linkedin: "https://www.linkedin.com/in/mwesigwa-jimmy-8248a1243",
+            twitter: "https://x.com/MwesigwaJimmy5",
+            facebook: "https://facebook.com/bbu1official"
         }
     },
-    // --- PLATFORM PILLARS ---
-    platformPillars: [
-        { 
-            icon: TrendingUp, 
-            title: "Built for Growth", 
-            description: "BBU1 scales with your business, from a single user to a multi-branch enterprise.", 
-            fullDescription: "BBU1 runs on a cloud-native architecture built to handle growth. Whether you're processing ten transactions a day or ten million, the platform is designed to keep performance steady as you add branches, users, and regions.",
-            technicalSpecs: [
-                "Elastic scalability: server capacity adjusts automatically to demand.",
-                "Multi-branch architecture: add locations with centralized HQ control.",
-                "High availability: redundant infrastructure aimed at minimal downtime.",
-                "Consistent performance, even as your dataset grows."
-            ],
-            backgroundImage: "/images/showcase/future-of-business-tech.jpg" 
-        },
-        { 
-            icon: BrainCircuit, 
-            title: "Aura, Your Business Copilot", 
-            description: "Aura assists with bookkeeping, reporting, and day-to-day admin, so you can focus on decisions.", 
-            fullDescription: "Aura is an assistant built into your BBU1 workspace. It helps categorize transactions, flags anomalies like duplicate payments, and can answer plain-language questions about your own data, such as your best-selling items last week.",
-            technicalSpecs: [
-                "Automated bookkeeping: assists in categorizing transactions.",
-                "Anomaly detection: flags duplicate payments or unusual spending.",
-                "Forecasting: projects revenue and inventory needs from historical data.",
-                "Natural language queries: ask questions about your business in plain English."
-            ],
-            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" 
-        },
-        { 
-            icon: WifiOff, 
-            title: "Built to Work Offline", 
-            description: "Core functions keep working without internet, and sync automatically once you're back online.", 
-            fullDescription: "In many regions, connectivity isn't guaranteed. BBU1 uses a local-first design so your point of sale, inventory, and field service tools keep running on the device itself. When a connection returns, your data syncs to the cloud automatically.",
-            technicalSpecs: [
-                "Local-first storage: transactions are saved to the device first.",
-                "Conflict resolution: merges changes from multiple offline devices.",
-                "Background sync: uploads happen without interrupting your workflow.",
-                "Local data stays encrypted until it's confirmed on the server."
-            ],
-            backgroundImage: "/images/showcase/education-dashboard.jpg" 
-        },
-        { 
-            icon: Globe, 
-            title: "Built for Multiple Countries", 
-            description: "Multi-currency support and adaptable tax rules for businesses operating across borders.", 
-            fullDescription: "Operating internationally takes more than translated text. BBU1 supports multi-currency transactions with regularly updated exchange rates, distinct tax rules for different regions (VAT, GST, sales tax), and statutory reporting suited to different jurisdictions.",
-            technicalSpecs: [
-                "Multi-currency core: transact and report across 160+ currencies.",
-                "Configurable tax engine for regional requirements.",
-                "Interface available in English, French, Swahili, and Arabic.",
-                "Reporting aligned with GAAP and IFRS standards, among others."
-            ],
-            backgroundImage: "/images/showcase/community-group-meeting.jpg" 
-        },
-        { 
-            icon: ShieldHalf, 
-            title: "Enterprise-Grade Security", 
-            description: "End-to-end encryption, multi-factor authentication, and strict tenant isolation.", 
-            fullDescription: "Every tenant on BBU1 is logically isolated using Row-Level Security, so your data is never accessible to other businesses on the platform. We use AES-256 encryption at rest and TLS 1.3 in transit.",
-            technicalSpecs: [
-                "End-to-end encryption from your device to our servers.",
-                "Role-based access control down to the field level.",
-                "Immutable audit logs of every action taken by every user.",
-                "GDPR and POPIA-aligned data handling."
-            ],
-            backgroundImage: "/images/showcase/cattle-market-records.jpg" 
-        },
-        { 
-            icon: Settings, 
-            title: "Customization & Integration", 
-            description: "Custom fields, workflows, and full API access to match how your business runs.", 
-            fullDescription: "No two businesses run the same way. BBU1 lets you add custom fields to any form, design approval workflows, and build your own reports without code. For developers, our REST and GraphQL APIs give full programmatic access for deeper integrations.",
-            technicalSpecs: [
-                "Custom fields and forms without code.",
-                "Workflow engine for approvals based on your own rules.",
-                "API-first platform with full documentation.",
-                "Webhooks for real-time notifications to other systems."
-            ],
-            backgroundImage: "/images/showcase/creative-agency-pm.jpg" 
-        },
-    ] as PlatformPillar[],
 
     faqItems: [
-        { q: 'What is BBU1?', a: 'BBU1 is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-assisted insights into a single platform.' },
-        { q: 'How does the AI Copilot Aura work?', a: 'Aura analyzes your company\u2019s data to find patterns, assist with routine tasks, and surface simple, actionable insights, for example flagging a projected cash flow gap, so you can plan ahead of it.' },
-        { q: 'Is my enterprise data secure with BBU1?', a: 'Yes. BBU1 runs on a multi-tenant architecture with PostgreSQL Row-Level Security, so your data stays isolated from other businesses on the platform. We use end-to-end encryption for data in transit and at rest, along with multi-factor authentication and ongoing security monitoring.' },
-        { q: 'Can BBU1 be customized to fit my specific business workflows?', a: 'Yes. BBU1 supports custom fields, tailored workflows, and full API access for enterprise clients, so you can connect it to your existing tools and adapt it to how your business actually works.' },
-        { q: 'What kind of customer support is included with BBU1?', a: 'Enterprise plans include dedicated onboarding, an assigned account manager, and priority support over WhatsApp, phone, and email, backed by a service level agreement.' },
-        { q: 'Does BBU1 support multiple currencies and international operations?', a: 'Yes. BBU1 supports transactions, invoicing, and reporting in multiple currencies, with adaptable tax rules and localized compliance features for operating across Africa and beyond.' },
-        { q: 'What happens if my internet connection is lost?', a: 'Core functions like POS transactions, inventory updates, and HR processes keep working offline. Data is stored securely on the device and syncs automatically once you\u2019re back online.' },
+        {
+            q: 'What is BBU1?',
+            a: 'One system for running a business. Sales, stock, accounting, staff and reporting in one place, instead of a point of sale that does not talk to your books and a spreadsheet that does not talk to either.'
+        },
+        {
+            q: 'What happens when the internet goes down?',
+            a: 'You keep selling. Sales and stock movements are saved on the device and upload on their own once the connection comes back. You do not have to do anything.'
+        },
+        {
+            q: 'Do I need an accountant to use it?',
+            a: 'No. You record what you sold and what you spent. The system does the double entry behind it, so your profit and loss, balance sheet and cash flow are always current. Your accountant can log in and take what they need.'
+        },
+        {
+            q: 'Can I move my data out later?',
+            a: 'Yes. Export any list to CSV or PDF from the screen you are on, and there is an API if you want to connect BBU1 to something else. Your data is yours.'
+        },
+        {
+            q: 'Is my data separate from other businesses?',
+            a: 'Yes. Every table is protected at the database level so a query from one business cannot return another business\u2019s rows. Connections are encrypted and data is backed up daily.'
+        },
+        {
+            q: 'How long does it take to set up?',
+            a: 'Most shops are selling on the same day. Import your stock list and your opening balances, add your staff, and start. We will help you with the import if you want.'
+        },
+        {
+            q: 'What support do I get?',
+            a: 'WhatsApp, phone and email. We answer during working hours, Monday to Saturday. Larger accounts get a named contact and an onboarding session.'
+        },
     ] as FaqItem[],
-    termsOfService: (<div className="space-y-4 text-sm"><p>Welcome to BBU1. These Terms of Service ("Terms") govern your access to and use of the BBU1 website, products, and services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms.</p><h3 className="text-base font-semibold mt-6">1. Acceptance of Terms</h3><p>By creating an account, accessing, or using the Services, you acknowledge that you have read, understood, and agree to be bound by these Terms, and by our Privacy Policy and Cookie Policy. If you do not agree to these Terms, you may not access or use the Services.</p><h3 className="text-base font-semibold mt-6">2. Changes to Terms</h3><p>We reserve the right to modify these Terms at any time. We will notify you of any changes by posting the new Terms on the BBU1 website and updating the "Last Updated" date. Your continued use of the Services after such modifications will constitute your acknowledgment of the modified Terms and agreement to abide and be bound by them.</p><h3 className="text-base font-semibold mt-6">3. User Accounts</h3><p>To access certain features of the Services, you must register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete. You are responsible for safeguarding your password and for all activities that occur under your account. You agree to notify BBU1 immediately of any unauthorized use of your account.</p><h3 className="text-base font-semibold mt-6">4. Intellectual Property</h3><p>All content, trademarks, service marks, trade names, logos, and intellectual property rights displayed on the Services are the property of BBU1 or its licensors. You may not use, copy, reproduce, modify, translate, publish, broadcast, transmit, distribute, perform, display, or sell any of BBU1's intellectual property without our prior written consent.</p><h3 className="text-base font-semibold mt-6">5. User Conduct</h3><p>You agree not to use the Services for any unlawful purpose or in any way that might harm, abuse, or interfere with any other user. Prohibited activities include, but are not limited to, unauthorized access, distribution of malware, spamming, and harassment.</p><h3 className="text-base font-semibold mt-6">6. Payments and Billing</h3><p>If you subscribe to any paid Services, you agree to pay all applicable fees and taxes. All payments are non-refundable unless otherwise stated. BBU1 reserves the right to change its pricing at any time, with reasonable notice to existing subscribers.</p><h3 className="text-base font-semibold mt-6">7. Termination</h3><p>We may terminate or suspend your access to the Services immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms. Upon termination, your right to use the Services will immediately cease.</p><h3 className="text-base font-semibold mt-6">8. Disclaimer of Warranties</h3><p>The Services are provided on an "AS IS" and "AS AVAILABLE" basis. BBU1 makes no warranties, expressed or implied, regarding the Services, including but not limited to implied warranties of merchantability, fitness for a particular purpose, and non-infringement.</p><h3 className="text-base font-semibold mt-6">9. Limitation of Liability</h3><p>In no event shall BBU1, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Services; (ii) any conduct or content of any third party on the Services; (iii) any content obtained from the Services; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage.</p><h3 className="text-base font-semibold mt-6">10. Governing Law</h3><p>These Terms shall be governed and construed in accordance with the laws of Uganda, without regard to its conflict of law provisions.</p><h3 className="text-base font-semibold mt-6">11. Contact Information</h3><p>If you have any questions about these Terms, please contact us at support@bbu1.com.</p></div>),
-    privacyPolicy: (
-    <div className="space-y-4 text-sm">
-        <p><strong>Legal Entity:</strong> LITONU BUSINESS BASE UNIVERSE LTD (“the Company,” “we,” “us”)<br />
-        <strong>Platform:</strong> BBU1 ERP Ecosystem<br />
-        <strong>Effective Date:</strong> April 28, 2026</p>
 
-        <p>This Privacy Policy describes how BBU1 collects, uses, and protects your information across our global multi-tenant ERP ecosystem. We operate in strict accordance with the <strong>Uganda Data Protection and Privacy Act (2019)</strong> and the <strong>General Data Protection Regulation (GDPR)</strong>. By using our Services, you agree to the collection and use of information in accordance with this policy.</p>
-
-        <h3 className="text-base font-semibold mt-6">1. Information We Collect (Global & Sector-Specific)</h3>
-        <p>Because BBU1 is a multi-sector ERP, we collect broad and sensitive categories of data required for international business operations:</p>
-        <ul>
-            <li><strong>Personal Identifiers:</strong> Full names, National Identification Numbers (NIN), Tax Identification Numbers (TIN), NSSF numbers, passport/ID copies, and professional certifications relevant to your jurisdiction.</li>
-            <li><strong>Financial & Fiduciary Data:</strong> Bank account details, SACCO/Credit Union membership records, loan history, transaction audit logs, and SME procurement records.</li>
-            <li><strong>Specialized Sensitive Data:</strong> This includes Healthcare Electronic Health Records (EHR), clinical diagnoses, and Human Resource data such as performance evaluations and statutory reporting data.</li>
-            <li><strong>Usage & Technical Data:</strong> IP addresses, browser diagnostic data, and geolocation data specifically for field service and logistics tracking.</li>
-        </ul>
-
-        <h3 className="text-base font-semibold mt-6">2. Legal Basis & Purpose of Processing</h3>
-        <p>BBU1 processes data under the following legal foundations:</p>
-        <ul>
-            <li><strong>Contractual Necessity:</strong> To provide the unified ERP services, multi-currency accounting, and CRM functions.</li>
-            <li><strong>Legal Obligation:</strong> To comply with international tax laws, employment acts, and public health reporting requirements.</li>
-            <li><strong>Legitimate Interest:</strong> To maintain an <strong>"Immutable Audit Trail"</strong> to support business transparency and fraud prevention.</li>
-        </ul>
-
-        <h3 className="text-base font-semibold mt-6">3. Data Residency & International Transfers</h3>
-        <p>To provide reliable, secure hosting for our global users, LITONU BUSINESS BASE UNIVERSE LTD stores data outside of the user's home country where necessary:</p>
-        <ul>
-            <li><strong>Primary Hosting:</strong> Data is hosted on Supabase/AWS infrastructure located in <strong>Sweden (EU Region: eu-north-1)</strong>.</li>
-            <li><strong>Encryption Standards:</strong> This region is selected for its adherence to GDPR, using AES-256 encryption at rest and TLS 1.3 for data in transit.</li>
-        </ul>
-
-        <h3 className="text-base font-semibold mt-6">4. Multi-Tenant Security & Disclosure</h3>
-        <p>We implement a <strong>"Zero-Trust" framework</strong>. Every data table is protected by PostgreSQL <strong>Row-Level Security (RLS)</strong>, so no business can access another's data. We may disclose information to:</p>
-        <ul>
-            <li><strong>Statutory Bodies:</strong> Such as the Uganda Revenue Authority (URA) or equivalent international tax authorities for compliance.</li>
-            <li><strong>Service Providers:</strong> Infrastructure partners such as Supabase Inc and payment gateways (Stripe, PayPal, Pesapal).</li>
-            <li><strong>Authorized Auditors:</strong> To facilitate internal and external audits requested by the Client (Data Controller).</li>
-        </ul>
-
-        <h3 className="text-base font-semibold mt-6">5. Data Retention Policy (15-Year Mandate)</h3>
-        <p>In line with fiduciary, legal, and medical audit requirements, <strong>LITONU retains personal and business data for a period of 15 years</strong>. After this period, data is securely purged or anonymized, unless continued storage is mandated by local or international law.</p>
-
-        <h3 className="text-base font-semibold mt-6">6. Your Global Data Protection Rights</h3>
-        <p>Regardless of your location, BBU1 grants all users rights aligned with GDPR and the Data Protection Act 2019:</p>
-        <ul>
-            <li><strong>Right to Access & Portability:</strong> You may download your data in machine-readable formats at any time.</li>
-            <li><strong>Right to Rectification:</strong> You may correct inaccurate data via your system dashboard.</li>
-            <li><strong>Right to Objection/Erasure:</strong> You may request data deletion, subject to the 15-year statutory retention requirements mentioned above.</li>
-            <li><strong>Right to Complain:</strong> You have the right to lodge a complaint with the Uganda Data Protection Affairs Office (NITA-U) or your local Data Protection Authority.</li>
-        </ul>
-
-        <h3 className="text-base font-semibold mt-6">7. Children's Privacy</h3>
-        <p>Our Services process data relating to persons under 18 years ("Children") <strong>only</strong> when provided by a parent or legal guardian for specific professional purposes, such as pediatric medical care, school management modules, or as dependents within HR and Insurance modules.</p>
-
-        <h3 className="text-base font-semibold mt-6">8. Data Protection Officer (DPO) Contact</h3>
-        <p>For any privacy concerns or to exercise your data rights, please contact our designated DPO:</p>
-        <p className="pl-4 border-l-2 border-blue-600">
-            <strong>Name:</strong> MWESIGWA JIMMY<br />
-            <strong>Email:</strong> info@bbu1.com / mwesigwajimmy123@gmail.com<br />
-            <strong>Address:</strong> NTINDA PLOT 10 VILLAGE X1, KAMPALA, UGANDA.
-        </p>
-
-        <h3 className="text-base font-semibold mt-6">9. Changes to This Privacy Policy</h3>
-        <p>We may update our Privacy Policy from time to time to reflect changes in global law. We will notify you of any changes by posting the new Privacy Policy on this page. Changes are effective when they are posted.</p>
-    </div>
-),
     cookieCategories: [
-        { id: 'essential', name: 'Essential Cookies', description: 'These cookies are crucial for the website to function properly and enable core functionalities like security, network management, and accessibility. They cannot be switched off.', isRequired: true, defaultChecked: true },
-        { id: 'analytics', name: 'Analytics Cookies', description: 'These cookies allow us to count visits and traffic sources, understand how visitors interact with our website, and measure the performance of our site. This helps us to improve the way our website works.', isRequired: false, defaultChecked: false },
-        { id: 'marketing', name: 'Marketing Cookies', description: 'These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not directly store personal information but are based on uniquely identifying your browser and internet device.', isRequired: false, defaultChecked: false }
+        { id: 'essential', name: 'Essential', description: 'Needed for the site to work, including security and your sign-in session. These cannot be switched off.', isRequired: true, defaultChecked: true },
+        { id: 'analytics', name: 'Analytics', description: 'Tell us which pages people visit so we know what to improve. No personal information.', isRequired: false, defaultChecked: false },
+        { id: 'marketing', name: 'Marketing', description: 'Let us show you relevant adverts on other sites. Off unless you turn it on.', isRequired: false, defaultChecked: false }
     ] as CookieCategoryInfo[],
 };
 
-// --- Framer Motion Variants ---
-const EASE_SPRING = [0.16, 1, 0.3, 1] as const;
+const EASE = [0.16, 1, 0.3, 1] as const;
 
-const sectionVariants: Variants = {
-    hidden: { opacity: 0, y: 40, filter: 'blur(2px)' },
-    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.7, ease: EASE_SPRING, staggerChildren: 0.1 } }
+const fadeUp: Variants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } }
 };
-const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20, filter: 'blur(2px)' },
-    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.55, ease: EASE_SPRING } }
-};
-const textVariants: Variants = {
-    hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: EASE_SPRING } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } }
-};
-const heroImageVariants: Variants = {
-    initial: { scale: 1 }, animate: { scale: [1, 1.05, 1], transition: { duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" } }
-};
-const pillarCardContentVariants: Variants = {
-    hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE_SPRING } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }
-};
-const slideLeft: Variants = {
-    hidden: { opacity: 0, x: -40, filter: 'blur(2px)' },
-    visible: { opacity: 1, x: 0, filter: 'blur(0px)', transition: { duration: 0.65, ease: EASE_SPRING } }
-};
-const slideRight: Variants = {
-    hidden: { opacity: 0, x: 40, filter: 'blur(2px)' },
-    visible: { opacity: 1, x: 0, filter: 'blur(0px)', transition: { duration: 0.65, ease: EASE_SPRING } }
-};
-const scaleIn: Variants = {
-    hidden: { opacity: 0, scale: 0.92, filter: 'blur(2px)' },
-    visible: { opacity: 1, scale: 1, filter: 'blur(0px)', transition: { duration: 0.5, ease: EASE_SPRING } }
-};
+
 const staggerContainer: Variants = {
     hidden: {},
-    visible: { transition: { staggerChildren: 0.08, delayChildren: 0.08 } }
-};
-const staggerItem: Variants = {
-    hidden: { opacity: 0, y: 26, filter: 'blur(2px)' },
-    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.5, ease: EASE_SPRING } }
+    visible: { transition: { staggerChildren: 0.06 } }
 };
 
-// --- ListItem Component ---
-const ListItem = forwardRef<ElementRef<"div">, ComponentPropsWithoutRef<"div"> & { icon: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
-    <div
-        ref={ref}
-        className={cn(
-            "flex items-start select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-blue-50 hover:text-blue-900 focus:bg-blue-50 focus:text-blue-900 dark:hover:bg-blue-900/20 dark:hover:text-blue-100 dark:focus:bg-blue-900/20 dark:focus:text-blue-100 cursor-pointer",
-            className
-        )}
-        {...props}
-    >
-        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md mr-4 mt-1">
-            <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+const ListItem = forwardRef<ElementRef<"div">, ComponentPropsWithoutRef<"div"> & { icon?: LucideIcon }>(
+    ({ className, title, children, icon: Icon, ...props }, ref) => (
+        <div
+            ref={ref}
+            className={cn(
+                "flex cursor-pointer select-none items-start rounded-lg p-3 leading-none outline-none transition-colors hover:bg-slate-50 dark:hover:bg-slate-800",
+                className
+            )}
+            {...props}
+        >
+            <div className="mr-3 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+            </div>
+            <div className="min-w-0">
+                <div className="text-sm font-medium leading-none text-slate-900 dark:text-slate-100">{title}</div>
+                <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-muted-foreground">{children}</p>
+            </div>
         </div>
-        <div>
-            <div className="text-sm font-semibold leading-none">{title}</div>
-            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-1.5">
-                {children}
-            </p>
-        </div>
-    </div>
-));
+    )
+);
 ListItem.displayName = "ListItem";
 
-const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
-    <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
-        <div className="container mx-auto px-4 relative z-10">{children}</div>
+const Section = ({ children, className, id }: { children: ReactNode; className?: string; id?: string }) => (
+    <motion.section
+        id={id}
+        className={cn("py-16 sm:py-24", className)}
+        variants={fadeUp}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.15 }}
+    >
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6">{children}</div>
     </motion.section>
 );
 
-const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) => (
-    <AnimatePresence>
-        {isVisible && (
-            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }} className="fixed bottom-6 left-6 z-[150] flex items-center gap-3 rounded-lg bg-blue-600 text-white p-4 shadow-2xl">
-                <CheckCircle className="h-6 w-6 text-green-400" />
-                <p className="font-medium">{message}</p>
-            </motion.div>
-        )}
-    </AnimatePresence>
+const SectionHeading = ({ eyebrow, title, sub }: { eyebrow?: string; title: string; sub?: string }) => (
+    <div className="max-w-2xl">
+        {eyebrow ? (
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">{eyebrow}</p>
+        ) : null}
+        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl">
+            {title}
+        </h2>
+        {sub ? (
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground md:text-lg">{sub}</p>
+        ) : null}
+    </div>
 );
-
-// --- FullScreenDialog Component ---
-interface FullScreenDialogProps {
-    children: ReactNode;
-    title: string;
-    description?: string;
-    backgroundImage?: string;
-    icon?: LucideIcon;
-    onClose?: () => void;
-}
-
-const FullScreenDialog = ({ children, title, description, backgroundImage, icon: Icon, onClose }: FullScreenDialogProps) => {
-    return (
-        <DialogContent className="!fixed !inset-0 !left-0 !top-0 !z-[200] !max-w-none !w-screen !h-screen !translate-x-0 !translate-y-0 !border-none p-0 flex flex-col animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
-            {backgroundImage && (
-                <Image
-                    src={backgroundImage}
-                    alt={`${title} background`}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    className="absolute inset-0 z-0 opacity-20 dark:opacity-10 filter brightness-[0.6]"
-                    priority
-                    sizes="100vw"
-                />
-            )}
-            <div className="relative z-10 flex flex-col h-full w-full bg-background/90 dark:bg-background/95 backdrop-blur-lg">
-                <DialogHeader className="p-6 md:p-8 border-b flex-shrink-0">
-                    <div className="flex justify-between items-center">
-                        <DialogTitle className="text-3xl font-bold flex items-center gap-3">
-                            {Icon && <Icon className="h-8 w-8 text-blue-600 dark:text-blue-400" />} {title}
-                        </DialogTitle>
-                        <DialogClose asChild>
-                            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground" onClick={onClose}>
-                                <X className="h-6 w-6" />
-                                <span className="sr-only">Close</span>
-                            </Button>
-                        </DialogClose>
-                    </div>
-                    {description && <DialogDescription className="mt-2 text-lg">{description}</DialogDescription>}
-                </DialogHeader>
-                <ScrollArea className="flex-grow p-6 md:p-8">
-                    {children}
-                </ScrollArea>
-                <div className="p-6 md:p-8 border-t flex-shrink-0">
-                    <DialogClose asChild>
-                        <Button variant="outline" className="w-full hover:border-blue-600 hover:text-blue-600" onClick={onClose}>Back to Main Page</Button>
-                    </DialogClose>
-                </div>
-            </div>
-        </DialogContent>
-    );
-};
 
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [openMenu, setOpenMenu] = useState<'features' | 'industries' | null>(null);
+    const [openMenu, setOpenMenu] = useState<'features' | null>(null);
     const [deferredPrompt, setDeferredPrompt] = useState<any | null>(null);
     const [scrolled, setScrolled] = useState(false);
-    const [isDark, setIsDark] = useState(false);
     const navRef = useRef<HTMLDivElement>(null);
     const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -397,15 +175,6 @@ const MegaMenuHeader = () => {
         onScroll();
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
-
-    useEffect(() => {
-        setIsDark(document.documentElement.classList.contains('dark'));
-    }, []);
-
-    const toggleDark = () => {
-        document.documentElement.classList.toggle('dark');
-        setIsDark(prev => !prev);
-    };
 
     useEffect(() => {
         const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
@@ -421,210 +190,207 @@ const MegaMenuHeader = () => {
         return () => document.removeEventListener('mousedown', onClickOutside);
     }, []);
 
+    useEffect(() => {
+        document.body.style.overflow = isMobileMenuOpen ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
+    }, [isMobileMenuOpen]);
+
     const handleInstallClick = async () => {
-        if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; setDeferredPrompt(null); }
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        setDeferredPrompt(null);
     };
 
-    const openHover = (key: 'features' | 'industries', e: React.PointerEvent) => {
+    const openHover = (key: 'features', e: React.PointerEvent) => {
         if (e.pointerType !== 'mouse') return;
         if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
         setOpenMenu(key);
     };
     const closeHover = (e: React.PointerEvent) => {
         if (e.pointerType !== 'mouse') return;
-        hoverTimeout.current = setTimeout(() => setOpenMenu(null), 220);
+        hoverTimeout.current = setTimeout(() => setOpenMenu(null), 200);
     };
 
     const navLinkClass = cn(
-        "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors",
+        "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         scrolled
-            ? "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
-            : "text-slate-200 hover:text-white hover:bg-white/10"
+            ? "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+            : "text-slate-300 hover:bg-white/10 hover:text-white"
     );
 
     return (
         <>
-        <header className={cn(
-            "fixed top-0 z-40 w-full h-16 transition-all duration-300",
-            scrolled
-                ? "bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-800/70 shadow-sm"
-                : "bg-transparent border-b border-transparent"
-        )}>
-            <div className="max-w-7xl mx-auto flex flex-row flex-nowrap h-full items-center px-4 gap-2">
+            <header className={cn(
+                "fixed top-0 z-40 h-16 w-full transition-colors duration-300",
+                scrolled
+                    ? "border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95"
+                    : "border-b border-transparent bg-transparent"
+            )}>
+                <div className="mx-auto flex h-full max-w-7xl flex-nowrap items-center gap-2 px-4 sm:px-6">
 
-                {/* Logo: visible on all screens, animates on mount */}
-                <motion.div
-                    initial={{ opacity: 0, x: -18 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="shrink-0"
-                >
-                    <Link href="/" className="group flex items-center gap-2 font-bold text-lg">
-                        <span className={cn("font-extrabold tracking-tight transition-colors duration-300", scrolled ? "text-blue-600" : "text-white")}>
+                    <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight">
+                        <span className={cn("transition-colors", scrolled ? "text-slate-900 dark:text-white" : "text-white")}>
                             {siteConfig.name}
                         </span>
                     </Link>
-                </motion.div>
 
-                {/* Desktop Nav */}
-                <nav ref={navRef} className="hidden lg:flex flex-1 items-center gap-0.5 relative">
+                    <nav ref={navRef} className="relative hidden flex-1 items-center gap-0.5 lg:flex">
+                        <Link href="/" className={navLinkClass} aria-label="Home">
+                            <Home className="h-4 w-4" />
+                        </Link>
 
-                    {/* Home */}
-                    <Link href="/" className={navLinkClass}>
-                        <Home className="h-3.5 w-3.5" />
-                    </Link>
+                        <div className="relative">
+                            <button
+                                onPointerEnter={(e) => openHover('features', e)}
+                                onPointerLeave={closeHover}
+                                onClick={() => setOpenMenu(openMenu === 'features' ? null : 'features')}
+                                className={cn(navLinkClass, openMenu === 'features' && (scrolled ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white' : 'bg-white/10 text-white'))}
+                            >
+                                Features
+                                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", openMenu === 'features' && 'rotate-180')} />
+                            </button>
 
-                    {/* Features dropdown */}
-                    <div className="relative">
-                        <button
-                            onPointerEnter={(e) => openHover('features', e)} onPointerLeave={closeHover}
-                            className={cn(navLinkClass, openMenu === 'features' && 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white')}
+                            {openMenu === 'features' && (
+                                <div
+                                    onPointerEnter={(e) => openHover('features', e)}
+                                    onPointerLeave={closeHover}
+                                    className="absolute left-0 top-full z-50 mt-2 w-[720px] max-w-[92vw] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
+                                >
+                                    <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-800">
+                                        <span className="text-xs font-medium text-slate-500">What is inside</span>
+                                        <Link
+                                            href="/features"
+                                            onClick={() => setOpenMenu(null)}
+                                            className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                                        >
+                                            All features <ArrowRight size={12} />
+                                        </Link>
+                                    </div>
+                                    <div className="max-h-[60vh] overflow-y-auto">
+                                        <ul className="grid grid-cols-2 gap-1 p-3">
+                                            {featureSets.map((feature: any) => (
+                                                <li key={feature.slug} className="list-none">
+                                                    <Link href={`/features/${feature.slug}`} onClick={() => setOpenMenu(null)}>
+                                                        <ListItem title={feature.title} icon={feature.icon}>
+                                                            {feature.description}
+                                                        </ListItem>
+                                                    </Link>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <Link href="/industries" className={navLinkClass}>Industries</Link>
+                        <Link href="/aura-ai" className={navLinkClass}>Aura AI</Link>
+                        <Link href="/courses" className={navLinkClass}>Academy</Link>
+                        <Link href="/help-centre" className={navLinkClass}>Help</Link>
+                        <Link href="/blog" className={navLinkClass}>Journal</Link>
+                    </nav>
+
+                    <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
+                        {deferredPrompt ? (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleInstallClick}
+                                className={cn("font-medium", scrolled
+                                    ? "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
+                                    : "border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white")}
+                            >
+                                <DownloadCloud className="mr-1.5 h-4 w-4" /> Install
+                            </Button>
+                        ) : null}
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            asChild
+                            className={cn("font-medium", scrolled
+                                ? "text-slate-600 dark:text-slate-300"
+                                : "text-slate-300 hover:bg-white/10 hover:text-white")}
                         >
-                            Features <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", openMenu === 'features' && 'rotate-180')} />
-                        </button>
-                        {openMenu === 'features' && (
-                            <div onPointerEnter={(e) => openHover('features', e)} onPointerLeave={closeHover} className="absolute left-0 top-full mt-2 w-[760px] max-w-[94vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Platform Capabilities</span>
-                                    <Link href="/features" onClick={() => setOpenMenu(null)} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600 flex items-center gap-1.5">
-                                        All Features <ArrowRight size={11} />
-                                    </Link>
-                                </div>
-                                <div className="max-h-[60vh] overflow-y-auto">
-                                    <ul className="grid grid-cols-2 gap-1 p-4">
-                                        {featureSets.map((feature) => (
-                                            <li key={feature.slug} className="list-none">
-                                                <Link href={`/features/${feature.slug}`} onClick={() => setOpenMenu(null)}>
-                                                    <ListItem title={feature.title} icon={feature.icon}>{feature.description}</ListItem>
-                                                </Link>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        )}
+                            <Link href="/login">Log in</Link>
+                        </Button>
+
+                        <Button size="sm" asChild className="bg-blue-600 font-medium text-white hover:bg-blue-700">
+                            <Link href="/signup">Get started</Link>
+                        </Button>
+
+                        <ModeToggle />
                     </div>
 
-                    {/* Industries: plain link */}
-                    <Link href="/industries" className={navLinkClass}>
-                        Industries
-                    </Link>
-
-                    {/* Plain links */}
-                    <Link href="/aura-ai" className={cn(navLinkClass, scrolled ? "text-blue-500 dark:text-blue-400" : "text-blue-300", "font-bold")}>
-                        <Sparkles className="h-3.5 w-3.5" /> Aura AI
-                    </Link>
-                    <Link href="/courses" className={cn(navLinkClass, scrolled ? "text-slate-600 dark:text-slate-300" : "text-slate-200", "font-semibold")}>
-                        Academy
-                    </Link>
-                    <Link href="/help-centre" className={navLinkClass}>
-                        Help
-                    </Link>
-                    <Link href="/blog" className={navLinkClass}>
-                        Journal
-                    </Link>
-                </nav>
-
-                {/* Desktop right-side actions */}
-                <div className="hidden lg:flex items-center gap-2 shrink-0">
-                    {deferredPrompt && (
-                        <Button variant="outline" size="sm" onClick={handleInstallClick} className={cn("font-bold", scrolled ? "border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-600" : "bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white")}>
-                            <DownloadCloud className="h-4 w-4 mr-1.5" /> Install
+                    <div className="ml-auto flex shrink-0 items-center gap-1.5 lg:hidden">
+                        <Button size="sm" asChild className="h-9 bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700">
+                            <Link href="/signup">Get started</Link>
                         </Button>
-                    )}
-                    <Link href="/download" className={cn("p-2 rounded-lg transition-colors", scrolled ? "text-blue-600 hover:bg-blue-50" : "text-blue-300 hover:bg-white/10")} title="Download App">
-                        <DownloadCloud className="h-4 w-4" />
-                    </Link>
-                    <Button variant="outline" size="sm" asChild className={cn("font-semibold transition-colors", scrolled ? "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white" : "bg-transparent border-white/25 text-white hover:bg-white/10 hover:text-white")}>
-                        <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a>
-                    </Button>
-                    <Button variant="ghost" size="sm" asChild className={cn("font-semibold", scrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-200 hover:text-white hover:bg-white/10")}>
-                        <Link href="/login">Log In</Link>
-                    </Button>
-                    <Button size="sm" asChild className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shadow-blue-600/30">
-                        <Link href="/signup">Get Started</Link>
-                    </Button>
-                    <ModeToggle />
+                        <button
+                            onClick={() => setIsMobileMenuOpen(v => !v)}
+                            className={cn("rounded-lg p-2 transition-colors",
+                                isMobileMenuOpen
+                                    ? "bg-slate-900 text-white"
+                                    : scrolled
+                                        ? "text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+                                        : "text-white hover:bg-white/10"
+                            )}
+                            aria-label="Menu"
+                        >
+                            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                        </button>
+                    </div>
                 </div>
+            </header>
 
-                {/* Mobile controls */}
-                <div className="lg:hidden flex items-center gap-1.5 shrink-0 ml-auto">
-                    <button
-                        onClick={toggleDark}
-                        className={cn(
-                            "p-2 rounded-lg transition-colors",
-                            scrolled
-                                ? "text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
-                                : "text-white hover:bg-white/10"
-                        )}
-                        aria-label="Toggle theme"
-                    >
-                        {isDark ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-                    </button>
-                    <button
-                        onClick={() => setIsMobileMenuOpen(v => !v)}
-                        className={cn(
-                            "p-2 rounded-lg transition-colors",
-                            isMobileMenuOpen
-                                ? "bg-slate-900 text-white hover:bg-slate-800"
-                                : scrolled
-                                    ? "text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
-                                    : "text-white hover:bg-white/10"
-                        )}
-                        aria-label="Toggle menu"
-                    >
-                        {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        {/* Mobile full-screen menu, kept outside <header> so backdrop-filter does not trap it */}
-        <AnimatePresence>
+            <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div
-                        initial={{ opacity: 0, x: '100%' }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: '100%' }}
-                        transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-                        className="fixed inset-x-0 bottom-0 z-[200] overflow-y-auto"
-                        style={{ top: '64px', background: 'linear-gradient(135deg, #0f172a 0%, #0d1a3a 50%, #0f172a 100%)' }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-x-0 bottom-0 z-[200] overflow-y-auto bg-slate-950"
+                        style={{ top: '64px' }}
                     >
-                        <div className="w-full max-w-lg mx-auto py-5 px-4 space-y-3">
+                        <div className="mx-auto w-full max-w-lg px-4 py-5">
                             <nav className="flex flex-col">
-                                <Link href="/" className="flex items-center gap-3 py-3.5 border-b border-white/10 text-base font-bold text-white hover:text-blue-400 transition-colors group" onClick={() => setIsMobileMenuOpen(false)}>
-                                    <span className="p-2 rounded-xl bg-white/10 group-hover:bg-blue-600/40 transition-colors"><Home size={17} className="text-blue-400" /></span>
-                                    Home
-                                </Link>
-
                                 {[
-                                    { href: '/features', label: 'Features', icon: Layers, color: 'text-blue-400' },
-                                    { href: '/industries', label: 'Industries', icon: LayoutGrid, color: 'text-blue-400' },
-                                    { href: '/download', label: 'Download Application', icon: DownloadCloud, color: 'text-blue-400' },
-                                    { href: '/aura-ai', label: 'Aura Intelligence', icon: Sparkles, color: 'text-blue-400' },
-                                    { href: '/courses', label: 'Academy', icon: BookOpen, color: 'text-blue-400' },
-                                    { href: '/blog', label: 'Engineering Journal', icon: BookOpen, color: 'text-slate-300' },
-                                    { href: '/help-centre', label: 'Help Center', icon: HelpCircle, color: 'text-slate-300' },
-                                ].map(({ href, label, icon: Icon, color }) => (
-                                    <Link key={href} href={href}
-                                        className="flex items-center gap-3 py-3.5 border-b border-white/10 text-base font-bold text-white hover:text-blue-400 transition-colors group"
+                                    { href: '/', label: 'Home', icon: Home },
+                                    { href: '/features', label: 'Features', icon: Layers },
+                                    { href: '/industries', label: 'Industries', icon: LayoutGrid },
+                                    { href: '/aura-ai', label: 'Aura AI', icon: Sparkles },
+                                    { href: '/download', label: 'Install the app', icon: DownloadCloud },
+                                    { href: '/courses', label: 'Academy', icon: BookOpen },
+                                    { href: '/blog', label: 'Journal', icon: BookOpen },
+                                    { href: '/help-centre', label: 'Help', icon: HelpCircle },
+                                ].map(({ href, label, icon: Icon }) => (
+                                    <Link
+                                        key={href}
+                                        href={href}
                                         onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center gap-3 border-b border-white/10 py-4 text-base font-medium text-white"
                                     >
-                                        <span className="p-2 rounded-xl bg-white/10 group-hover:bg-blue-600/40 transition-colors"><Icon size={17} className={color} /></span>
+                                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
+                                            <Icon size={16} className="text-slate-300" />
+                                        </span>
                                         {label}
                                     </Link>
                                 ))}
                             </nav>
 
-                            <div className="flex flex-col gap-2.5 pt-3 pb-20">
-                                <Button asChild className="h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-900/50 border border-blue-500/30 text-sm">
-                                    <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Create Free Account</Link>
+                            <div className="flex flex-col gap-2.5 pb-16 pt-6">
+                                <Button asChild className="h-12 rounded-xl bg-blue-600 text-sm font-medium text-white hover:bg-blue-500">
+                                    <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Create an account</Link>
                                 </Button>
-                                <Button variant="outline" asChild className="h-12 border-white/20 bg-white/[0.08] text-white font-bold rounded-2xl hover:bg-white/[0.14] hover:text-white text-sm">
-                                    <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Request Private Demo</a>
+                                <Button variant="outline" asChild className="h-12 rounded-xl border-white/20 bg-white/[0.06] text-sm font-medium text-white hover:bg-white/[0.12] hover:text-white">
+                                    <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">
+                                        Book a demo
+                                    </a>
                                 </Button>
-                                <Button variant="ghost" asChild className="h-12 font-bold text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl text-sm">
-                                    <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Sign In</Link>
+                                <Button variant="ghost" asChild className="h-12 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/10 hover:text-white">
+                                    <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Log in</Link>
                                 </Button>
                             </div>
                         </div>
@@ -635,254 +401,174 @@ const MegaMenuHeader = () => {
     );
 };
 
-// --- AdvancedChatWidget Component ---
-const AdvancedChatWidget = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [userContext, setUserContext] = useState<{ businessId: string | null; userId: string | null }>({ businessId: null, userId: null });
-    const [chatInput, setChatInput] = useState('');
-    
-    const { messages, setMessages, append, isLoading }: any = useChat({ api: '/api/chat', body: { businessId: userContext.businessId, userId: userContext.userId } } as any);
+const PRODUCT_SCREENS = [
+    {
+        id: 'pos',
+        label: 'Selling',
+        title: 'Sell, and the books update themselves',
+        body: 'Every sale posts to the ledger the moment it happens. Stock comes down, revenue goes up, and the day closes with a cash count you can check note by note.',
+        points: ['Works with barcode scanners and receipt printers', 'Counts your drawer at open and close', 'Keeps working when the network drops'],
+        media: { type: 'video', src: '/videos/BBU1 inventory management.mp4', alt: 'Inventory management in BBU1' },
+    },
+    {
+        id: 'accounts',
+        label: 'Accounts',
+        title: 'Real accounting, without an accountant',
+        body: 'Double entry runs underneath everything. Your profit and loss, balance sheet and cash flow are always current, and every figure traces back to the entry that made it.',
+        points: ['Profit and loss, balance sheet, cash flow', 'Expenses with proper account codes', 'Export to PDF or Excel for your accountant'],
+        media: { type: 'image', src: '/images/showcase/future-of-business-tech.jpg', alt: 'Financial reporting in BBU1' },
+    },
+    {
+        id: 'stock',
+        label: 'Stock',
+        title: 'Know what you have, in every branch',
+        body: 'One stock list across all your locations. Set reorder points and the system tells you what to buy before you run out.',
+        points: ['Multiple branches and warehouses', 'Reorder alerts and purchase orders', 'Batch and expiry tracking'],
+        media: { type: 'image', src: '/images/showcase/local-shop-owner.jpg', alt: 'Stock management' },
+    },
+    {
+        id: 'people',
+        label: 'People',
+        title: 'Staff, shifts and pay in one place',
+        body: 'Add your team, set what each person can see, and run payroll from the hours they actually worked.',
+        points: ['Role based access down to the screen', 'Attendance and leave', 'Payroll with statutory deductions'],
+        media: { type: 'image', src: '/images/showcase/healthcare-team.jpg', alt: 'Team management' },
+    },
+];
 
-    useEffect(() => {
-        setUserContext({ businessId: getCookie('business_id'), userId: getCookie('user_id') });
-    }, []);
+const REPLACES = [
+    { before: 'A point of sale that does not talk to your books', after: 'Sales post straight to the ledger' },
+    { before: 'A spreadsheet for stock that is out of date by lunchtime', after: 'One stock list, live, across branches' },
+    { before: 'Paying an accountant to rebuild your year from receipts', after: 'Statements ready whenever you open them' },
+    { before: 'Orders arriving on WhatsApp with no record', after: 'An online store tied to the same stock' },
+];
 
-    useEffect(() => {
-        if (messages.length === 0 && setMessages) {
-            setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' }]);
-        }
-    }, [messages.length, setMessages]);
+const HOW_IT_WORKS = [
+    { step: '1', title: 'Create an account', desc: 'Sign up with an email and a phone number. No card needed to start.' },
+    { step: '2', title: 'Bring in what you have', desc: 'Import your stock list and opening balances from a spreadsheet. We help with this.' },
+    { step: '3', title: 'Add your team', desc: 'Invite staff and set what each of them can see and do.' },
+    { step: '4', title: 'Start selling', desc: 'Most shops are trading on the system the same day.' },
+];
 
-    const scrollRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [messages]);
+const BUILT_FOR = [
+    { icon: ShoppingCart, title: 'Shops and supermarkets', desc: 'Counter sales, stock, suppliers.' },
+    { icon: Stethoscope, title: 'Clinics and pharmacies', desc: 'Patients, lab, dispensing, billing.' },
+    { icon: Warehouse, title: 'Wholesale and distribution', desc: 'Multi-branch stock and delivery.' },
+    { icon: Building2, title: 'Property and rentals', desc: 'Units, tenants, rent collection.' },
+    { icon: Landmark, title: 'SACCOs and lenders', desc: 'Savings, shares, loan books.' },
+    { icon: Briefcase, title: 'Services and agencies', desc: 'Jobs, invoicing, staff time.' },
+];
 
-    const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const trimmedInput = chatInput.trim();
-        if (!trimmedInput || isLoading) return;
-        append({ content: trimmedInput, role: 'user' });
-        setChatInput('');
-    };
+const PLATFORM_POINTS = [
+    { icon: WifiOff, title: 'Works offline', desc: 'Sales and stock keep working without a connection and sync when it returns.' },
+    { icon: ShieldCheck, title: 'Separated data', desc: 'Every business is isolated at the database level. Encrypted connections, daily backups.' },
+    { icon: Globe, title: 'More than one country', desc: 'Multiple currencies and tax rules you configure per region.' },
+    { icon: BrainCircuit, title: 'Aura', desc: 'Ask questions about your own figures in plain language and get an answer from your data.' },
+    { icon: Settings, title: 'Fits how you work', desc: 'Custom fields, your own approval steps, and an API when you need to connect something.' },
+    { icon: Users, title: 'Grows with you', desc: 'From one till to several branches on the same account, with head office visibility.' },
+];
 
-    const isDisabled = isLoading || !userContext.userId || !userContext.businessId;
-
-    return (
-        <>
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                        className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50"
-                    >
-                        <Card className="h-full w-full flex flex-col shadow-2xl">
-                            <CardHeader className="flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle>
-                                    <CardDescription>Your AI Business Analyst</CardDescription>
-                                </div>
-                                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </CardHeader>
-                            <CardContent className="flex-1 flex flex-col p-0">
-                                <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                                    <div className="space-y-4">
-                                        {messages.map((m: any, i: number) => (
-                                            <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
-                                                {m.role === 'assistant' && <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" /></AvatarFallback></Avatar>}
-                                                <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-background border')}>
-                                                    {m.content as string}
-                                                </div>
-                                                {m.role === 'user' && <Avatar className="h-8 w-8"><AvatarFallback>U</AvatarFallback></Avatar>}
-                                            </div>
-                                        ))}
-                                        {isLoading && (
-                                            <div className="flex items-start gap-3 text-sm">
-                                                <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" /></AvatarFallback></Avatar>
-                                                <div className="rounded-lg p-3 max-w-[85%] bg-background border">
-                                                    Aura is thinking... <Loader2 className="h-4 w-4 animate-spin inline-block ml-1" />
-                                                </div>
-                                            </div>
-                                        )}
-                                        {(!userContext.businessId || !userContext.userId) && !isLoading && (
-                                            <div className="text-center text-red-500 text-sm p-4 border rounded-lg bg-red-50/50">
-                                                <p>Your business context is missing. Please log in to use the AI Assistant.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </ScrollArea>
-                                <div className="p-4 border-t">
-                                    <form onSubmit={handleChatSubmit} className="flex items-center gap-2">
-                                        <Input
-                                            value={chatInput}
-                                            onChange={e => setChatInput(e.target.value)}
-                                            placeholder={isDisabled ? "Please log in..." : "Ask Aura anything..."}
-                                            disabled={isDisabled}
-                                        />
-                                        <Button type="submit" size="icon" disabled={isDisabled || !chatInput.trim()}>
-                                            <Send className="h-4 w-4" />
-                                        </Button>
-                                    </form>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>
-                {isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}
-            </Button>
-        </>
-    );
-};
-
-// --- REAL-TIME PRICING CONFIGURATION (UPDATED FOR EUROPE, CHINA, WORLD) ---
-
-// Real-time currency rates (Approximate to base USD)
 const GEO_CURRENCIES: Record<string, { code: string; symbol: string; rate: number }> = {
-    'UG': { code: 'UGX', symbol: 'USh', rate: 3750 },  // Uganda
-    'KE': { code: 'KES', symbol: 'KSh', rate: 130 },   // Kenya
-    'TZ': { code: 'TZS', symbol: 'TSh', rate: 2600 },  // Tanzania
-    'RW': { code: 'RWF', symbol: 'RF', rate: 1350 },   // Rwanda
-    'NG': { code: 'NGN', symbol: '₦', rate: 1650 },    // Nigeria
-    'ZA': { code: 'ZAR', symbol: 'R', rate: 18 },      // South Africa
-    'GH': { code: 'GHS', symbol: 'GH₵', rate: 16 },    // Ghana
-    'ZM': { code: 'ZMW', symbol: 'ZK', rate: 27 },     // Zambia
-    'GB': { code: 'GBP', symbol: '£', rate: 0.79 },    // UK
-    'EU': { code: 'EUR', symbol: '€', rate: 0.92 },    // Europe (Base)
-    'CN': { code: 'CNY', symbol: '¥', rate: 7.25 },    // China
-    'AE': { code: 'AED', symbol: 'Dh', rate: 3.67 },   // UAE/Dubai
-    'US': { code: 'USD', symbol: '$', rate: 1 },       // USA
-    'DEFAULT': { code: 'USD', symbol: '$', rate: 1 }   // Rest of World
+    'UG': { code: 'UGX', symbol: 'USh', rate: 3750 },
+    'KE': { code: 'KES', symbol: 'KSh', rate: 130 },
+    'TZ': { code: 'TZS', symbol: 'TSh', rate: 2600 },
+    'RW': { code: 'RWF', symbol: 'RF', rate: 1350 },
+    'NG': { code: 'NGN', symbol: '₦', rate: 1650 },
+    'ZA': { code: 'ZAR', symbol: 'R', rate: 18 },
+    'GH': { code: 'GHS', symbol: 'GH₵', rate: 16 },
+    'ZM': { code: 'ZMW', symbol: 'ZK', rate: 27 },
+    'GB': { code: 'GBP', symbol: '£', rate: 0.79 },
+    'EU': { code: 'EUR', symbol: '€', rate: 0.92 },
+    'CN': { code: 'CNY', symbol: '¥', rate: 7.25 },
+    'AE': { code: 'AED', symbol: 'Dh', rate: 3.67 },
+    'US': { code: 'USD', symbol: '$', rate: 1 },
+    'DEFAULT': { code: 'USD', symbol: '$', rate: 1 }
 };
 
-// Major Eurozone countries to map to 'EU' currency
 const EUROZONE_COUNTRIES = ['AT', 'BE', 'HR', 'CY', 'EE', 'FI', 'FR', 'DE', 'GR', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PT', 'SK', 'SI', 'ES'];
 
-// Full System Capabilities
 const ALL_INCLUDED_MODULES = [
     {
-        title: "Finance & Accounting",
-        features: ["General Ledger & Journal", "Banking & Reconciliation", "Tax Returns & Fiscal Positions", "Accounts Payable/Receivable", "Asset Management & Depreciation", "Budgeting & Cost Centers", "Multi-Currency Support", "Lock Dates", "Chart of Accounts"]
+        title: "Finance and accounting",
+        icon: Landmark,
+        features: ["General ledger and journals", "Bank reconciliation", "Tax returns", "Payables and receivables", "Assets and depreciation", "Budgets and cost centres", "Multiple currencies", "Period lock dates", "Chart of accounts"]
     },
     {
-        title: "Human Resources (HRM)",
-        features: ["Payroll & Benefits Admin", "Recruitment & Onboarding", "Employee Directory & Org Chart", "Time, Attendance & Shifts", "Performance Reviews", "Leave Management", "Offboarding Workflows"]
+        title: "Staff and payroll",
+        icon: Users,
+        features: ["Payroll and benefits", "Hiring and onboarding", "Staff directory", "Attendance and shifts", "Performance reviews", "Leave", "Exit process"]
     },
     {
-        title: "Inventory & Supply Chain",
-        features: ["Multi-Warehouse Mgmt", "Manufacturing Orders (BOM)", "Composite Products", "Purchase Orders", "Cycle Counts", "Asset Maintenance", "Serial & Lot Tracking", "Landed Cost Valuation", "Stock Adjustments & Transfers", "Barcode Scanning", "Reorder Points & Replenishment"]
+        title: "Stock and supply",
+        icon: Warehouse,
+        features: ["Multiple warehouses", "Manufacturing orders", "Bundled products", "Purchase orders", "Stock counts", "Batch and serial tracking", "Landed costs", "Transfers and adjustments", "Barcode scanning", "Reorder points"]
     },
     {
-        title: "Sales & CRM",
-        features: ["Leads & Opportunity Pipeline", "Marketing Campaigns", "Helpdesk & Support Tickets", "Customer 360 View", "Price Lists & Discount Rules", "Sales Forecasting", "Return Management (RMA)"]
+        title: "Sales and customers",
+        icon: Handshake,
+        features: ["Leads and pipeline", "Campaigns", "Support tickets", "Full customer history", "Price lists and discounts", "Sales forecasting", "Returns"]
     },
     {
-        title: "Specialized Industries",
-        features: ["SACCO: Savings, Shares & Dividends", "Lending: Loan Origination & Credit Risk", "Telecom: Agent Float & SIM Inventory", "Real Estate: Leases & Property Units", "Distribution: Fleet, Routes & Cold Chain", "Field Service: Dispatch & Work Orders", "Non-Profit: Grants & Donor Mgmt"]
+        title: "Industry modules",
+        icon: Briefcase,
+        features: ["SACCO savings and shares", "Loans and credit risk", "Agent float and SIM stock", "Leases and property units", "Fleet and delivery routes", "Field jobs and dispatch", "Grants and donors"]
     }
 ];
 
-// --- PRICING & TRUST COMPONENTS ---
-
-const TrustedBySection = () => (
-    <section className="border-y bg-muted/20 py-12">
-        <div className="container mx-auto px-4">
-            <p className="text-center text-sm font-bold uppercase tracking-widest text-muted-foreground mb-8">
-                Built for high-growth businesses across Africa
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-8 items-center justify-items-center text-muted-foreground/70">
-                <div className="flex flex-col items-center gap-2">
-                    <Building className="h-7 w-7" />
-                    <span className="text-xs font-semibold uppercase tracking-wide">Construction</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                    <Leaf className="h-7 w-7" />
-                    <span className="text-xs font-semibold uppercase tracking-wide">Agriculture</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                    <Signal className="h-7 w-7" />
-                    <span className="text-xs font-semibold uppercase tracking-wide">Telecom</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                    <Landmark className="h-7 w-7" />
-                    <span className="text-xs font-semibold uppercase tracking-wide">Finance</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                    <Truck className="h-7 w-7" />
-                    <span className="text-xs font-semibold uppercase tracking-wide">Logistics</span>
-                </div>
-            </div>
-        </div>
-    </section>
-);
+const PLANS = [
+    {
+        name: "Starter",
+        basePrice: 14,
+        userLimit: "1 user",
+        idealFor: "Kiosks and market stalls",
+        highlight: false,
+        btnText: "Start free trial",
+        features: ["Point of sale", "Stock tracking", "Daily sales reports", "Invoicing", "Mobile app"]
+    },
+    {
+        name: "Growth",
+        basePrice: 42,
+        userLimit: "2 users",
+        idealFor: "Small shops and sole traders",
+        highlight: false,
+        btnText: "Start free trial",
+        features: ["Everything in Starter", "Full accounting", "Bank reconciliation", "Tax returns", "Enterprise reports"]
+    },
+    {
+        name: "Scale",
+        basePrice: 69,
+        userLimit: "10 users",
+        idealFor: "Growing businesses with staff",
+        highlight: true,
+        btnText: "Start free trial",
+        features: ["Everything in Growth", "All industry modules", "Staff and payroll", "Multiple branches", "Your own branding"]
+    },
+    {
+        name: "Enterprise",
+        basePrice: 122,
+        userLimit: "Unlimited users",
+        idealFor: "Larger and multi-site businesses",
+        highlight: false,
+        btnText: "Talk to sales",
+        features: ["Everything in Scale", "API access", "Named support contact", "On-premise option", "Onboarding session"]
+    }
+];
 
 const DynamicPricingSection = () => {
     const [currency, setCurrency] = useState(GEO_CURRENCIES['DEFAULT']);
     const [loading, setLoading] = useState(true);
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
-    // --- Slideshow Logic for the "Included Modules" section ---
-    const [activeModuleIndex, setActiveModuleIndex] = useState(0);
     useEffect(() => {
-        const interval = setInterval(() => {
-            setActiveModuleIndex((prev) => (prev + 1) % ALL_INCLUDED_MODULES.length);
-        }, 5000); 
-        return () => clearInterval(interval);
-    }, []);
+        let cancelled = false;
 
-    const PLANS = [
-        {
-            name: "Business Starter",
-            basePrice: 14,
-            userLimit: "1 User",
-            idealFor: "Kiosks & Micro-Shops",
-            highlight: false,
-            btnText: "Start Free Trial",
-            features: ["Cloud POS", "Inventory Tracking", "Daily Sales Reports", "Invoicing", "Mobile App Access"]
-        },
-        {
-            name: "Growth",
-            basePrice: 42,
-            userLimit: "2 Users",
-            idealFor: "Small Shops & Solo Founders",
-            highlight: false,
-            btnText: "Start Free Trial",
-            features: ["Full ERP Core", "Mobile App", "Enterprise Reports", "Invoicing System", "Cloud Accounting", "Cloud Auditing", "Complete Tax Filing"]
-        },
-        {
-            name: "Scale (SME)",
-            basePrice: 69,
-            userLimit: "10 Users",
-            idealFor: "Growing SMEs & Teams",
-            highlight: true,
-            btnText: "Start Free Trial",
-            features: ["All Industry Modules", "Custom Branding", "HR & Payroll", "Inventory Tracking", "Mobile App", "Enterprise Reports", "Invoicing System", "Cloud Accounting", "Cloud Auditing", "Complete Tax Filing"]
-        },
-        {
-            name: "Enterprise ERP",
-            basePrice: 122,
-            userLimit: "Unlimited Users",
-            idealFor: "Large Enterprises",
-            highlight: false,
-            btnText: "Contact Sales",
-            features: ["API Access", "Dedicated Support", "On-Premise Option", "Mobile App", "Custom Branding", "Enterprise Reports", "Invoicing System", "Cloud Accounting", "Cloud Auditing", "Complete Tax Filing"]
-        }
-    ];
-
-    useEffect(() => {
         const detectLocation = async () => {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000);
-                let data = null;
-                const endpoints = ['https://api.country.is', 'https://ipapi.co/json/', 'https://ip-api.com/json'];
+                let data: any = null;
+
+                const endpoints = ['https://api.country.is', 'https://ipapi.co/json/'];
                 for (const url of endpoints) {
                     try {
                         const response = await fetch(url, { signal: controller.signal, headers: { 'Accept': 'application/json' } });
@@ -890,263 +576,185 @@ const DynamicPricingSection = () => {
                     } catch (e) { continue; }
                 }
                 clearTimeout(timeoutId);
-                if (!data) throw new Error("Nodes unreachable");
-                const countryCode = (data.country_code || data.country || data.ip_country || '').toUpperCase();
-                let detectedCurrency;
-                if (!countryCode || countryCode === 'RESERVED' || countryCode === 'LOCALHOST') {
-                    detectedCurrency = GEO_CURRENCIES['DEFAULT'];
-                } else if (EUROZONE_COUNTRIES.includes(countryCode)) {
-                    detectedCurrency = GEO_CURRENCIES['EU'];
-                } else if (GEO_CURRENCIES[countryCode]) {
-                    detectedCurrency = GEO_CURRENCIES[countryCode];
-                } else {
-                    detectedCurrency = GEO_CURRENCIES['DEFAULT'];
-                }
-                setCurrency(detectedCurrency);
-                const languageMap = { 'CN': 'zh-CN', 'FR': 'fr', 'AE': 'ar', 'DE': 'de', 'NL': 'nl', 'BR': 'pt' };
-                const targetLang = languageMap[countryCode];
-                if (targetLang) {
-                    const checkEngine = setInterval(() => {
-                        const select = document.querySelector('.goog-te-combo') as HTMLSelectElement;
-                        if (select) { select.value = targetLang; select.dispatchEvent(new Event('change')); clearInterval(checkEngine); }
-                    }, 500); 
-                    setTimeout(() => clearInterval(checkEngine), 10000);
-                }
-            } catch (error) { setCurrency(GEO_CURRENCIES['DEFAULT']); } finally { setLoading(false); }
+                if (cancelled || !data) return;
+
+                const countryCode = String(data.country_code || data.country || '').toUpperCase();
+
+                if (EUROZONE_COUNTRIES.includes(countryCode)) setCurrency(GEO_CURRENCIES['EU']);
+                else if (GEO_CURRENCIES[countryCode]) setCurrency(GEO_CURRENCIES[countryCode]);
+                else setCurrency(GEO_CURRENCIES['DEFAULT']);
+            } catch (error) {
+                if (!cancelled) setCurrency(GEO_CURRENCIES['DEFAULT']);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
         };
+
         detectLocation();
-    }, []); 
+        return () => { cancelled = true; };
+    }, []);
 
     const formatPrice = (base: number) => {
         let price = base * currency.rate;
         if (billingCycle === 'yearly') price = price * 0.8;
-        if (['UGX', 'TZS', 'RWF'].includes(currency.code)) price = Math.floor(price / 1000) * 1000; 
-        else if (['NGN', 'KES'].includes(currency.code)) price = Math.floor(price / 100) * 100; 
-        else price = Math.floor(price); 
+        if (['UGX', 'TZS', 'RWF'].includes(currency.code)) price = Math.floor(price / 1000) * 1000;
+        else if (['NGN', 'KES'].includes(currency.code)) price = Math.floor(price / 100) * 100;
+        else price = Math.floor(price);
         return new Intl.NumberFormat('en').format(price);
     };
 
     return (
-        <section id="pricing" className="py-24 bg-background relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-600/30 to-transparent" />
-            
-            <div className="container mx-auto px-4 relative z-10">
-                <div className="text-center max-w-4xl mx-auto mb-16">
-                    <h2 className="text-3xl font-extrabold tracking-tight sm:text-5xl mb-6">Fair Pricing for Every Business</h2>
-                    <div className="flex items-center justify-center gap-4 mb-8">
-                        <span className={cn("text-sm font-bold transition-colors", billingCycle === 'monthly' ? "text-foreground" : "text-muted-foreground")}>Monthly</span>
-                        <button
-                            onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
-                            className={cn("relative w-14 h-7 rounded-full p-1 transition-colors", billingCycle === 'yearly' ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-700")}
-                        >
-                            <motion.div
-                                className={cn("h-5 w-5 rounded-full shadow-sm", billingCycle === 'yearly' ? "bg-white" : "bg-blue-600")}
-                                animate={{ x: billingCycle === 'yearly' ? 28 : 0 }}
-                                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                            />
-                        </button>
-                        <span className={cn("text-sm font-bold transition-colors flex items-center gap-1.5", billingCycle === 'yearly' ? "text-foreground" : "text-muted-foreground")}>
-                            Annual <span className="text-[10px] font-bold bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full border border-green-500/20">SAVE 20%</span>
-                        </span>
-                    </div>
-                    {loading && <p className="text-xs text-muted-foreground animate-pulse">Detecting your local currency...</p>}
+        <section id="pricing" className="border-t border-slate-200 bg-slate-50 py-16 dark:border-slate-800 dark:bg-slate-900/40 sm:py-24">
+            <div className="container mx-auto max-w-7xl px-4 sm:px-6">
+
+                <div className="max-w-2xl">
+                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Pricing</p>
+                    <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl">
+                        One price, every module
+                    </h2>
+                    <p className="mt-4 text-base leading-relaxed text-muted-foreground md:text-lg">
+                        You are not charged per module. What changes between plans is how many people can use it
+                        and how deep the features go.
+                    </p>
                 </div>
 
-                {/* --- PRICING GRID (desktop/tablet only; mobile gets a single CTA below) --- */}
-                <motion.div
-                    className="hidden md:grid md:grid-cols-3 gap-8 max-w-7xl mx-auto"
-                    initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.05 }}
-                    variants={staggerContainer}
-                >
-                    {/* Row 1: First 3 Plans */}
-                    {PLANS.slice(0, 3).map((plan, index) => (
-                        <motion.div key={index} variants={staggerItem} whileHover={{ y: plan.highlight ? 0 : -8, transition: { duration: 0.25 } }}>
-                        <Card className={cn("flex flex-col relative transition-all duration-300 hover:shadow-xl h-full", plan.highlight ? "border-blue-600 shadow-2xl md:scale-105 z-10" : "border-border")}>
-                            <CardHeader>
-                                {plan.highlight && <div className="mb-2"><span className="text-xs font-bold text-blue-600 bg-blue-600/10 px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span></div>}
-                                <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                                <CardDescription className="text-sm font-medium mt-1">{plan.idealFor}</CardDescription>
-                                <div className="mt-6">
-                                    <div className="flex items-baseline">
-                                        <span className="text-4xl font-extrabold tracking-tight">{currency.symbol} {formatPrice(plan.basePrice)}</span>
-                                        <span className="text-muted-foreground ml-2">/mo</span>
+                <div className="mt-8 flex items-center gap-3">
+                    <span className={cn("text-sm transition-colors", billingCycle === 'monthly' ? "font-medium text-foreground" : "text-muted-foreground")}>
+                        Monthly
+                    </span>
+                    <button
+                        onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
+                        className={cn("relative h-6 w-11 rounded-full p-0.5 transition-colors", billingCycle === 'yearly' ? "bg-slate-900 dark:bg-blue-600" : "bg-slate-300 dark:bg-slate-700")}
+                        aria-label="Toggle billing period"
+                    >
+                        <span
+                            className={cn("block h-5 w-5 rounded-full bg-white transition-transform", billingCycle === 'yearly' ? "translate-x-5" : "translate-x-0")}
+                        />
+                    </button>
+                    <span className={cn("flex items-center gap-2 text-sm transition-colors", billingCycle === 'yearly' ? "font-medium text-foreground" : "text-muted-foreground")}>
+                        Yearly
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            Save 20%
+                        </span>
+                    </span>
+                </div>
+
+                <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                    {PLANS.map((plan, index) => (
+                        <Card
+                            key={index}
+                            className={cn(
+                                "flex h-full flex-col rounded-2xl shadow-none",
+                                plan.highlight
+                                    ? "border-2 border-slate-900 dark:border-blue-600"
+                                    : "border border-slate-200 dark:border-slate-800"
+                            )}
+                        >
+                            <CardHeader className="pb-4">
+                                {plan.highlight ? (
+                                    <span className="mb-2 w-fit rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white dark:bg-blue-600">
+                                        Most popular
+                                    </span>
+                                ) : null}
+                                <CardTitle className="text-lg font-semibold tracking-tight">{plan.name}</CardTitle>
+                                <CardDescription className="text-sm">{plan.idealFor}</CardDescription>
+                                <div className="mt-5">
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-3xl font-semibold tracking-tight">
+                                            {currency.symbol} {formatPrice(plan.basePrice)}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">/mo</span>
                                     </div>
-                                    {billingCycle === 'yearly' && (
-                                        <p className="text-xs text-green-600 font-semibold mt-1">Billed annually · 20% off</p>
-                                    )}
+                                    <p className="mt-1 h-4 text-xs text-muted-foreground">
+                                        {billingCycle === 'yearly' ? 'Billed yearly' : ''}
+                                    </p>
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex-grow space-y-6">
-                                <div className="p-4 bg-muted/50 rounded-lg border text-sm font-bold flex items-center gap-2"><Users className="h-5 w-5 text-blue-600" /> {plan.userLimit}</div>
-                                <ul className="space-y-3">
+
+                            <CardContent className="flex-grow space-y-5">
+                                <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800">
+                                    <Users className="h-4 w-4 text-slate-400" />
+                                    {plan.userLimit}
+                                </div>
+                                <ul className="space-y-2.5">
                                     {plan.features.map((f, i) => (
-                                        <li key={i} className="flex items-start gap-3 text-sm">
-                                            <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
-                                            <span className="font-semibold">{f}</span>
+                                        <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                                            {f}
                                         </li>
                                     ))}
                                 </ul>
                             </CardContent>
-                            <CardFooter><Button className="w-full h-11 font-semibold bg-blue-600 hover:bg-blue-700 text-white" asChild><Link href="/signup">{plan.btnText}</Link></Button></CardFooter>
-                        </Card>
-                        </motion.div>
-                    ))}
 
-                    {/* Row 2: Enterprise Card (Left) */}
-                    <motion.div variants={staggerItem} whileHover={{ y: -8, transition: { duration: 0.25 } }}>
-                    <Card className="flex flex-col relative transition-all duration-300 hover:shadow-xl border-border h-full">
-                        <CardHeader>
-                            <CardTitle className="text-2xl font-bold">{PLANS[3].name}</CardTitle>
-                            <CardDescription className="text-sm font-medium mt-1">{PLANS[3].idealFor}</CardDescription>
-                            <div className="mt-6">
-                                <div className="flex items-baseline">
-                                    <span className="text-4xl font-extrabold tracking-tight">{currency.symbol} {formatPrice(PLANS[3].basePrice)}</span>
-                                    <span className="text-muted-foreground ml-2">/mo</span>
-                                </div>
-                                {billingCycle === 'yearly' && (
-                                    <p className="text-xs text-green-600 font-semibold mt-1">Billed annually · 20% off</p>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex-grow space-y-6">
-                            <div className="p-4 bg-muted/50 rounded-lg border text-sm font-bold flex items-center gap-2"><Users className="h-5 w-5 text-blue-600" /> {PLANS[3].userLimit}</div>
-                            <ul className="space-y-3">
-                                {PLANS[3].features.map((f, i) => (
-                                    <li key={i} className="flex items-start gap-3 text-sm">
-                                        <CheckCircle className="h-5 w-5 text-blue-600 shrink-0" />
-                                        <span className="font-semibold">{f}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </CardContent>
-                        <CardFooter><Button className="w-full h-11 font-semibold border-blue-600 text-blue-600 hover:bg-blue-50" variant="outline" asChild><Link href="/signup">{PLANS[3].btnText}</Link></Button></CardFooter>
-                    </Card>
-                    </motion.div>
-
-                    {/* Row 2: Slideshow Box (Right - Fills two columns) */}
-                    <div className="md:col-span-2 relative rounded-xl bg-slate-950 overflow-hidden border border-slate-800 shadow-2xl flex flex-col min-h-[450px]">
-                        {/* Background Decoration */}
-                        <div className="absolute top-0 right-0 p-8 opacity-10"><Sparkles className="h-32 w-32 text-blue-500" /></div>
-                        
-                        <div className="p-8 z-20">
-                            <div className="flex items-center gap-2 text-blue-400 font-black text-[10px] uppercase tracking-[0.2em] mb-3">
-                                <Sparkles className="h-4 w-4" /> Everything Included
-                            </div>
-                            <h3 className="text-2xl font-bold text-white tracking-tight">One Subscription, Every Module</h3>
-                            <p className="text-slate-400 text-sm mt-1">No add-on fees. Every module below is part of your plan.</p>
-                        </div>
-
-                        <div className="flex-grow p-6 relative">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={activeModuleIndex}
-                                    initial={{ opacity: 0, x: 30 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -30 }}
-                                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                                    className="h-full"
+                            <CardFooter>
+                                <Button
+                                    className={cn("h-11 w-full rounded-xl text-sm font-medium",
+                                        plan.highlight
+                                            ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700"
+                                            : "border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-transparent dark:text-white dark:hover:bg-slate-800"
+                                    )}
+                                    asChild
                                 >
-                                    {/* --- THE WHITE MODULE CARD --- */}
-                                    <div className="bg-white rounded-2xl p-6 h-full shadow-inner flex flex-col justify-center">
-                                        <div className="flex items-center gap-4 mb-6">
-                                            <div className="h-14 w-14 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 shrink-0">
-                                                {(() => {
-                                                    const title = ALL_INCLUDED_MODULES[activeModuleIndex].title;
-                                                    if (title.includes("Finance")) return <Landmark size={28} />;
-                                                    if (title.includes("Human")) return <Users size={28} />;
-                                                    if (title.includes("Inventory")) return <Warehouse size={28} />;
-                                                    if (title.includes("Sales")) return <Handshake size={28} />;
-                                                    return <Briefcase size={28} />;
-                                                })()}
-                                            </div>
-                                            <h4 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                                                {ALL_INCLUDED_MODULES[activeModuleIndex].title}
-                                            </h4>
-                                        </div>
+                                    <Link href={plan.btnText === 'Talk to sales' ? '/contact' : '/signup'}>
+                                        {plan.btnText}
+                                    </Link>
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    ))}
+                </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {ALL_INCLUDED_MODULES[activeModuleIndex].features.map((feature, idx) => (
-                                                <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                                                    <span className="text-[14px] font-bold text-slate-700 truncate">{feature}</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                <div className="mt-12 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+                    <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                        What is included on every plan
+                    </h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        No add-on fees. If a module applies to your business, it is already there.
+                    </p>
+
+                    <div className="mt-7 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                        {ALL_INCLUDED_MODULES.map((module) => {
+                            const Icon = module.icon;
+                            return (
+                                <div key={module.title}>
+                                    <div className="flex items-center gap-2.5">
+                                        {Icon ? <Icon className="h-4 w-4 text-slate-400" /> : null}
+                                        <h4 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                                            {module.title}
+                                        </h4>
                                     </div>
-                                </motion.div>
-                            </AnimatePresence>
-                        </div>
-
-                        {/* Progress Indicators */}
-                        <div className="px-8 py-6 flex items-center justify-between border-t border-slate-900">
-                            <div className="flex gap-2">
-                                {ALL_INCLUDED_MODULES.map((_, i) => (
-                                    <div 
-                                        key={i} 
-                                        className={cn("h-1.5 rounded-full transition-all duration-500", activeModuleIndex === i ? "bg-blue-500 w-10" : "bg-slate-800 w-2")}
-                                    />
-                                ))}
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                Module {activeModuleIndex + 1} of {ALL_INCLUDED_MODULES.length}
-                            </span>
-                        </div>
+                                    <ul className="mt-3 space-y-1.5">
+                                        {module.features.map((feature, idx) => (
+                                            <li key={idx} className="text-sm text-muted-foreground">{feature}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            );
+                        })}
                     </div>
-                </motion.div>
-
-                {/* --- MOBILE: single CTA, full plan grid opens in a dialog --- */}
-                <div className="md:hidden text-center">
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button size="lg" className="w-full max-w-sm mx-auto h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold">
-                                Explore Plans <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle>Choose Your Plan</DialogTitle>
-                                <DialogDescription>Simple, transparent pricing for every stage of your business.</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-3 mt-2">
-                                {PLANS.map((plan, i) => (
-                                    <div key={i} className={cn("p-4 rounded-xl border", plan.highlight ? "border-blue-600 bg-blue-50/50 dark:bg-blue-900/10" : "border-border")}>
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div>
-                                                <p className="font-bold text-sm">{plan.name}</p>
-                                                <p className="text-xs text-muted-foreground">{plan.idealFor}</p>
-                                            </div>
-                                            <p className="font-extrabold text-right shrink-0">
-                                                {currency.symbol} {formatPrice(plan.basePrice)}
-                                                <span className="text-xs font-normal text-muted-foreground">/mo</span>
-                                            </p>
-                                        </div>
-                                        <Button asChild size="sm" className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white">
-                                            <Link href="/signup">{plan.btnText}</Link>
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </DialogContent>
-                    </Dialog>
                 </div>
 
-                {/* The Trust Banner is now removed to let the Partner Section sit closer */}
-                <div className="mt-12 text-center text-xs text-muted-foreground">
-                    Prices exclude local VAT/GST where applicable. 
-                    Need on-premise hosting or a white-label solution? <a href={siteConfig.contactInfo.whatsappLink} className="text-blue-600 hover:underline font-medium">Contact enterprise sales</a>.
-                </div>
+                <p className="mt-8 text-sm text-muted-foreground">
+                    Prices exclude local VAT or GST where it applies.
+                    {loading ? '' : ` Shown in ${currency.code}.`}
+                    {' '}Need on-premise hosting or white labelling?{' '}
+                    <Link href="/contact" className="font-medium text-slate-900 underline underline-offset-4 dark:text-white">
+                        Talk to sales
+                    </Link>.
+                </p>
             </div>
         </section>
     );
 };
 
-// --- PARTNER WITH US SECTION ---
 const PartnerWithUsSection = () => {
-    const [activeTab, setActiveTab] = useState<'affiliate' | 'investor' | 'solution'>('affiliate');
-    
-    // Form States
     const [formData, setFormData] = useState({ name: '', org: '', email: '', phone: '', details: '' });
     const [formErrors, setFormErrors] = useState<{ name?: string; email?: string }>({});
+
+    const resetForm = () => {
+        setFormData({ name: '', org: '', email: '', phone: '', details: '' });
+        setFormErrors({});
+    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -1157,594 +765,276 @@ const PartnerWithUsSection = () => {
 
     const validateContactFields = () => {
         const errors: { name?: string; email?: string } = {};
-        if (!formData.name.trim()) errors.name = "Please enter your full name.";
-        if (!formData.email.trim() || !formData.email.includes('@')) errors.email = "Please enter a valid email address.";
+        if (!formData.name.trim()) errors.name = "Enter your name.";
+        if (!formData.email.trim() || !formData.email.includes('@')) errors.email = "Enter a valid email address.";
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
     };
 
-    // Handler for Email Partners (Investor & Solution)
     const handleEmailTrigger = (type: string) => {
         if (!validateContactFields()) return;
 
-        // Prepare Data
-        const subject = `BBU1 ${type} Partnership Inquiry: ${formData.name}`;
-        
-        const body = 
-            `Dear BBU1 Team,\n\n` +
-            `I am submitting a partnership inquiry with the following details:\n\n` +
-            `--- CONTACT DETAILS ---\n` +
-            `Name: ${formData.name}\n` +
-            `Organization: ${formData.org}\n` +
-            `Email: ${formData.email}\n` +
-            `Phone: ${formData.phone}\n\n` +
-            `--- PROPOSAL / MESSAGE ---\n` +
-            `${formData.details}\n\n` +
-            `Looking forward to your response.`;
-        
-        // Open the user's email client with the message pre-filled
-        window.open(`mailto:contact@bbu1.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
+        const subject = `${type} enquiry: ${formData.name}`;
+        const body = [
+            `Name: ${formData.name}`,
+            `Organisation: ${formData.org}`,
+            `Email: ${formData.email}`,
+            `Phone: ${formData.phone}`,
+            ``,
+            `Message:`,
+            formData.details,
+        ].join('\n');
+
+        window.open(
+            `mailto:${siteConfig.contactInfo.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+            '_self'
+        );
     };
 
-    // Handler for WhatsApp Affiliate
     const handleWhatsAppSubmit = () => {
-        const text = `Hello BBU1 Team, I am interested in becoming an Affiliate Partner. I would like to discuss commission structures and promoting the OS.`;
+        const text = `Hello BBU1, I would like to join the affiliate programme.`;
         window.open(`https://wa.me/256703572503?text=${encodeURIComponent(text)}`, '_blank');
     };
 
-    // Dialog bodies extracted so the same content can be reused by both the
-    // full desktop cards and the compact mobile buttons below.
-    const affiliateDialogContent = (
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
-            <div className="bg-blue-600 p-6 text-white text-center">
-                <Megaphone className="h-12 w-12 mx-auto mb-2 opacity-90" />
-                <DialogTitle className="text-2xl font-bold text-white">Affiliate Program</DialogTitle>
-                <DialogDescription className="text-blue-100">Earn recurring commission by referring businesses to BBU1.</DialogDescription>
-            </div>
-            <div className="p-6 space-y-6">
-                <div className="bg-muted/50 p-4 rounded-lg border space-y-2">
-                    <h4 className="font-semibold flex items-center gap-2"><Banknote className="h-4 w-4 text-green-600"/> How it works</h4>
-                    <p className="text-sm text-muted-foreground">1. You receive a unique referral code.</p>
-                    <p className="text-sm text-muted-foreground">2. A business signs up using your code.</p>
-                    <p className="text-sm text-muted-foreground">3. You earn a commission payout each month they remain a subscriber.</p>
-                </div>
-                <div className="text-center space-y-4">
-                    <p className="text-sm text-muted-foreground">Message our Affiliate Manager on WhatsApp to get your referral code.</p>
-                    <Button size="lg" className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold" onClick={handleWhatsAppSubmit}>
-                        <MessageSquareText className="mr-2 h-5 w-5" /> Chat on WhatsApp (+256 703 572 503)
-                    </Button>
-                </div>
-            </div>
-        </DialogContent>
-    );
-
-    const investorDialogContent = (
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
-            <div className="bg-green-600 p-6 text-white text-center">
-                <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-90" />
-                <DialogTitle className="text-2xl font-bold text-white">Investor Inquiry</DialogTitle>
-                <DialogDescription className="text-green-100">Connect with our founders directly.</DialogDescription>
-            </div>
-            <div className="p-6 space-y-4 bg-background">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Full Name <span className="text-red-500">*</span></label>
-                        <Input name="name" value={formData.name} placeholder="John Doe" onChange={handleInputChange} className={cn("bg-background border-input", formErrors.name && "border-red-500 focus-visible:ring-red-500")} />
-                        {formErrors.name && <p className="text-xs text-red-500">{formErrors.name}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Firm / Entity</label>
-                        <Input name="org" value={formData.org} placeholder="Capital Partners Ltd" onChange={handleInputChange} className="bg-background border-input" />
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Email Address <span className="text-red-500">*</span></label>
-                        <Input type="email" value={formData.email} name="email" placeholder="john@example.com" onChange={handleInputChange} className={cn("bg-background border-input", formErrors.email && "border-red-500 focus-visible:ring-red-500")} />
-                        {formErrors.email && <p className="text-xs text-red-500">{formErrors.email}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Phone / WhatsApp</label>
-                        <Input name="phone" value={formData.phone} placeholder="+256..." onChange={handleInputChange} className="bg-background border-input" />
-                    </div>
+    const partnerForm = (type: string, orgLabel: string, detailsLabel: string, detailsPlaceholder: string) => (
+        <div className="space-y-4 px-5 py-6 sm:px-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-slate-500">Name <span className="text-red-600">*</span></label>
+                    <Input
+                        name="name"
+                        value={formData.name}
+                        placeholder="Full name"
+                        onChange={handleInputChange}
+                        className={cn("h-11 rounded-lg text-sm", formErrors.name && "border-red-500")}
+                    />
+                    {formErrors.name ? <p className="text-xs text-red-600">{formErrors.name}</p> : null}
                 </div>
                 <div className="space-y-2">
-                    <label className="text-sm font-medium">Investment Interest / Details</label>
-                    <textarea
-                        className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                        name="details"
-                        value={formData.details}
-                        placeholder="We are interested in Series A opportunities..."
+                    <label className="text-xs font-medium text-slate-500">{orgLabel}</label>
+                    <Input
+                        name="org"
+                        value={formData.org}
+                        placeholder={orgLabel}
                         onChange={handleInputChange}
+                        className="h-11 rounded-lg text-sm"
                     />
                 </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-slate-500">Email <span className="text-red-600">*</span></label>
+                    <Input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        placeholder="you@example.com"
+                        onChange={handleInputChange}
+                        className={cn("h-11 rounded-lg text-sm", formErrors.email && "border-red-500")}
+                    />
+                    {formErrors.email ? <p className="text-xs text-red-600">{formErrors.email}</p> : null}
+                </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-slate-500">Phone</label>
+                    <Input
+                        name="phone"
+                        value={formData.phone}
+                        placeholder="+256..."
+                        onChange={handleInputChange}
+                        className="h-11 rounded-lg text-sm"
+                    />
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-xs font-medium text-slate-500">{detailsLabel}</label>
+                <textarea
+                    name="details"
+                    value={formData.details}
+                    placeholder={detailsPlaceholder}
+                    onChange={handleInputChange}
+                    className="flex min-h-[110px] w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+            </div>
+
+            <Button
+                type="button"
+                onClick={() => handleEmailTrigger(type)}
+                className="h-11 w-full rounded-xl bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700"
+            >
+                Send enquiry
+            </Button>
+        </div>
+    );
+
+    const affiliateDialogContent = (
+        <DialogContent className="w-[calc(100%-1.5rem)] rounded-2xl p-0 sm:max-w-lg">
+            <DialogHeader className="border-b border-slate-200 px-5 py-4 text-left dark:border-slate-800 sm:px-6">
+                <DialogTitle className="text-base font-semibold">Affiliate programme</DialogTitle>
+                <DialogDescription className="text-sm">
+                    Refer businesses to BBU1 and earn a share of what they pay, for as long as they stay.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-5 px-5 py-6 sm:px-6">
+                <ol className="space-y-3">
+                    {[
+                        'You get a referral code.',
+                        'A business signs up using it.',
+                        'You are paid each month they remain a customer.',
+                    ].map((line, i) => (
+                        <li key={i} className="flex gap-3 text-sm text-muted-foreground">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                {i + 1}
+                            </span>
+                            <span className="pt-0.5">{line}</span>
+                        </li>
+                    ))}
+                </ol>
                 <Button
-                    type="button"
-                    onClick={() => handleEmailTrigger('Investor')}
-                    className="w-full h-11 text-base bg-green-600 hover:bg-green-700 font-semibold shadow-md active:scale-[0.98] transition-all"
+                    onClick={handleWhatsAppSubmit}
+                    className="h-11 w-full rounded-xl bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
-                    Send Inquiry via Email
+                    <MessageSquareText className="mr-2 h-4 w-4" />
+                    Message us on WhatsApp
                 </Button>
             </div>
         </DialogContent>
     );
 
     const solutionDialogContent = (
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
-            <div className="bg-purple-600 p-6 text-white text-center">
-                <GitBranch className="h-12 w-12 mx-auto mb-2 opacity-90" />
-                <DialogTitle className="text-2xl font-bold text-white">Solution Partnership</DialogTitle>
-                <DialogDescription className="text-purple-100">Integrate, resell, or build on BBU1.</DialogDescription>
-            </div>
-            <div className="p-6 space-y-4 bg-background">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Contact Name <span className="text-red-500">*</span></label>
-                        <Input name="name" value={formData.name} placeholder="Jane Smith" onChange={handleInputChange} className={cn("bg-background border-input", formErrors.name && "border-red-500 focus-visible:ring-red-500")} />
-                        {formErrors.name && <p className="text-xs text-red-500">{formErrors.name}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Agency / Company</label>
-                        <Input name="org" value={formData.org} placeholder="Tech Solutions Ltd" onChange={handleInputChange} className="bg-background border-input" />
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Email Address <span className="text-red-500">*</span></label>
-                        <Input type="email" value={formData.email} name="email" placeholder="jane@techsolutions.com" onChange={handleInputChange} className={cn("bg-background border-input", formErrors.email && "border-red-500 focus-visible:ring-red-500")} />
-                        {formErrors.email && <p className="text-xs text-red-500">{formErrors.email}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Phone</label>
-                        <Input name="phone" value={formData.phone} placeholder="+256..." onChange={handleInputChange} className="bg-background border-input" />
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">Technical Capabilities / Proposal</label>
-                    <textarea
-                        className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                        name="details"
-                        value={formData.details}
-                        placeholder="We want to integrate BBU1 for our retail clients..."
-                        onChange={handleInputChange}
-                    />
-                </div>
-                <Button
-                    type="button"
-                    onClick={() => handleEmailTrigger('Solution Partner')}
-                    className="w-full h-11 text-base bg-purple-600 hover:bg-purple-700 font-semibold shadow-md active:scale-[0.98] transition-all"
-                >
-                    Submit Proposal via Email
-                </Button>
-            </div>
+        <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl p-0 sm:max-w-lg">
+            <DialogHeader className="border-b border-slate-200 px-5 py-4 text-left dark:border-slate-800 sm:px-6">
+                <DialogTitle className="text-base font-semibold">Build on BBU1</DialogTitle>
+                <DialogDescription className="text-sm">
+                    Implement BBU1 for your clients, build integrations, or white label it.
+                </DialogDescription>
+            </DialogHeader>
+            {partnerForm('Solution partner', 'Agency or company', 'What you would build', 'We work with retail clients and want to...')}
         </DialogContent>
     );
 
     return (
-        <AnimatedSection id="partner" className="bg-slate-50 dark:bg-slate-900/50 border-y relative overflow-hidden">
-            <div className="container mx-auto px-4 relative z-10">
-                <div className="text-center max-w-3xl mx-auto mb-12">
-                    <span className="text-sm font-bold tracking-widest text-blue-600 uppercase mb-2 block">Ecosystem Growth</span>
-                    <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6">Partner with BBU1</h2>
-                    <p className="text-lg text-muted-foreground">
-                        We're building the operating system for the future of business commerce. 
-                        Whether you want to earn, invest, or build, there's a place for you in our ecosystem.
+        <Section id="partner" className="border-t border-slate-200 dark:border-slate-800">
+            <SectionHeading
+                eyebrow="Partners"
+                title="Work with us"
+                sub="Two ways to earn from BBU1 without being on the payroll."
+            />
+
+            <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                    <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        <Megaphone className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">Refer businesses</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        For anyone with a network of business owners. You get a code, they sign up with it, and you
+                        are paid every month they stay.
                     </p>
-                </div>
-
-                <motion.div
-                    className="hidden md:grid md:grid-cols-3 gap-6 max-w-6xl mx-auto"
-                    initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}
-                    variants={staggerContainer}
-                >
-                    {/* 1. Affiliate Card */}
-                    <motion.div variants={staggerItem} whileHover={{ y: -8, transition: { duration: 0.25 } }}>
-                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-blue-600 bg-card h-full">
-                        <CardHeader>
-                            <div className="h-14 w-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
-                                <Megaphone className="h-7 w-7" />
-                            </div>
-                            <CardTitle className="text-2xl">Affiliate Partner</CardTitle>
-                            <CardDescription>For Marketers & Influencers</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                Monetize your network. Refer businesses to BBU1 and earn recurring commission for the lifetime of the customer.
-                            </p>
-                            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Up to 20% recurring commission</span></li>
-                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Marketing assets provided</span></li>
-                            </ul>
-                            
-                            {/* Dialog Trigger */}
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button className="w-full mt-4 hover:border-blue-600 hover:text-blue-600" variant="outline" onClick={() => setActiveTab('affiliate')}>
-                                        Start Earning <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </DialogTrigger>
-                                {affiliateDialogContent}
-                            </Dialog>
-                        </CardContent>
-                    </Card>
-
-                    </motion.div>
-
-                    {/* 2. Investor Card */}
-                    <motion.div variants={staggerItem} whileHover={{ y: -8, transition: { duration: 0.25 } }}>
-                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-green-500 bg-card h-full">
-                        <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-sm">
-                            OPEN ROUND
-                        </div>
-                        <CardHeader>
-                            <div className="h-14 w-14 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 mb-4 group-hover:scale-110 transition-transform">
-                                <TrendingUp className="h-7 w-7" />
-                            </div>
-                            <CardTitle className="text-2xl">Strategic Investor</CardTitle>
-                            <CardDescription>For VCs & Angel Investors</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                Invest in the infrastructure powering commerce for growing businesses. Reach out for access to our data room and growth metrics.
-                            </p>
-                            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>High-growth SaaS metrics</span></li>
-                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Scalable technology stack</span></li>
-                            </ul>
-
-                            {/* Dialog Trigger */}
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button className="w-full mt-4 hover:border-blue-600 hover:text-blue-600" variant="outline" onClick={() => { setActiveTab('investor'); setFormData({ name: '', org: '', email: '', phone: '', details: '' }); setFormErrors({}); }}>
-                                        Investor Relations <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </DialogTrigger>
-                                {investorDialogContent}
-                            </Dialog>
-                        </CardContent>
-                    </Card>
-
-                    </motion.div>
-
-                    {/* 3. Solution Partner Card */}
-                    <motion.div variants={staggerItem} whileHover={{ y: -8, transition: { duration: 0.25 } }}>
-                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-purple-500 bg-card h-full">
-                        <CardHeader>
-                            <div className="h-14 w-14 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 mb-4 group-hover:scale-110 transition-transform">
-                                <GitBranch className="h-7 w-7" />
-                            </div>
-                            <CardTitle className="text-2xl">Solution Partner</CardTitle>
-                            <CardDescription>For Developers & Agencies</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                Build on top of BBU1. Implement our platform for your clients, build custom integrations, or white-label the technology.
-                            </p>
-                            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Developer API access</span></li>
-                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Implementation revenue share</span></li>
-                            </ul>
-
-                            {/* Dialog Trigger */}
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button className="w-full mt-4 hover:border-blue-600 hover:text-blue-600" variant="outline" onClick={() => { setActiveTab('solution'); setFormData({ name: '', org: '', email: '', phone: '', details: '' }); setFormErrors({}); }}>
-                                        Build With Us <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </DialogTrigger>
-                                {solutionDialogContent}
-                            </Dialog>
-                        </CardContent>
-                    </Card>
-                    </motion.div>
-
-                </motion.div>
-
-                {/* --- MOBILE: single CTA per partner type, same dialogs as desktop --- */}
-                <div className="md:hidden max-w-sm mx-auto space-y-3">
+                    <ul className="mt-5 flex-1 space-y-2.5">
+                        <li className="flex gap-2.5 text-sm text-muted-foreground">
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                            Recurring payment, not one off
+                        </li>
+                        <li className="flex gap-2.5 text-sm text-muted-foreground">
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                            Materials provided
+                        </li>
+                    </ul>
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="outline" className="w-full h-12 justify-between hover:border-blue-600 hover:text-blue-600">
-                                <span className="flex items-center gap-2"><Megaphone className="h-4 w-4" /> Become an Affiliate</span>
-                                <ArrowRight className="h-4 w-4" />
+                            <Button variant="outline" className="mt-6 h-11 w-full rounded-xl border-slate-200 text-sm font-medium dark:border-slate-700">
+                                Join the programme
+                                <ArrowRight className="ml-2 h-4 w-4 text-slate-400" />
                             </Button>
                         </DialogTrigger>
                         {affiliateDialogContent}
                     </Dialog>
-                    <Dialog>
+                </div>
+
+                <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                    <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        <GitBranch className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">Build on it</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        For developers and agencies. Set BBU1 up for your clients, connect it to their other systems,
+                        or run it under your own brand.
+                    </p>
+                    <ul className="mt-5 flex-1 space-y-2.5">
+                        <li className="flex gap-2.5 text-sm text-muted-foreground">
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                            API access and documentation
+                        </li>
+                        <li className="flex gap-2.5 text-sm text-muted-foreground">
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                            Share of implementation revenue
+                        </li>
+                    </ul>
+                    <Dialog onOpenChange={(open) => { if (open) resetForm(); }}>
                         <DialogTrigger asChild>
-                            <Button variant="outline" className="w-full h-12 justify-between hover:border-green-600 hover:text-green-600" onClick={() => { setFormData({ name: '', org: '', email: '', phone: '', details: '' }); setFormErrors({}); }}>
-                                <span className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Investor Relations</span>
-                                <ArrowRight className="h-4 w-4" />
-                            </Button>
-                        </DialogTrigger>
-                        {investorDialogContent}
-                    </Dialog>
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="w-full h-12 justify-between hover:border-purple-600 hover:text-purple-600" onClick={() => { setFormData({ name: '', org: '', email: '', phone: '', details: '' }); setFormErrors({}); }}>
-                                <span className="flex items-center gap-2"><GitBranch className="h-4 w-4" /> Partner Now</span>
-                                <ArrowRight className="h-4 w-4" />
+                            <Button variant="outline" className="mt-6 h-11 w-full rounded-xl border-slate-200 text-sm font-medium dark:border-slate-700">
+                                Get in touch
+                                <ArrowRight className="ml-2 h-4 w-4 text-slate-400" />
                             </Button>
                         </DialogTrigger>
                         {solutionDialogContent}
                     </Dialog>
                 </div>
             </div>
-        </AnimatedSection>
+        </Section>
     );
 };
 
-const AboutCompanyExecutiveSection = () => {
-    // High-End Animation Variants
-    const fadeInUp = {
-        initial: { opacity: 0, y: 30 },
-        whileInView: { opacity: 1, y: 0 },
-        viewport: { once: true, margin: "-100px" },
-        transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
-    };
-
-    return (
-        <section className="relative w-full bg-white font-sans text-slate-600 overflow-hidden">
-            
-            {/* --- 1. CORPORATE IDENTITY --- */}
-            <div className="relative min-h-[80vh] flex items-center bg-slate-50 border-b border-slate-200 py-24">
-                <div className="container mx-auto px-6 grid lg:grid-cols-12 gap-16 items-center">
-                    
-                    {/* Left: Text Content */}
-                    <div className="lg:col-span-7 space-y-8">
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            whileInView={{ opacity: 1, scale: 1 }}
-                            className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-lg"
-                        >
-                            <Sparkles className="h-4 w-4 text-blue-600" />
-                            <span className="text-blue-700 text-[10px] font-bold uppercase tracking-wider">Company Profile</span>
-                        </motion.div>
-
-                        <motion.h1 
-                            {...fadeInUp}
-                            className="text-4xl md:text-6xl font-bold text-slate-900 tracking-tight leading-tight"
-                        >
-                            Defining the <br /> <span className="text-blue-600">Standard for Business.</span>
-                        </motion.h1>
-
-                        <motion.div {...fadeInUp} transition={{ delay: 0.2 }} className="max-w-xl space-y-6">
-                            <p className="text-xl md:text-2xl font-medium text-slate-500 leading-relaxed border-l-4 border-blue-600 pl-6">
-                                BBU1 is building the Business Operating System: a unified digital environment where every part of your operation runs on a central core.
-                            </p>
-                            <p className="text-slate-500 text-lg leading-relaxed">
-                                We bridge the gap between advanced technology and everyday business needs, so companies of any size can operate with a secure, modern foundation.
-                            </p>
-                        </motion.div>
-                    </div>
-
-                    {/* Right: Picture Box */}
-                    <motion.div 
-                        initial={{ opacity: 0, x: 30 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        className="lg:col-span-5 relative aspect-[4/5] rounded-2xl overflow-hidden border border-slate-200 shadow-2xl"
-                    >
-                        <Image 
-                            src="/images/showcase/Greeting (22).jpeg" 
-                            alt="Corporate Innovation"
-                            fill
-                            className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent" />
-                    </motion.div>
-                </div>
-            </div>
-
-            {/* --- SECTION 2: MISSION & VISION --- */}
-            <div className="py-32 bg-white border-b border-slate-100">
-                <div className="container mx-auto px-6 grid lg:grid-cols-2 gap-24">
-                    
-                    {/* Mission */}
-                    <motion.div {...fadeInUp} className="space-y-6">
-                        <div className="flex items-center gap-3 text-blue-600 uppercase tracking-widest text-xs font-bold">
-                            <Target className="h-5 w-5" />
-                            <span>Our Mission</span>
-                        </div>
-                        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Engineering Operational Certainty</h2>
-                        <p className="text-slate-500 text-lg leading-relaxed font-medium">
-                            To build a unified business infrastructure that removes friction and lets businesses scale without sacrificing data integrity.
-                        </p>
-                        <p className="text-slate-500 leading-relaxed">
-                            We help businesses cut the hidden costs of disconnected tools, so leadership can focus on strategic growth instead of managing technical silos.
-                        </p>
-                    </motion.div>
-
-                    {/* Vision */}
-                    <motion.div {...fadeInUp} transition={{ delay: 0.2 }} className="space-y-6">
-                        <div className="flex items-center gap-3 text-indigo-600 uppercase tracking-widest text-xs font-bold">
-                            <Globe2 className="h-5 w-5" />
-                            <span>Our Vision</span>
-                        </div>
-                        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">A Common Operating Layer for Business</h2>
-                        <p className="text-slate-500 text-lg leading-relaxed font-medium">
-                            To become a standard operating system for modern business.
-                        </p>
-                        <p className="text-slate-500 leading-relaxed">
-                            We're working toward a world where even the smallest local business can run on the same digital foundation as a global company.
-                        </p>
-                    </motion.div>
-                </div>
-            </div>
-
-            {/* --- SECTION 3: CORE VALUES --- */}
-            <div className="container mx-auto px-6 py-32 bg-slate-50/30">
-                <div className="mb-16 text-center max-w-2xl mx-auto">
-                    <div className="flex items-center justify-center gap-3 text-emerald-600 mb-4">
-                        <ShieldCheck className="h-6 w-6" />
-                        <span className="text-xs font-bold uppercase tracking-widest">Company Ethics</span>
-                    </div>
-                    <h2 className="text-4xl font-bold text-slate-900 tracking-tight">The Principles of BBU1</h2>
-                </div>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {[
-                        { title: "Technical Integrity", desc: "We build software with the same discipline as structural engineering. Every line of code has to hold up." },
-                        { title: "Data Sovereignty", desc: "Your business data belongs to you. We treat that as a firm boundary, not a talking point." },
-                        { title: "Strategic Purpose", desc: "We build for a reason. Every feature is meant to solve a real business problem, not add novelty." },
-                        { title: "Global Accessibility", desc: "Enterprise-grade tools should be within reach for any ambitious business, anywhere." }
-                    ].map((v, i) => (
-                        <div key={i} className="group p-8 bg-white border border-slate-200 rounded-xl hover:border-blue-600 hover:shadow-xl transition-all duration-300">
-                            <h4 className="text-slate-900 text-lg font-bold mb-4 tracking-tight group-hover:text-blue-600 transition-colors uppercase">{v.title}</h4>
-                            <div className="h-1 w-8 bg-blue-600/20 mb-4 group-hover:w-full transition-all duration-500" />
-                            <p className="text-slate-500 text-sm leading-relaxed">{v.desc}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* --- SECTION 4: FOUNDER'S MESSAGE --- */}
-            <div className="py-32 container mx-auto px-6">
-                <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col lg:flex-row">
-                    
-                    {/* Left: Founder's Image */}
-                    <div className="lg:w-1/3 relative h-[400px] lg:h-auto bg-slate-800">
-                        <Image 
-                            src="/images/showcase/Photo Background Edi (4).jpeg" 
-                            alt="Founder Mwesigwa Jimmy"
-                            fill
-                            className="object-cover object-top grayscale hover:grayscale-0 transition-all duration-1000"
-                        />
-                    </div>
-
-                    {/* Right: Message */}
-                    <div className="lg:w-2/3 p-8 lg:p-16 space-y-8">
-                        <div className="space-y-2">
-                            <h3 className="text-3xl font-bold text-white tracking-tight">A Message from the Founder</h3>
-                            <p className="text-blue-400 font-bold text-sm uppercase tracking-widest">Mwesigwa Jimmy • Founder & Lead Architect</p>
-                        </div>
-
-                        <div className="space-y-6 text-slate-300 text-lg leading-relaxed font-light">
-                            <p>
-                                "My journey began with a focus on foundations. Supported by my family and my community in Uganda, I learned that growth is only possible when your base is solid."
-                            </p>
-                            <p>
-                                "With a background in Computer Science, I started BBU1 to pay that support forward. My goal is for businesses everywhere, from local markets to high-rise offices, to operate with the same digital tools."
-                            </p>
-                        </div>
-
-                        <div className="pt-8 border-t border-white/10">
-                            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 px-10 rounded-xl shadow-lg transition-transform hover:scale-105" asChild>
-                                <a href="mailto:ceo@bbu1.com">
-                                    Strategic Inquiry <ArrowRight className="ml-3 h-5 w-5" />
-                                </a>
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-};
-// --- HomePage Component ---
-export default function HomePage({ params: { locale } }: { params: { locale: string } }) {
+export default function HomePage({ params }: { params?: { locale?: string } }) {
     const supabase = createClient();
-    const [isSSR, setIsSSR] = useState(true);
-    useEffect(() => {
-        setIsSSR(false);
-    }, []);
-    
-    // 1. STATE DECLARATIONS
+
     const [mounted, setMounted] = useState(false);
-    const [currentTextIndex, setCurrentTextIndex] = useState(0);
-    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-    const [activePillarIndex, setActivePillarIndex] = useState(0);
+    const [activeScreen, setActiveScreen] = useState(0);
     const [showCookieBanner, setShowCookieBanner] = useState(false);
     const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
-    const [toastState, setToastState] = useState<ToastState>({ visible: false, message: '' });
 
-   // 2. DATA ARRAYS
-    const rotatingTexts = [
-        "fully automated.",
-        "always in control.",
-        "built to scale.",
-        "running on one OS.",
-        "ahead of the game.",
-    ];
-    const slideshowContent = [
-        { 
-            is_video: true, 
-            src: "/videos/BBU1 inventory management.mp4", 
-            title: "Advanced Inventory Architecture", 
-            description: "Real-time SKU tracking and automated stock auditing across your enterprise.", 
-            alt: "BBU1 Inventory Demo" 
-        },
-        { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers" },
-        { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Give agents a fast, secure system for transactions.", alt: "Mobile money agent" },
-        { src: "/images/showcase/local-shop-owner.jpg", title: "Local & Retail Commerce", description: "A complete POS and inventory system to manage sales and stock.", alt: "Shop owner" },
-        { src: "/images/showcase/healthcare-team.jpg", title: "Healthcare & Clinic Management", description: "Digitize patient records, manage appointments, and track medical supplies.", alt: "Medical professionals" },
-        { src: "/images/showcase/farmers-learning.jpg", title: "Agriculture & Agribusiness", description: "Bring modern management to the field to track crops.", alt: "Farmers" },
-    ];
-    const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({ ...acc, [cat.id]: cat.defaultChecked }), {} as CookiePreferences);
+    const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce(
+        (acc, cat) => ({ ...acc, [cat.id]: cat.defaultChecked }),
+        {} as CookiePreferences
+    );
     const [cookiePreferences, setCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
 
-    // 3. ACTION HANDLERS
-    const showToast = useCallback((message: string) => {
-        setToastState({ visible: true, message });
-        setTimeout(() => setToastState({ visible: false, message: '' }), TOAST_DURATION);
-    }, []);
-
-    const handleLeadCapture = async (email: string) => {
-        if (!email || !email.includes('@')) {
-            toast.error("Please enter a valid business email.");
-            return;
-        }
-        try {
-            const { error: dbError } = await supabase.from('system_marketing_leads').insert({
-                email: email.toLowerCase().trim(),
-                ip_address: navigator.userAgent,
-                metadata: { path: window.location.pathname, captured_at: new Date().toISOString(), source: 'Landing Page Lead Magnet' }
-            });
-            if (dbError && dbError.code !== '23505') throw dbError;
-            const { error: fnError } = await supabase.functions.invoke('sovereign-broadcaster', {
-                body: { action: 'send_bulk_comms', payload: { recipients: [{ email }], channel: 'EMAIL', subject: 'Welcome to BBU1', content: `<h1>Welcome to BBU1</h1><p>Thanks for your interest. Our team has been notified.</p>` } }
-            });
-            if (fnError) console.warn("Comms delay:", fnError);
-            showToast("Welcome packet sent to your email!");
-        } catch (err) {
-            console.error("Lead Capture Logic Gap:", err);
-            showToast("Connection established, but packet delayed.");
-        }
-    };
-
-    // 4. COOKIE LOGIC (Unchanged)
     const applyCookiePreferences = useCallback((prefs: CookiePreferences) => {
-        console.log("Applying cookie preferences:", prefs);
+        if (typeof window === 'undefined') return;
+        (window as any).__bbu1CookiePrefs = prefs;
     }, []);
 
     const handleAcceptAllCookies = useCallback(() => {
-        const allTruePrefs: CookiePreferences = { essential: true, analytics: true, marketing: true };
-        setCookiePreferences(allTruePrefs);
-        setCookie(COOKIE_CONSENT_NAME, JSON.stringify(allTruePrefs), COOKIE_EXPIRY_DAYS);
+        const allTrue: CookiePreferences = { essential: true, analytics: true, marketing: true };
+        setCookiePreferences(allTrue);
+        setCookie(COOKIE_CONSENT_NAME, JSON.stringify(allTrue), COOKIE_EXPIRY_DAYS);
         setShowCookieBanner(false);
-        applyCookiePreferences(allTruePrefs);
-        showToast("All cookies have been accepted.");
-    }, [applyCookiePreferences, showToast]);
+        applyCookiePreferences(allTrue);
+    }, [applyCookiePreferences]);
+
+    const handleRejectNonEssential = useCallback(() => {
+        const essentialOnly: CookiePreferences = { essential: true, analytics: false, marketing: false };
+        setCookiePreferences(essentialOnly);
+        setCookie(COOKIE_CONSENT_NAME, JSON.stringify(essentialOnly), COOKIE_EXPIRY_DAYS);
+        setShowCookieBanner(false);
+        applyCookiePreferences(essentialOnly);
+    }, [applyCookiePreferences]);
 
     const handleSaveCookiePreferences = useCallback(() => {
         setCookie(COOKIE_CONSENT_NAME, JSON.stringify(cookiePreferences), COOKIE_EXPIRY_DAYS);
         setShowCookieBanner(false);
         setIsCustomizingCookies(false);
         applyCookiePreferences(cookiePreferences);
-        showToast("Your privacy preferences have been saved.");
-    }, [cookiePreferences, applyCookiePreferences, showToast]);
+    }, [cookiePreferences, applyCookiePreferences]);
 
-    // 5. PERFORMANCE OPTIMIZATION
-    const memoizedRotatingTexts = React.useMemo(() => rotatingTexts, []);
-    const memoizedSlideshowContent = React.useMemo(() => slideshowContent, []);
-    const memoizedPlatformPillars = React.useMemo(() => siteConfig.platformPillars, []);
-
-    // 6. MASTER LIFECYCLE EFFECT (Telemetry + Animations)
     useEffect(() => {
-        if (isSSR) return; // Prevent Server-side crash
         setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!mounted) return;
+        if (process.env.NODE_ENV === 'development') return;
 
         const trackVisitor = async () => {
-            if (typeof window === 'undefined' || process.env.NODE_ENV === 'development') return;
             try {
                 await supabase.from('system_global_telemetry').insert({
                     event_category: 'VISIT',
@@ -1758,393 +1048,427 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                         session_id: getCookie('bbu1_session_id') || 'new_visitor'
                     }
                 });
-            } catch (err) { console.error("Telemetry failure", err); }
+            } catch (err) {
+                // telemetry is best effort
+            }
         };
 
         trackVisitor();
+    }, [mounted, supabase]);
 
-        const textInt = setInterval(() => setCurrentTextIndex(p => (p + 1) % memoizedRotatingTexts.length), TEXT_ROTATION_INTERVAL);
-        const pillarInt = setInterval(() => setActivePillarIndex(p => (p + 1) % memoizedPlatformPillars.length), PILLAR_INTERVAL);
-        
-        return () => { clearInterval(textInt); clearInterval(pillarInt); };
-    }, [supabase, isSSR, memoizedRotatingTexts.length, memoizedPlatformPillars.length]);
-
-    // 6b. SLIDESHOW ADVANCE (image slides use a fixed timer; the video slide
-    // advances itself once playback reaches the end, via onEnded below, so it
-    // is never cut off mid-play).
-    useEffect(() => {
-        if (isSSR) return;
-        const current = memoizedSlideshowContent[currentSlideIndex];
-        if (current?.is_video) return; // handled by the video's onEnded handler
-        const t = setTimeout(() => {
-            setCurrentSlideIndex(p => (p + 1) % memoizedSlideshowContent.length);
-        }, SLIDESHOW_INTERVAL);
-        return () => clearTimeout(t);
-    }, [currentSlideIndex, isSSR, memoizedSlideshowContent]);
-
-    // 7. COOKIE INITIALIZATION
     useEffect(() => {
         const consentCookie = getCookie(COOKIE_CONSENT_NAME);
         if (!consentCookie) {
             setShowCookieBanner(true);
-        } else {
-            try {
-                applyCookiePreferences(JSON.parse(consentCookie));
-            } catch (error) {
-                setShowCookieBanner(true);
-            }
+            return;
+        }
+        try {
+            applyCookiePreferences(JSON.parse(consentCookie));
+        } catch (error) {
+            setShowCookieBanner(true);
         }
     }, [applyCookiePreferences]);
 
+    const screen = PRODUCT_SCREENS[activeScreen];
+
     return (
-        <div className="flex flex-col min-h-screen">
+        <div className="flex min-h-screen flex-col">
             <NewsletterPopup />
             <MegaMenuHeader />
+
             <main className="flex-grow">
 
-               {/* HERO SECTION */}
-<section id="hero" className="relative overflow-hidden text-center flex items-center justify-center" style={{ minHeight: '100svh' }}>
+                <section id="hero" className="relative flex items-center justify-center overflow-hidden bg-[#020617] pt-16">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(37,99,235,0.22)_0%,transparent_70%)]" />
 
-    {/* Background layers */}
-    <div className="absolute inset-0 bg-[#020617]" />
+                    <div className="relative z-10 mx-auto w-full max-w-3xl px-5 py-24 text-center sm:px-8 sm:py-32">
+                        <motion.div initial="hidden" animate="visible" variants={staggerContainer}>
+                            <motion.span
+                                variants={fadeUp}
+                                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-medium text-slate-300"
+                            >
+                                One system for the whole business
+                            </motion.span>
 
-    {/* Ambient blue glows */}
-    <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-10%,rgba(37,99,235,0.30)_0%,transparent_70%)]" />
-    <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_80%_80%,rgba(29,78,216,0.14)_0%,transparent_60%)]" />
-    <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_20%_70%,rgba(37,99,235,0.10)_0%,transparent_60%)]" />
+                            <motion.h1
+                                variants={fadeUp}
+                                className="mt-7 text-3xl font-semibold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl"
+                            >
+                                Run your whole business
+                                <br className="hidden sm:block" />
+                                {' '}on one system
+                            </motion.h1>
 
-    {/* Fine grid */}
-    <div className="absolute inset-0 opacity-[0.06]"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm1 1h38v38H1V1z' fill='%234f8ef7' fill-opacity='1'/%3E%3C/svg%3E")`, backgroundSize: '40px 40px' }}
-    />
+                            <motion.p
+                                variants={fadeUp}
+                                className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg"
+                            >
+                                Sales, stock, accounting, staff and reporting in one place. Sell at the counter and
+                                your books update themselves, whether the internet is up or not.
+                            </motion.p>
 
-    {/* Bottom fade to next section */}
-    <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#020617] to-transparent" />
-
-    {/* Top edge line */}
-    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
-
-    {/* Central spotlight card */}
-    <div className="absolute inset-x-4 sm:inset-x-12 lg:inset-x-24 top-16 bottom-0 rounded-t-3xl border border-white/[0.06] bg-white/[0.015] pointer-events-none" />
-
-    {/* Content */}
-    <div className="relative z-10 text-white px-5 sm:px-8 max-w-4xl mx-auto w-full pt-28 pb-24 sm:pt-36 sm:pb-32">
-        <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.15 } } }}>
-
-            {/* Chip */}
-            <motion.div variants={itemVariants} className="flex justify-center mb-8">
-                <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/10 backdrop-blur-md px-4 py-1.5 text-xs sm:text-sm font-semibold text-blue-300 tracking-wide">
-                    <Sparkles className="h-3.5 w-3.5" /> The Business Operating System
-                </span>
-            </motion.div>
-
-            {/* Main headline: 2 lines */}
-            <motion.h1 variants={itemVariants}
-                className="text-[2.4rem] leading-[1.1] sm:text-5xl lg:text-7xl font-black tracking-tight text-white mb-4 sm:mb-6">
-                Your business,
-            </motion.h1>
-
-            {/* Rotating second line */}
-            <div className="relative h-[4rem] sm:h-[4.5rem] lg:h-[5.5rem] mb-8 sm:mb-10 overflow-hidden">
-                <AnimatePresence mode="wait">
-                    <motion.p
-                        key={currentTextIndex}
-                        initial={{ opacity: 0, y: 30, filter: 'blur(3px)' }}
-                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, y: -30, filter: 'blur(3px)' }}
-                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute inset-0 flex items-center justify-center text-[1.7rem] leading-tight sm:text-5xl lg:text-7xl font-black tracking-tight text-blue-400 text-center"
-                    >
-                        {memoizedRotatingTexts[currentTextIndex]}
-                    </motion.p>
-                </AnimatePresence>
-            </div>
-
-            {/* Subtitle */}
-            <motion.p variants={itemVariants}
-                className="text-sm sm:text-lg lg:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed font-medium mb-10 sm:mb-12 px-2 sm:px-0">
-                Accounting, HR, CRM, and inventory in a single platform that runs every part of your business, from a single kiosk to a multi-branch enterprise.
-            </motion.p>
-
-            {/* CTAs */}
-            <motion.div variants={itemVariants}
-                className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
-                <Button asChild size="lg"
-                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-8 h-13 sm:h-14 text-base sm:text-lg font-bold rounded-2xl shadow-lg shadow-blue-900/30 transition-all hover:scale-[1.03]">
-                    <Link href="/signup">Start Free Trial</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline"
-                    className="w-full sm:w-auto border-white/25 text-white bg-white/10 hover:bg-white/20 hover:text-white backdrop-blur-xl px-8 h-13 sm:h-14 text-base sm:text-lg font-bold rounded-2xl transition-all hover:scale-[1.03] hover:border-white/40">
-                    <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2">
-                        Talk to sales <ArrowRight className="h-4 w-4" />
-                    </a>
-                </Button>
-            </motion.div>
-
-            {/* Trust line */}
-            <motion.p variants={itemVariants} className="mt-8 text-xs text-slate-500 font-medium tracking-wide leading-relaxed">
-                No credit card required · Built for businesses across Africa
-            </motion.p>
-        </motion.div>
-    </div>
-
-    {/* Scroll indicator */}
-    <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-slate-500"
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.8 }}
-    >
-        <span className="text-[10px] uppercase tracking-widest font-semibold">Scroll</span>
-        <motion.div animate={{ y: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
-            <ChevronDown className="h-4 w-4" />
-        </motion.div>
-    </motion.div>
-</section>
-
-{/* PLATFORM SECTION - THE 6 CORE PILLARS */}
-<section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-background">
-    <div className="absolute inset-0 z-0 opacity-5 dark:[&_path]:fill-white/10" style={{ backgroundImage: 'url("/images/tech-pattern.svg")', backgroundSize: '300px 300px' }}></div>
-    <div className="container mx-auto px-4 relative z-10">
-        <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.4 }}
-            variants={staggerContainer}
-            className="text-center mb-12 md:mb-16"
-        >
-            <motion.h2 variants={staggerItem} className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">Built to Run Your <br /> Whole Business</motion.h2>
-            <motion.p variants={staggerItem} className="text-lg text-muted-foreground max-w-2xl mx-auto">BBU1 is a complete platform designed to simplify complexity and support your growth.</motion.p>
-        </motion.div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-start">
-            <motion.div
-                initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}
-                variants={slideLeft}
-                className="space-y-4 md:space-y-6"
-            >
-                <AnimatePresence mode="wait">
-                    <motion.div key={activePillarIndex}
-                        initial={{ opacity: 0, y: 18, scale: 0.97, filter: 'blur(6px)' }}
-                        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, y: -14, scale: 0.97, filter: 'blur(6px)' }}
-                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                        className="bg-card border border-border rounded-2xl p-8 shadow-sm overflow-hidden relative"
-                    >
-                        <div className="flex items-center gap-5 mb-4">
-                            <div className="p-3 bg-blue-500/10 rounded-xl shrink-0">
-                                {React.createElement(memoizedPlatformPillars[activePillarIndex].icon, { className: "h-7 w-7 text-blue-500" })}
-                            </div>
-                            <h3 className="text-2xl font-bold">{memoizedPlatformPillars[activePillarIndex].title}</h3>
-                        </div>
-                        <p className="text-muted-foreground leading-relaxed">{memoizedPlatformPillars[activePillarIndex].description}</p>
-                        {/* Auto-cycle progress bar */}
-                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-100 dark:bg-blue-900/40">
                             <motion.div
-                                key={activePillarIndex}
-                                className="h-full bg-blue-500"
-                                initial={{ scaleX: 0, originX: 0 }}
-                                animate={{ scaleX: 1, originX: 0 }}
-                                transition={{ duration: PILLAR_INTERVAL / 1000, ease: 'linear' }}
-                            />
-                        </div>
-                    </motion.div>
-                </AnimatePresence>
-                <motion.div
-                    initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }}
-                    variants={staggerContainer}
-                    className="flex flex-wrap gap-2 md:gap-3"
-                >
-                    {memoizedPlatformPillars.map((pillar, index) => (
-                        <motion.button
-                            key={pillar.title}
-                            variants={staggerItem}
-                            whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
-                            onClick={() => setActivePillarIndex(index)}
-                            className={cn("flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all duration-300", activePillarIndex === index ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105" : "bg-card/80 backdrop-blur-md border border-border hover:border-blue-300 text-muted-foreground hover:text-foreground hover:bg-blue-50/50 dark:hover:bg-blue-900/20")}
-                        >
-                            {pillar.title}
-                        </motion.button>
-                    ))}
-                </motion.div>
-            </motion.div>
-            <motion.div
-                initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}
-                variants={slideRight}
-                className="relative h-[300px] md:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-border"
-            >
-                <AnimatePresence mode="wait">
-                    <motion.div key={activePillarIndex}
-                        initial={{ opacity: 0, scale: 1.08, filter: 'blur(8px)' }}
-                        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, scale: 0.95, filter: 'blur(8px)' }}
-                        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute inset-0"
-                    >
-                        <Image src={memoizedPlatformPillars[activePillarIndex].backgroundImage} alt="Platform Capability" fill style={{ objectFit: 'cover' }} />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                    </motion.div>
-                </AnimatePresence>
-            </motion.div>
-        </div>
-    </div>
-</section>
+                                variants={fadeUp}
+                                className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center"
+                            >
+                                <Button asChild size="lg" className="h-12 w-full rounded-xl bg-blue-600 px-8 text-base font-medium text-white hover:bg-blue-500 sm:w-auto">
+                                    <Link href="/signup">Start free trial</Link>
+                                </Button>
+                                <Button asChild size="lg" variant="outline" className="h-12 w-full rounded-xl border-white/20 bg-white/[0.06] px-8 text-base font-medium text-white hover:bg-white/[0.12] hover:text-white sm:w-auto">
+                                    <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">
+                                        Book a demo
+                                    </a>
+                                </Button>
+                            </motion.div>
 
-{/* IN-ACTION SECTION - MEDIA LEFT | CONTENT RIGHT | BROWSER SHELL */}
-<AnimatedSection id="in-action" className="bg-white text-slate-900 py-24 border-t border-slate-100">
-    <div className="container mx-auto px-4">
-        
-        {/* 1. MAIN SECTION HEADER */}
-        <div className="relative z-10 text-center mb-16 max-w-4xl mx-auto">
-            <motion.h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
-                One Platform, Every Stage of Business
-            </motion.h2>
-            <motion.p className="mt-6 text-lg md:text-xl text-slate-500 font-medium">
-                From city retail counters to distributed field teams, BBU1 adapts to how you work.
-            </motion.p>
-        </div>
+                            <motion.p variants={fadeUp} className="mt-7 text-sm text-slate-500">
+                                No card needed. Set up in a day.
+                            </motion.p>
+                        </motion.div>
+                    </div>
+                </section>
 
-        {/* 2. SPLIT GRID LAYOUT */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center max-w-7xl mx-auto">
-            
-            {/* LEFT SIDE: THE MEDIA BOX */}
-            <div className="lg:col-span-7 relative">
-                <motion.div className="relative rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] h-[350px] md:h-[550px] bg-white border border-slate-200">
-                    
-                    {/* BROWSER TOP BAR */}
-                    <div className="absolute top-0 left-0 right-0 h-8 bg-slate-50 border-b border-slate-200 flex items-center px-4 gap-1.5 z-30">
-                        <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                        <div className="ml-4 h-3 w-1/3 bg-slate-200/50 rounded-sm" />
+                <Section id="product" className="bg-white dark:bg-slate-950">
+                    <SectionHeading
+                        eyebrow="The product"
+                        title="What it actually does"
+                        sub="Four parts of the same system. Nothing needs exporting from one to reach another."
+                    />
+
+                    <div className="mt-8 flex flex-wrap gap-2">
+                        {PRODUCT_SCREENS.map((item, i) => (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveScreen(i)}
+                                className={cn(
+                                    "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                                    activeScreen === i
+                                        ? "border-slate-900 bg-slate-900 text-white dark:border-blue-600 dark:bg-blue-600"
+                                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-transparent dark:text-slate-300"
+                                )}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
                     </div>
 
-                    <AnimatePresence mode="wait">
-                        <motion.div 
-                            key={currentSlideIndex} 
-                            initial={{ opacity: 0, x: -20 }} 
-                            animate={{ opacity: 1, x: 0 }} 
-                            exit={{ opacity: 0, x: 20 }} 
-                            transition={{ duration: 0.6, ease: "easeOut" }} 
-                            className="absolute inset-0 pt-8 bg-white flex items-center justify-center"
-                        >
-                            {memoizedSlideshowContent[currentSlideIndex].is_video ? (
-                                <video
-                                    autoPlay
-                                    muted
-                                    playsInline
-                                    onEnded={() => setCurrentSlideIndex(p => (p + 1) % memoizedSlideshowContent.length)}
-                                    className="w-full h-full object-contain" 
-                                >
-                                    <source src={memoizedSlideshowContent[currentSlideIndex].src} type="video/mp4" />
-                                    Your browser does not support the video tag.
-                                </video>
-                            ) : (
-                                <Image 
-                                    src={memoizedSlideshowContent[currentSlideIndex].src} 
-                                    alt={memoizedSlideshowContent[currentSlideIndex].alt} 
-                                    fill
-                                    style={{ objectFit: 'contain' }}
-                                    className="p-4" 
-                                />
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
-                </motion.div>
-            </div>
+                    <div className="mt-8 grid items-center gap-8 lg:grid-cols-12 lg:gap-12">
+                        <div className="lg:col-span-7">
+                            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+                                <div className="flex h-9 items-center gap-1.5 border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-950">
+                                    <span className="h-2.5 w-2.5 rounded-full bg-slate-200 dark:bg-slate-700" />
+                                    <span className="h-2.5 w-2.5 rounded-full bg-slate-200 dark:bg-slate-700" />
+                                    <span className="h-2.5 w-2.5 rounded-full bg-slate-200 dark:bg-slate-700" />
+                                </div>
 
-            {/* RIGHT SIDE: DYNAMIC SUB-CONTENT */}
-            <div className="lg:col-span-5 flex flex-col justify-center">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={currentSlideIndex}
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -30 }}
-                        transition={{ duration: 0.5 }}
-                        className="space-y-6"
+                                <div className="relative flex h-[240px] items-center justify-center bg-white dark:bg-slate-950 sm:h-[420px]">
+                                    {screen.media.type === 'video' ? (
+                                        <video
+                                            key={screen.id}
+                                            autoPlay
+                                            muted
+                                            loop
+                                            playsInline
+                                            className="h-full w-full object-contain"
+                                        >
+                                            <source src={screen.media.src} type="video/mp4" />
+                                        </video>
+                                    ) : (
+                                        <Image
+                                            key={screen.id}
+                                            src={screen.media.src}
+                                            alt={screen.media.alt}
+                                            fill
+                                            style={{ objectFit: 'cover' }}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-5">
+                            <h3 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">
+                                {screen.title}
+                            </h3>
+                            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+                                {screen.body}
+                            </p>
+                            <ul className="mt-6 space-y-3">
+                                {screen.points.map((point, i) => (
+                                    <li key={i} className="flex gap-3 text-sm text-muted-foreground">
+                                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                                        {point}
+                                    </li>
+                                ))}
+                            </ul>
+                            <Link
+                                href="/features"
+                                className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white"
+                            >
+                                See all features
+                                <ArrowRight className="h-4 w-4 text-slate-400" />
+                            </Link>
+                        </div>
+                    </div>
+                </Section>
+
+                <Section className="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">
+                    <SectionHeading
+                        eyebrow="Why bother"
+                        title="What BBU1 replaces"
+                        sub="Most businesses we meet are running four systems that do not know about each other."
+                    />
+
+                    <div className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                        {REPLACES.map((row, i) => (
+                            <div
+                                key={i}
+                                className={cn(
+                                    "grid gap-3 px-5 py-5 sm:grid-cols-2 sm:gap-8 sm:px-7",
+                                    i > 0 && "border-t border-slate-100 dark:border-slate-800"
+                                )}
+                            >
+                                <p className="text-sm text-muted-foreground line-through decoration-slate-300">
+                                    {row.before}
+                                </p>
+                                <p className="flex items-start gap-2.5 text-sm font-medium text-slate-900 dark:text-slate-100">
+                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                                    {row.after}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </Section>
+
+                <Section className="bg-white dark:bg-slate-950">
+                    <SectionHeading
+                        eyebrow="Getting started"
+                        title="How it works"
+                        sub="Four steps. Most businesses are trading on it the same day."
+                    />
+
+                    <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        {HOW_IT_WORKS.map((item) => (
+                            <div key={item.step} className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-sm font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    {item.step}
+                                </span>
+                                <h3 className="mt-4 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                                    {item.title}
+                                </h3>
+                                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </Section>
+
+                <Section className="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">
+                    <SectionHeading
+                        eyebrow="Who uses it"
+                        title="Built around how your trade works"
+                        sub="The core is the same. What sits on top changes with the business."
+                    />
+
+                    <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        {BUILT_FOR.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+                                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                        {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+                                    </div>
+                                    <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                                        {item.title}
+                                    </h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <Link
+                        href="/industries"
+                        className="mt-8 inline-flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white"
                     >
-                        <div className="inline-block px-3 py-1 rounded-md bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-widest mb-2">
-                            Platform Module
-                        </div>
+                        See all industries
+                        <ArrowRight className="h-4 w-4 text-slate-400" />
+                    </Link>
+                </Section>
 
-                        <h3 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">
-                            {memoizedSlideshowContent[currentSlideIndex].title}
-                        </h3>
+                <Section className="bg-white dark:bg-slate-950">
+                    <SectionHeading
+                        eyebrow="The platform"
+                        title="What holds it together"
+                    />
 
-                        <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-medium">
-                            {memoizedSlideshowContent[currentSlideIndex].description}
-                        </p>
-
-                        <div className="pt-4">
-                            <button className="group flex items-center gap-2 text-blue-600 font-bold hover:gap-4 transition-all">
-                                Explore this module <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
-                            </button>
-                        </div>
-                    </motion.div>
-                </AnimatePresence>
-
-                {/* SLIDE INDICATORS (DOTS) */}
-                <div className="mt-12 flex gap-3">
-                    {memoizedSlideshowContent.map((_, idx) => (
-                        <button 
-                            key={idx} 
-                            className={cn(
-                                "h-1.5 transition-all duration-500 rounded-full", 
-                                currentSlideIndex === idx ? "bg-blue-600 w-10" : "bg-slate-200 w-3 hover:bg-slate-300"
-                            )} 
-                            onClick={() => setCurrentSlideIndex(idx)} 
-                        />
-                    ))}
-                </div>
-            </div>
-        </div>
-    </div>
-</AnimatedSection>
+                    <div className="mt-10 grid grid-cols-1 gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
+                        {PLATFORM_POINTS.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <div key={item.title}>
+                                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                        {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+                                    </div>
+                                    <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                                        {item.title}
+                                    </h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Section>
 
                 <DynamicPricingSection />
 
+                <Section className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                    <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
+                        <div className="lg:col-span-4">
+                            <SectionHeading eyebrow="Questions" title="Things people ask" />
+                            <p className="mt-6 text-sm text-muted-foreground">
+                                Not answered here?{' '}
+                                <Link href="/contact" className="font-medium text-slate-900 underline underline-offset-4 dark:text-white">
+                                    Ask us directly
+                                </Link>.
+                            </p>
+                        </div>
+
+                        <div className="lg:col-span-8">
+                            <Accordion type="single" collapsible className="w-full">
+                                {siteConfig.faqItems.map((faq, i) => (
+                                    <AccordionItem key={i} value={`faq-${i}`} className="border-slate-200 dark:border-slate-800">
+                                        <AccordionTrigger className="py-5 text-left text-base font-medium hover:no-underline">
+                                            {faq.q}
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pb-5 text-sm leading-relaxed text-muted-foreground">
+                                            {faq.a}
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
+                        </div>
+                    </div>
+                </Section>
+
                 <PartnerWithUsSection />
+
+                <Section className="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center dark:border-slate-800 dark:bg-slate-950 sm:px-12 sm:py-16">
+                        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 md:text-3xl">
+                            Try it with your own numbers
+                        </h2>
+                        <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
+                            Start a free trial, or book a call and we will set it up with your stock list and
+                            opening balances while you watch.
+                        </p>
+                        <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+                            <Button asChild className="h-12 rounded-xl bg-slate-900 px-8 text-sm font-medium text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700">
+                                <Link href="/signup">Start free trial</Link>
+                            </Button>
+                            <Button asChild variant="outline" className="h-12 rounded-xl border-slate-200 px-8 text-sm font-medium dark:border-slate-700">
+                                <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">
+                                    Book a demo
+                                </a>
+                            </Button>
+                        </div>
+                    </div>
+                </Section>
 
             </main>
 
-            {mounted && <AdvancedChatWidget />}
-            <Toast message={toastState.message} isVisible={toastState.visible} />
-
-            {/* COOKIE CONSENT BANNER */}
-            {mounted && (
+            {mounted ? (
                 <AnimatePresence>
-                    {showCookieBanner && (
-                        <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-[100] p-4">
-                            <Card className="max-w-xl mx-auto shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 max-h-[80vh] overflow-y-auto">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
-                                        <ShieldCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" /> Privacy Choice
-                                    </CardTitle>
-                                    <CardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                        We use cookies to improve your experience, analyze site traffic, and personalize content. You can accept all cookies or customize your preferences. Essential cookies are always active as they are required for the site to function.
+                    {showCookieBanner ? (
+                        <motion.div
+                            initial={{ opacity: 0, y: 40 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 40 }}
+                            transition={{ duration: 0.25 }}
+                            className="fixed inset-x-0 bottom-0 z-[100] p-4"
+                        >
+                            <Card className="mx-auto max-h-[80vh] max-w-xl overflow-y-auto rounded-2xl border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="text-base font-semibold">Cookies</CardTitle>
+                                    <CardDescription className="text-sm leading-relaxed">
+                                        We use essential cookies to keep the site working. Analytics and marketing
+                                        cookies are off unless you turn them on.{' '}
+                                        <Link href="/privacy" className="font-medium text-slate-900 underline underline-offset-4 dark:text-white">
+                                            Privacy policy
+                                        </Link>
                                     </CardDescription>
                                 </CardHeader>
+
                                 {!isCustomizingCookies ? (
-                                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
-                                        <Button variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
-                                        <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleAcceptAllCookies}>Accept All</Button>
+                                    <CardFooter className="flex flex-col gap-2 pt-0 sm:flex-row sm:justify-end">
+                                        <Button
+                                            variant="ghost"
+                                            className="h-10 w-full rounded-lg text-sm font-medium text-muted-foreground sm:w-auto"
+                                            onClick={() => setIsCustomizingCookies(true)}
+                                        >
+                                            Choose
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="h-10 w-full rounded-lg border-slate-200 text-sm font-medium dark:border-slate-700 sm:w-auto"
+                                            onClick={handleRejectNonEssential}
+                                        >
+                                            Essential only
+                                        </Button>
+                                        <Button
+                                            className="h-10 w-full rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 sm:w-auto"
+                                            onClick={handleAcceptAllCookies}
+                                        >
+                                            Accept all
+                                        </Button>
                                     </CardFooter>
                                 ) : (
                                     <CardContent className="space-y-4 pt-0">
                                         {siteConfig.cookieCategories.map(category => (
-                                            <div key={category.id} className="flex items-start space-x-3 py-2 border-t border-slate-100 dark:border-slate-800 first:border-t-0">
-                                                <Checkbox id={category.id} checked={cookiePreferences[category.id as CookieCategoryKey]} onCheckedChange={() => setCookiePreferences(prev => ({...prev, [category.id]: !prev[category.id as CookieCategoryKey]}))} disabled={category.isRequired} />
-                                                <div className="grid gap-1.5 leading-none"><label htmlFor={category.id} className="text-sm font-medium text-slate-800 dark:text-slate-200">{category.name}</label><p className="text-sm text-slate-500 dark:text-slate-400">{category.description}</p></div>
+                                            <div
+                                                key={category.id}
+                                                className="flex items-start gap-3 border-t border-slate-100 py-3 first:border-t-0 dark:border-slate-800"
+                                            >
+                                                <Checkbox
+                                                    id={category.id}
+                                                    checked={cookiePreferences[category.id]}
+                                                    onCheckedChange={(v) =>
+                                                        setCookiePreferences(prev => ({ ...prev, [category.id]: v === true }))
+                                                    }
+                                                    disabled={category.isRequired}
+                                                    className="mt-0.5"
+                                                />
+                                                <div className="grid gap-1.5 leading-none">
+                                                    <label htmlFor={category.id} className="text-sm font-medium">
+                                                        {category.name}
+                                                    </label>
+                                                    <p className="text-sm leading-relaxed text-muted-foreground">
+                                                        {category.description}
+                                                    </p>
+                                                </div>
                                             </div>
                                         ))}
-                                        <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-                                            <Button variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300" onClick={() => setIsCustomizingCookies(false)}>Back</Button>
-                                            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSaveCookiePreferences}>Save Preferences</Button>
+                                        <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:justify-end">
+                                            <Button
+                                                variant="ghost"
+                                                className="h-10 rounded-lg text-sm font-medium text-muted-foreground"
+                                                onClick={() => setIsCustomizingCookies(false)}
+                                            >
+                                                Back
+                                            </Button>
+                                            <Button
+                                                className="h-10 rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700"
+                                                onClick={handleSaveCookiePreferences}
+                                            >
+                                                Save
+                                            </Button>
                                         </div>
                                     </CardContent>
                                 )}
                             </Card>
                         </motion.div>
-                    )}
+                    ) : null}
                 </AnimatePresence>
-            )}
+            ) : null}
         </div>
     );
 }
