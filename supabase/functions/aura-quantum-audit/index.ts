@@ -49,9 +49,11 @@ function extractText(message: any): string {
   return "";
 }
 
-/** Matches JsonToSseTransformStream's exact frame format: `data: ${JSON}\n` */
+/** Each SSE event must end with a blank line (\n\n) or the client's
+ *  parser concatenates consecutive data: lines into a single event
+ *  per the SSE spec — this was the actual cause of the JSON parse error. */
 function sseFrame(obj: Record<string, unknown>): string {
-  return `data: ${JSON.stringify(obj)}\n`;
+  return `data: ${JSON.stringify(obj)}\n\n`;
 }
 
 serve(async (req) => {
