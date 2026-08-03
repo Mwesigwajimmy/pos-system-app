@@ -4,21 +4,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
 
 /**
  * --- BBU1 AURA QUANTUM EDGE MOTHERBOARD ---
- * VERSION: v28.1 OMEGA-ULTIMATUM (UI MESSAGE STREAM PROTOCOL — VERIFIED)
+ * VERSION: v29.0 OMEGA-ULTIMATUM (RATE-LIMIT PROTECTED)
  *
- * Wire format and every chunk shape below verified directly against the
- * installed ai@6.0.190 source (node_modules/ai/dist/index.js):
- *  - uiMessageChunkSchema (line ~5235): exact chunk field names/types
- *  - process-ui-message-stream switch (line ~5589): exact chunk handling
- *  - JsonToSseTransformStream (line ~5160): `data: ${JSON.stringify(part)}\n`
- *    per frame, `data: [DONE]\n\n` to close
- *  - UI_MESSAGE_STREAM_HEADERS (line ~5177): exact required headers
+ * Wire format verified against installed ai@6.0.190 source
+ * (uiMessageChunkSchema, process-ui-message-stream, JsonToSseTransformStream).
  *
- * Identity resolution, Jina reranking, and the SambaNova call are
- * unchanged from the prior version — only the streamed wire format
- * changed, since the old `0:`/`8:` prefixed frames belonged to an
- * older AI SDK version not used by the currently installed package.
+ * v29.0: Added per-user rate limiting via check_and_increment_aura_usage(),
+ * an atomic Postgres function (row-locked per user) that enforces a daily
+ * request cap and a short cooldown between consecutive requests. This runs
+ * before any paid API call (Jina, SambaNova), so a limited user never
+ * consumes budget. Limit-exceeded responses are surfaced as a normal
+ * `error` chunk through the existing SSE stream, so they render in the
+ * chat UI exactly like any other error — no separate handling needed
+ * on the frontend.
  */
+
+const DAILY_LIMIT = 200;
+const COOLDOWN_SECONDS = 3;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,7 +28,6 @@ const corsHeaders = {
   'Access-Control-Expose-Headers': 'x-vercel-ai-ui-message-stream',
 }
 
-/** Verified against UI_MESSAGE_STREAM_HEADERS in node_modules/ai/dist/index.js */
 const streamHeaders = {
   ...corsHeaders,
   'Content-Type': 'text/event-stream',
@@ -36,7 +37,6 @@ const streamHeaders = {
   'x-accel-buffering': 'no',
 };
 
-/** Reads text content from either a v5 UIMessage (.parts) or the old {role, content} shape. */
 function extractText(message: any): string {
   if (!message) return "";
   if (typeof message.content === 'string') return message.content;
@@ -49,11 +49,23 @@ function extractText(message: any): string {
   return "";
 }
 
-/** Each SSE event must end with a blank line (\n\n) or the client's
- *  parser concatenates consecutive data: lines into a single event
- *  per the SSE spec — this was the actual cause of the JSON parse error. */
 function sseFrame(obj: Record<string, unknown>): string {
   return `data: ${JSON.stringify(obj)}\n\n`;
+}
+
+/** Emits a minimal, well-formed stream containing only a start/error/finish
+ *  sequence — used for early exits (rate limit, missing identity, etc.)
+ *  so every failure path still produces a valid UI Message Stream. */
+function earlyErrorStream(encoder: TextEncoder, message: string): ReadableStream {
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(sseFrame({ type: 'start' })));
+      controller.enqueue(encoder.encode(sseFrame({ type: 'error', errorText: message })));
+      controller.enqueue(encoder.encode(sseFrame({ type: 'finish' })));
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    }
+  });
 }
 
 serve(async (req) => {
@@ -68,12 +80,33 @@ serve(async (req) => {
     if (!businessId || businessId === '' || businessId === 'loading') {
        throw new Error("Neural Link Blocked: Node Identity (Business ID) is physically unanchored.");
     }
+    if (!userId) {
+       throw new Error("Neural Link Blocked: Director Identity is physically unanchored.");
+    }
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } }
     );
+
+    // ✅ RATE LIMIT GATE — runs before any paid API call (Jina, SambaNova).
+    // check_and_increment_aura_usage is atomic (row-locked per user), so
+    // this is safe under concurrent requests from the same or different
+    // users — no race condition, no double-counting.
+    const { data: usageResult, error: usageError } = await supabaseAdmin.rpc(
+        'check_and_increment_aura_usage',
+        { p_user_id: userId, p_daily_limit: DAILY_LIMIT, p_cooldown_seconds: COOLDOWN_SECONDS }
+    );
+
+    if (usageError) {
+        console.error('[AURA] Rate limit check failed:', usageError.message);
+        // Fail open on infra error rather than blocking every user because
+        // the usage table itself had an issue — logged for visibility.
+    } else if (usageResult && usageResult.allowed === false) {
+        console.warn(`[AURA] Request blocked for user ${userId}: ${usageResult.reason}`);
+        return new Response(earlyErrorStream(encoder, usageResult.message), { headers: streamHeaders });
+    }
 
     const [tenantRes, modulesRes, keysRes, handshakeRes] = await Promise.all([
       supabaseAdmin.from('tenants').select('name, business_type, country, currency, setup_complete').eq('id', businessId).single(),
@@ -152,8 +185,6 @@ serve(async (req) => {
         });
     } catch (e) { console.warn("[AURA] Context Retrieval Latency."); }
 
-    // 🔁 Convert v5 UIMessage[] -> simple {role, content} for the
-    // SambaNova/OpenAI-compatible chat completions payload.
     const simpleHistory = (messages || []).map((m: any) => ({
       role: m.role,
       content: extractText(m),
@@ -161,18 +192,14 @@ serve(async (req) => {
 
     const stream = new ReadableStream({
       async start(controller) {
-        // --- verified against uiMessageChunkSchema ---
         controller.enqueue(encoder.encode(sseFrame({ type: 'start' })));
         controller.enqueue(encoder.encode(sseFrame({ type: 'start-step' })));
 
-        // Agent action steps -> custom data parts. Schema requires
-        // type to start with "data-"; `data` field is unknown/any.
         for (const step of agentSteps) {
           controller.enqueue(encoder.encode(sseFrame({ type: 'data-agentStep', data: step })));
         }
 
         const textId = crypto.randomUUID();
-        // Schema: { type: "text-start", id: string }
         controller.enqueue(encoder.encode(sseFrame({ type: 'text-start', id: textId })));
 
         let fullResponse = "";
@@ -210,6 +237,12 @@ serve(async (req) => {
             })
           });
 
+          if (!response.ok) {
+              const errorBody = await response.text();
+              console.error(`[AURA] SambaNova returned ${response.status}:`, errorBody);
+              throw new Error(`SambaNova API error (${response.status}): ${errorBody.slice(0, 300)}`);
+          }
+
           const reader = response.body?.getReader();
           if (!reader) throw new Error("Neural stream collapsed.");
 
@@ -227,7 +260,6 @@ serve(async (req) => {
                         const content = json.choices[0]?.delta?.content || "";
                         if (content) {
                             fullResponse += content;
-                            // Schema: { type: "text-delta", id: string, delta: string }
                             controller.enqueue(encoder.encode(sseFrame({ type: 'text-delta', id: textId, delta: content })));
                         }
                     } catch (e) { }
@@ -235,20 +267,18 @@ serve(async (req) => {
             }
           }
 
-          // Schema: { type: "text-end", id: string }
           controller.enqueue(encoder.encode(sseFrame({ type: 'text-end', id: textId })));
           controller.enqueue(encoder.encode(sseFrame({ type: 'finish-step' })));
           controller.enqueue(encoder.encode(sseFrame({ type: 'finish' })));
 
           if (auditRecord?.id) {
             await supabaseAdmin.from('aura_forensic_audit').update({
-                forensic_output: { response: fullResponse, node_version: 'v28.1_UI_MESSAGE_STREAM' },
+                forensic_output: { response: fullResponse, node_version: 'v29.0_RATE_LIMITED' },
                 neural_status: 'COMPLETED'
             }).eq('id', auditRecord.id);
           }
 
         } catch (err) {
-          // Schema: { type: "error", errorText: string }
           controller.enqueue(encoder.encode(sseFrame({ type: 'error', errorText: err.message })));
         } finally {
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
@@ -261,13 +291,6 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("[CRITICAL MOTHERBOARD CRASH]", error.message);
-    const errorStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(encoder.encode(sseFrame({ type: 'error', errorText: error.message })));
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
-      }
-    });
-    return new Response(errorStream, { headers: streamHeaders });
+    return new Response(earlyErrorStream(encoder, error.message), { headers: streamHeaders });
   }
 })
