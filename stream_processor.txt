@@ -1,0 +1,400 @@
+                    entityId: state.message.id
+                  }
+                });
+              }
+              state.message.metadata = mergedMetadata;
+            }
+          }
+          switch (chunk.type) {
+            case "text-start": {
+              const textPart = {
+                type: "text",
+                text: "",
+                providerMetadata: chunk.providerMetadata,
+                state: "streaming"
+              };
+              state.activeTextParts[chunk.id] = textPart;
+              state.message.parts.push(textPart);
+              write();
+              break;
+            }
+            case "text-delta": {
+              const textPart = state.activeTextParts[chunk.id];
+              if (textPart == null) {
+                throw new UIMessageStreamError({
+                  chunkType: "text-delta",
+                  chunkId: chunk.id,
+                  message: `Received text-delta for missing text part with ID "${chunk.id}". Ensure a "text-start" chunk is sent before any "text-delta" chunks.`
+                });
+              }
+              textPart.text += chunk.delta;
+              textPart.providerMetadata = (_a21 = chunk.providerMetadata) != null ? _a21 : textPart.providerMetadata;
+              write();
+              break;
+            }
+            case "text-end": {
+              const textPart = state.activeTextParts[chunk.id];
+              if (textPart == null) {
+                throw new UIMessageStreamError({
+                  chunkType: "text-end",
+                  chunkId: chunk.id,
+                  message: `Received text-end for missing text part with ID "${chunk.id}". Ensure a "text-start" chunk is sent before any "text-end" chunks.`
+                });
+              }
+              textPart.state = "done";
+              textPart.providerMetadata = (_b = chunk.providerMetadata) != null ? _b : textPart.providerMetadata;
+              delete state.activeTextParts[chunk.id];
+              write();
+              break;
+            }
+            case "reasoning-start": {
+              const reasoningPart = {
+                type: "reasoning",
+                text: "",
+                providerMetadata: chunk.providerMetadata,
+                state: "streaming"
+              };
+              state.activeReasoningParts[chunk.id] = reasoningPart;
+              state.message.parts.push(reasoningPart);
+              write();
+              break;
+            }
+            case "reasoning-delta": {
+              const reasoningPart = state.activeReasoningParts[chunk.id];
+              if (reasoningPart == null) {
+                throw new UIMessageStreamError({
+                  chunkType: "reasoning-delta",
+                  chunkId: chunk.id,
+                  message: `Received reasoning-delta for missing reasoning part with ID "${chunk.id}". Ensure a "reasoning-start" chunk is sent before any "reasoning-delta" chunks.`
+                });
+              }
+              reasoningPart.text += chunk.delta;
+              reasoningPart.providerMetadata = (_c = chunk.providerMetadata) != null ? _c : reasoningPart.providerMetadata;
+              write();
+              break;
+            }
+            case "reasoning-end": {
+              const reasoningPart = state.activeReasoningParts[chunk.id];
+              if (reasoningPart == null) {
+                throw new UIMessageStreamError({
+                  chunkType: "reasoning-end",
+                  chunkId: chunk.id,
+                  message: `Received reasoning-end for missing reasoning part with ID "${chunk.id}". Ensure a "reasoning-start" chunk is sent before any "reasoning-end" chunks.`
+                });
+              }
+              reasoningPart.providerMetadata = (_d = chunk.providerMetadata) != null ? _d : reasoningPart.providerMetadata;
+              reasoningPart.state = "done";
+              delete state.activeReasoningParts[chunk.id];
+              write();
+              break;
+            }
+            case "file": {
+              state.message.parts.push({
+                type: "file",
+                mediaType: chunk.mediaType,
+                url: chunk.url,
+                ...chunk.providerMetadata != null ? { providerMetadata: chunk.providerMetadata } : {}
+              });
+              write();
+              break;
+            }
+            case "source-url": {
+              state.message.parts.push({
+                type: "source-url",
+                sourceId: chunk.sourceId,
+                url: chunk.url,
+                title: chunk.title,
+                providerMetadata: chunk.providerMetadata
+              });
+              write();
+              break;
+            }
+            case "source-document": {
+              state.message.parts.push({
+                type: "source-document",
+                sourceId: chunk.sourceId,
+                mediaType: chunk.mediaType,
+                title: chunk.title,
+                filename: chunk.filename,
+                providerMetadata: chunk.providerMetadata
+              });
+              write();
+              break;
+            }
+            case "tool-input-start": {
+              const toolInvocations = state.message.parts.filter(isStaticToolUIPart);
+              state.partialToolCalls[chunk.toolCallId] = {
+                text: "",
+                toolName: chunk.toolName,
+                index: toolInvocations.length,
+                dynamic: chunk.dynamic,
+                title: chunk.title,
+                toolMetadata: chunk.toolMetadata
+              };
+              if (chunk.dynamic) {
+                updateDynamicToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: chunk.toolName,
+                  state: "input-streaming",
+                  input: void 0,
+                  providerExecuted: chunk.providerExecuted,
+                  title: chunk.title,
+                  toolMetadata: chunk.toolMetadata,
+                  providerMetadata: chunk.providerMetadata
+                });
+              } else {
+                updateToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: chunk.toolName,
+                  state: "input-streaming",
+                  input: void 0,
+                  providerExecuted: chunk.providerExecuted,
+                  title: chunk.title,
+                  toolMetadata: chunk.toolMetadata,
+                  providerMetadata: chunk.providerMetadata
+                });
+              }
+              write();
+              break;
+            }
+            case "tool-input-delta": {
+              const partialToolCall = state.partialToolCalls[chunk.toolCallId];
+              if (partialToolCall == null) {
+                throw new UIMessageStreamError({
+                  chunkType: "tool-input-delta",
+                  chunkId: chunk.toolCallId,
+                  message: `Received tool-input-delta for missing tool call with ID "${chunk.toolCallId}". Ensure a "tool-input-start" chunk is sent before any "tool-input-delta" chunks.`
+                });
+              }
+              partialToolCall.text += chunk.inputTextDelta;
+              const { value: partialArgs } = await parsePartialJson(
+                partialToolCall.text
+              );
+              if (partialToolCall.dynamic) {
+                updateDynamicToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: partialToolCall.toolName,
+                  state: "input-streaming",
+                  input: partialArgs,
+                  title: partialToolCall.title,
+                  toolMetadata: partialToolCall.toolMetadata
+                });
+              } else {
+                updateToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: partialToolCall.toolName,
+                  state: "input-streaming",
+                  input: partialArgs,
+                  title: partialToolCall.title,
+                  toolMetadata: partialToolCall.toolMetadata
+                });
+              }
+              write();
+              break;
+            }
+            case "tool-input-available": {
+              if (chunk.dynamic) {
+                updateDynamicToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: chunk.toolName,
+                  state: "input-available",
+                  input: chunk.input,
+                  providerExecuted: chunk.providerExecuted,
+                  providerMetadata: chunk.providerMetadata,
+                  title: chunk.title,
+                  toolMetadata: chunk.toolMetadata
+                });
+              } else {
+                updateToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: chunk.toolName,
+                  state: "input-available",
+                  input: chunk.input,
+                  providerExecuted: chunk.providerExecuted,
+                  providerMetadata: chunk.providerMetadata,
+                  title: chunk.title,
+                  toolMetadata: chunk.toolMetadata
+                });
+              }
+              write();
+              if (onToolCall && !chunk.providerExecuted) {
+                await onToolCall({
+                  toolCall: chunk
+                });
+              }
+              break;
+            }
+            case "tool-input-error": {
+              const existingPart = state.message.parts.filter(isToolUIPart).find((p) => p.toolCallId === chunk.toolCallId);
+              const isDynamic = existingPart != null ? existingPart.type === "dynamic-tool" : !!chunk.dynamic;
+              if (isDynamic) {
+                updateDynamicToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: chunk.toolName,
+                  state: "output-error",
+                  input: chunk.input,
+                  errorText: chunk.errorText,
+                  providerExecuted: chunk.providerExecuted,
+                  providerMetadata: chunk.providerMetadata,
+                  toolMetadata: chunk.toolMetadata
+                });
+              } else {
+                updateToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: chunk.toolName,
+                  state: "output-error",
+                  input: void 0,
+                  rawInput: chunk.input,
+                  errorText: chunk.errorText,
+                  providerExecuted: chunk.providerExecuted,
+                  providerMetadata: chunk.providerMetadata,
+                  toolMetadata: chunk.toolMetadata
+                });
+              }
+              write();
+              break;
+            }
+            case "tool-approval-request": {
+              const toolInvocation = getToolInvocation(chunk.toolCallId);
+              toolInvocation.state = "approval-requested";
+              toolInvocation.approval = { id: chunk.approvalId };
+              write();
+              break;
+            }
+            case "tool-output-denied": {
+              const toolInvocation = getToolInvocation(chunk.toolCallId);
+              toolInvocation.state = "output-denied";
+              write();
+              break;
+            }
+            case "tool-output-available": {
+              const toolInvocation = getToolInvocation(chunk.toolCallId);
+              if (toolInvocation.type === "dynamic-tool") {
+                updateDynamicToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: toolInvocation.toolName,
+                  state: "output-available",
+                  input: toolInvocation.input,
+                  output: chunk.output,
+                  preliminary: chunk.preliminary,
+                  providerExecuted: chunk.providerExecuted,
+                  providerMetadata: chunk.providerMetadata,
+                  title: toolInvocation.title,
+                  toolMetadata: toolInvocation.toolMetadata
+                });
+              } else {
+                updateToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: getStaticToolName(toolInvocation),
+                  state: "output-available",
+                  input: toolInvocation.input,
+                  output: chunk.output,
+                  providerExecuted: chunk.providerExecuted,
+                  preliminary: chunk.preliminary,
+                  providerMetadata: chunk.providerMetadata,
+                  title: toolInvocation.title,
+                  toolMetadata: toolInvocation.toolMetadata
+                });
+              }
+              write();
+              break;
+            }
+            case "tool-output-error": {
+              const toolInvocation = getToolInvocation(chunk.toolCallId);
+              if (toolInvocation.type === "dynamic-tool") {
+                updateDynamicToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: toolInvocation.toolName,
+                  state: "output-error",
+                  input: toolInvocation.input,
+                  errorText: chunk.errorText,
+                  providerExecuted: chunk.providerExecuted,
+                  providerMetadata: chunk.providerMetadata,
+                  title: toolInvocation.title,
+                  toolMetadata: toolInvocation.toolMetadata
+                });
+              } else {
+                updateToolPart({
+                  toolCallId: chunk.toolCallId,
+                  toolName: getStaticToolName(toolInvocation),
+                  state: "output-error",
+                  input: toolInvocation.input,
+                  rawInput: toolInvocation.rawInput,
+                  errorText: chunk.errorText,
+                  providerExecuted: chunk.providerExecuted,
+                  providerMetadata: chunk.providerMetadata,
+                  title: toolInvocation.title,
+                  toolMetadata: toolInvocation.toolMetadata
+                });
+              }
+              write();
+              break;
+            }
+            case "start-step": {
+              state.message.parts.push({ type: "step-start" });
+              break;
+            }
+            case "finish-step": {
+              state.activeTextParts = {};
+              state.activeReasoningParts = {};
+              break;
+            }
+            case "start": {
+              if (chunk.messageId != null) {
+                state.message.id = chunk.messageId;
+              }
+              await updateMessageMetadata(chunk.messageMetadata);
+              if (chunk.messageId != null || chunk.messageMetadata != null) {
+                write();
+              }
+              break;
+            }
+            case "finish": {
+              if (chunk.finishReason != null) {
+                state.finishReason = chunk.finishReason;
+              }
+              await updateMessageMetadata(chunk.messageMetadata);
+              if (chunk.messageMetadata != null) {
+                write();
+              }
+              break;
+            }
+            case "message-metadata": {
+              await updateMessageMetadata(chunk.messageMetadata);
+              if (chunk.messageMetadata != null) {
+                write();
+              }
+              break;
+            }
+            case "error": {
+              onError == null ? void 0 : onError(new Error(chunk.errorText));
+              break;
+            }
+            default: {
+              if (isDataUIMessageChunk(chunk)) {
+                if ((dataPartSchemas == null ? void 0 : dataPartSchemas[chunk.type]) != null) {
+                  const partIdx = state.message.parts.findIndex(
+                    (p) => "id" in p && "data" in p && p.id === chunk.id && p.type === chunk.type
+                  );
+                  const actualPartIdx = partIdx >= 0 ? partIdx : state.message.parts.length;
+                  await (0, import_provider_utils16.validateTypes)({
+                    value: chunk.data,
+                    schema: dataPartSchemas[chunk.type],
+                    context: {
+                      field: `message.parts[${actualPartIdx}].data`,
+                      entityName: chunk.type,
+                      entityId: chunk.id
+                    }
+                  });
+                }
+                const dataChunk = chunk;
+                if (dataChunk.transient) {
+                  onData == null ? void 0 : onData(dataChunk);
+                  break;
+                }
+                const existingUIPart = dataChunk.id != null ? state.message.parts.find(
+                  (chunkArg) => dataChunk.type === chunkArg.type && dataChunk.id === chunkArg.id
+                ) : void 0;
+                if (existingUIPart != null) {
+                  existingUIPart.data = dataChunk.data;
+                } else {

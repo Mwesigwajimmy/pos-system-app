@@ -1,0 +1,29 @@
+node_modules\ai\dist\index.js:5244:        type: import_v47.z.literal("text-delta"),
+node_modules\ai\dist\index.js:5610:            case "text-delta": {
+node_modules\ai\dist\index.js:5614:                  chunkType: "text-delta",
+node_modules\ai\dist\index.js:5616:                  message: `Received text-delta for missing text part with ID "${chunk.id}". Ensure a "text-start" chunk is sent before any "text-delta" chunks.`
+node_modules\ai\dist\index.js:6353:        case "text-delta":
+node_modules\ai\dist\index.js:6673:        type: "text-delta",
+node_modules\ai\dist\index.js:6688:      if (chunk.type !== "text-delta" && chunk.type !== "text-start" && chunk.type !== "text-end") {
+node_modules\ai\dist\index.js:6794:        if (part.type === "text-delta" || part.type === "reasoning-delta" || part.type === "source" || part.type === "tool-call" || part.type === "tool-result" || part.type === "tool-input-start" || part.type === "tool-input-delta" || part.type === "raw") {
+node_modules\ai\dist\index.js:6808:        if (part.type === "text-delta") {
+node_modules\ai\dist\index.js:7491:                      case "text-delta": {
+node_modules\ai\dist\index.js:7494:                            type: "text-delta",
+node_modules\ai\dist\index.js:7881:            if (part.type === "text-delta") {
+node_modules\ai\dist\index.js:7988:            case "text-delta": {
+node_modules\ai\dist\index.js:7990:                type: "text-delta",
+node_modules\ai\dist\index.js:9985:                case "text-delta":
+node_modules\ai\dist\index.js:10859:              case "text-delta":
+node_modules\ai\dist\index.js:10968:                      type: "text-delta",
+node_modules\ai\dist\index.js:10988:                    controller.enqueue({ type: "text-delta", textDelta });
+node_modules\ai\dist\index.js:11152:              case "text-delta":
+node_modules\ai\dist\index.js:11175:              case "text-delta":
+node_modules\ai\dist\index.js:11461:        if (chunk.type !== "text-delta" && chunk.type !== "reasoning-delta") {
+node_modules\ai\dist\index.js:11764:              if (chunk.type === "text-delta") {
+node_modules\ai\dist\index.js:11802:                    type: "text-delta",
+node_modules\ai\dist\index.js:11825:                      type: "text-delta",
+node_modules\ai\dist\index.js:11925:              if (chunk.type !== "text-delta") {
+node_modules\ai\dist\index.js:11963:                      type: "text-delta",
+node_modules\ai\dist\index.js:12041:                    type: "text-delta",
+node_modules\ai\dist\index.js:12872:                if (streamPart.type === "text-delta") {
+node_modules\ai\dist\index.js:13570:        controller.enqueue({ type: "text-delta", id: "text-1", delta: part });

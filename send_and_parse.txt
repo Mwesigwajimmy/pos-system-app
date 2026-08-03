@@ -1,0 +1,100 @@
+  };
+  read();
+}
+
+// src/text-stream/pipe-text-stream-to-response.ts
+function pipeTextStreamToResponse({
+  response,
+  status,
+  statusText,
+  headers,
+  textStream
+}) {
+  writeToServerResponse({
+    response,
+    status,
+    statusText,
+    headers: Object.fromEntries(
+      prepareHeaders(headers, {
+        "content-type": "text/plain; charset=utf-8"
+      }).entries()
+    ),
+    stream: textStream.pipeThrough(new TextEncoderStream())
+  });
+}
+
+// src/ui-message-stream/json-to-sse-transform-stream.ts
+var JsonToSseTransformStream = class extends TransformStream {
+  constructor() {
+    super({
+      transform(part, controller) {
+        controller.enqueue(`data: ${JSON.stringify(part)}
+
+`);
+      },
+      flush(controller) {
+        controller.enqueue("data: [DONE]\n\n");
+      }
+    });
+  }
+};
+
+// src/ui-message-stream/ui-message-stream-headers.ts
+var UI_MESSAGE_STREAM_HEADERS = {
+  "content-type": "text/event-stream",
+  "cache-control": "no-cache",
+  connection: "keep-alive",
+  "x-vercel-ai-ui-message-stream": "v1",
+  "x-accel-buffering": "no"
+  // disable nginx buffering
+};
+
+// src/ui-message-stream/create-ui-message-stream-response.ts
+function createUIMessageStreamResponse({
+  status,
+  statusText,
+  headers,
+  stream,
+  consumeSseStream
+}) {
+  let sseStream = stream.pipeThrough(new JsonToSseTransformStream());
+  if (consumeSseStream) {
+    const [stream1, stream2] = sseStream.tee();
+    sseStream = stream1;
+    consumeSseStream({ stream: stream2 });
+  }
+  return new Response(sseStream.pipeThrough(new TextEncoderStream()), {
+    status,
+    statusText,
+    headers: prepareHeaders(headers, UI_MESSAGE_STREAM_HEADERS)
+  });
+}
+
+// src/ui-message-stream/get-response-ui-message-id.ts
+function getResponseUIMessageId({
+  originalMessages,
+  responseMessageId
+}) {
+  if (originalMessages == null) {
+    return void 0;
+  }
+  const lastMessage = originalMessages[originalMessages.length - 1];
+  return (lastMessage == null ? void 0 : lastMessage.role) === "assistant" ? lastMessage.id : typeof responseMessageId === "function" ? responseMessageId() : responseMessageId;
+}
+
+// src/ui/process-ui-message-stream.ts
+var import_provider_utils16 = require("@ai-sdk/provider-utils");
+
+// src/ui-message-stream/ui-message-chunks.ts
+var import_v47 = require("zod/v4");
+var import_provider_utils15 = require("@ai-sdk/provider-utils");
+var toolMetadataSchema = import_v47.z.record(
+  import_v47.z.string(),
+  jsonValueSchema.optional()
+);
+var uiMessageChunkSchema = (0, import_provider_utils15.lazySchema)(
+  () => (0, import_provider_utils15.zodSchema)(
+    import_v47.z.union([
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("text-start"),
+        id: import_v47.z.string(),

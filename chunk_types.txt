@@ -1,0 +1,7 @@
+node_modules\ai\dist\index.js:144:  uiMessageChunkSchema: () => uiMessageChunkSchema,
+node_modules\ai\dist\index.js:5235:var uiMessageChunkSchema = (0, import_provider_utils15.lazySchema)(
+node_modules\ai\dist\index.js:5404:function isDataUIMessageChunk(chunk) {
+node_modules\ai\dist\index.js:5963:              if (isDataUIMessageChunk(chunk)) {
+node_modules\ai\dist\index.js:12864:            schema: uiMessageChunkSchema
+node_modules\ai\dist\index.js:13073:      schema: uiMessageChunkSchema
+node_modules\ai\dist\index.js:13715:  uiMessageChunkSchema,

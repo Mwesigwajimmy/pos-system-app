@@ -1,0 +1,180 @@
+var uiMessageChunkSchema = (0, import_provider_utils15.lazySchema)(
+  () => (0, import_provider_utils15.zodSchema)(
+    import_v47.z.union([
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("text-start"),
+        id: import_v47.z.string(),
+        providerMetadata: providerMetadataSchema.optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("text-delta"),
+        id: import_v47.z.string(),
+        delta: import_v47.z.string(),
+        providerMetadata: providerMetadataSchema.optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("text-end"),
+        id: import_v47.z.string(),
+        providerMetadata: providerMetadataSchema.optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("error"),
+        errorText: import_v47.z.string()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("tool-input-start"),
+        toolCallId: import_v47.z.string(),
+        toolName: import_v47.z.string(),
+        providerExecuted: import_v47.z.boolean().optional(),
+        providerMetadata: providerMetadataSchema.optional(),
+        toolMetadata: toolMetadataSchema.optional(),
+        dynamic: import_v47.z.boolean().optional(),
+        title: import_v47.z.string().optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("tool-input-delta"),
+        toolCallId: import_v47.z.string(),
+        inputTextDelta: import_v47.z.string()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("tool-input-available"),
+        toolCallId: import_v47.z.string(),
+        toolName: import_v47.z.string(),
+        input: import_v47.z.unknown(),
+        providerExecuted: import_v47.z.boolean().optional(),
+        providerMetadata: providerMetadataSchema.optional(),
+        toolMetadata: toolMetadataSchema.optional(),
+        dynamic: import_v47.z.boolean().optional(),
+        title: import_v47.z.string().optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("tool-input-error"),
+        toolCallId: import_v47.z.string(),
+        toolName: import_v47.z.string(),
+        input: import_v47.z.unknown(),
+        providerExecuted: import_v47.z.boolean().optional(),
+        providerMetadata: providerMetadataSchema.optional(),
+        toolMetadata: toolMetadataSchema.optional(),
+        dynamic: import_v47.z.boolean().optional(),
+        errorText: import_v47.z.string(),
+        title: import_v47.z.string().optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("tool-approval-request"),
+        approvalId: import_v47.z.string(),
+        toolCallId: import_v47.z.string()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("tool-output-available"),
+        toolCallId: import_v47.z.string(),
+        output: import_v47.z.unknown(),
+        providerExecuted: import_v47.z.boolean().optional(),
+        providerMetadata: providerMetadataSchema.optional(),
+        toolMetadata: toolMetadataSchema.optional(),
+        dynamic: import_v47.z.boolean().optional(),
+        preliminary: import_v47.z.boolean().optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("tool-output-error"),
+        toolCallId: import_v47.z.string(),
+        errorText: import_v47.z.string(),
+        providerExecuted: import_v47.z.boolean().optional(),
+        providerMetadata: providerMetadataSchema.optional(),
+        toolMetadata: toolMetadataSchema.optional(),
+        dynamic: import_v47.z.boolean().optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("tool-output-denied"),
+        toolCallId: import_v47.z.string()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("reasoning-start"),
+        id: import_v47.z.string(),
+        providerMetadata: providerMetadataSchema.optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("reasoning-delta"),
+        id: import_v47.z.string(),
+        delta: import_v47.z.string(),
+        providerMetadata: providerMetadataSchema.optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("reasoning-end"),
+        id: import_v47.z.string(),
+        providerMetadata: providerMetadataSchema.optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("source-url"),
+        sourceId: import_v47.z.string(),
+        url: import_v47.z.string(),
+        title: import_v47.z.string().optional(),
+        providerMetadata: providerMetadataSchema.optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("source-document"),
+        sourceId: import_v47.z.string(),
+        mediaType: import_v47.z.string(),
+        title: import_v47.z.string(),
+        filename: import_v47.z.string().optional(),
+        providerMetadata: providerMetadataSchema.optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("file"),
+        url: import_v47.z.string(),
+        mediaType: import_v47.z.string(),
+        providerMetadata: providerMetadataSchema.optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.custom(
+          (value) => typeof value === "string" && value.startsWith("data-"),
+          { message: 'Type must start with "data-"' }
+        ),
+        id: import_v47.z.string().optional(),
+        data: import_v47.z.unknown(),
+        transient: import_v47.z.boolean().optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("start-step")
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("finish-step")
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("start"),
+        messageId: import_v47.z.string().optional(),
+        messageMetadata: import_v47.z.unknown().optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("finish"),
+        finishReason: import_v47.z.enum([
+          "stop",
+          "length",
+          "content-filter",
+          "tool-calls",
+          "error",
+          "other"
+        ]).optional(),
+        messageMetadata: import_v47.z.unknown().optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("abort"),
+        reason: import_v47.z.string().optional()
+      }),
+      import_v47.z.strictObject({
+        type: import_v47.z.literal("message-metadata"),
+        messageMetadata: import_v47.z.unknown()
+      })
+    ])
+  )
+);
+function isDataUIMessageChunk(chunk) {
+  return chunk.type.startsWith("data-");
+}
+
+// src/ui/ui-messages.ts
+function isDataUIPart(part) {
+  return part.type.startsWith("data-");
+}
+function isTextUIPart(part) {
+  return part.type === "text";
+}
