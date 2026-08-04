@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useRef, useCallback, ReactNode, forwardRef, ElementRef, ComponentPropsWithoutRef } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, AnimatePresence, Variants, useInView, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -15,12 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import {
-    Check, ChevronDown, LucideIcon, Menu, ArrowRight, X, Users, ShieldCheck,
-    WifiOff, Globe, Settings, BrainCircuit, Megaphone, GitBranch, MessageSquareText,
-    DownloadCloud, Layers, BookOpen, HelpCircle, Home, LayoutGrid, Sparkles,
-    Warehouse, Handshake, Landmark, Briefcase, Stethoscope, ShoppingCart, Building2,
-    Receipt, Package, BarChart3, Search, Plus, Minus, Printer, FileText,
-    ArrowDown, Wallet, Boxes, Network, Lock, Server, FileCheck2, Building
+    Check, ChevronDown, ChevronLeft, ChevronRight, LucideIcon, Menu, ArrowRight, X,
+    Users, ShieldCheck, WifiOff, Globe, Settings, BrainCircuit, Megaphone, GitBranch,
+    MessageSquareText, DownloadCloud, Layers, BookOpen, HelpCircle, Home, LayoutGrid,
+    Sparkles, Warehouse, Handshake, Landmark, Briefcase, Stethoscope, ShoppingCart,
+    Building2, Receipt, Package, BarChart3, Search, Plus, Minus, Printer, FileText,
+    ArrowDown, Wallet, Boxes, Network, Lock, Server, FileCheck2, Building, Zap,
+    RefreshCw, Clock, Languages, Smartphone, KeyRound, LifeBuoy
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import NewsletterPopup from '@/components/NewsletterPopup';
@@ -58,38 +59,14 @@ const siteConfig = {
         enterpriseLink: `https://wa.me/256703572503?text=${encodeURIComponent('Hello BBU1, I would like to talk about an enterprise rollout.')}`,
     },
     faqItems: [
-        {
-            q: 'Is this for a small shop or a large company?',
-            a: 'Both, on the same platform. A market stall runs the till and nothing else. A group with fourteen branches runs the same ledger across every site with head office consolidation, approval chains and an audit trail. You are not asked to migrate to a different product when you grow.'
-        },
-        {
-            q: 'What happens when the internet goes down?',
-            a: 'You keep selling. Sales and stock movements are saved on the device and upload on their own once the connection returns. Nobody has to remember to do anything.'
-        },
-        {
-            q: 'Do I need an accountant to use it?',
-            a: 'No. You record what you sold and what you spent. The double entry happens underneath, so your profit and loss, balance sheet and cash flow are always current. Your accountant can log in and take what they need.'
-        },
-        {
-            q: 'Can I move my data out later?',
-            a: 'Yes. Export any list to CSV or PDF from the screen you are looking at, and there is an API if you want to connect BBU1 to something else. The data is yours.'
-        },
-        {
-            q: 'Is my data separate from other businesses?',
-            a: 'Yes. Every table is protected at the database level, so a query from one business cannot return another business rows. Connections are encrypted and data is backed up daily.'
-        },
-        {
-            q: 'Can it handle several companies under one group?',
-            a: 'Yes. Each entity keeps its own books and its own chart of accounts, and head office sees a consolidated view across all of them. Inter company transactions are recorded on both sides.'
-        },
-        {
-            q: 'How long does setup take?',
-            a: 'A single shop is usually trading the same day. A multi site rollout is scoped with you, and we handle the data migration and staff training as part of it.'
-        },
-        {
-            q: 'What support do I get?',
-            a: 'WhatsApp, phone and email during working hours, Monday to Saturday. Enterprise accounts get a named contact, an onboarding programme and a response time agreed in writing.'
-        },
+        { q: 'Is this for a small shop or a large company?', a: 'Both, on the same platform. A market stall runs the till and nothing else. A group with fourteen branches runs the same ledger across every site with head office consolidation, approval chains and an audit trail. You are not asked to migrate to a different product when you grow.' },
+        { q: 'What happens when the internet goes down?', a: 'You keep selling. Sales and stock movements are saved on the device and upload on their own once the connection returns. Nobody has to remember to do anything.' },
+        { q: 'Do I need an accountant to use it?', a: 'No. You record what you sold and what you spent. The double entry happens underneath, so your profit and loss, balance sheet and cash flow are always current. Your accountant can log in and take what they need.' },
+        { q: 'Can I move my data out later?', a: 'Yes. Export any list to CSV or PDF from the screen you are looking at, and there is an API if you want to connect BBU1 to something else. The data is yours.' },
+        { q: 'Is my data separate from other businesses?', a: 'Yes. Every table is protected at the database level, so a query from one business cannot return another business rows. Connections are encrypted and data is backed up daily.' },
+        { q: 'Can it handle several companies under one group?', a: 'Yes. Each entity keeps its own books and its own chart of accounts, and head office sees a consolidated view across all of them. Inter company transactions are recorded on both sides.' },
+        { q: 'How long does setup take?', a: 'A single shop is usually trading the same day. A multi site rollout is scoped with you, and we handle the data migration and staff training as part of it.' },
+        { q: 'What support do I get?', a: 'WhatsApp, phone and email during working hours, Monday to Saturday. Enterprise accounts get a named contact, an onboarding programme and a response time agreed in writing.' },
     ] as FaqItem[],
     cookieCategories: [
         { id: 'essential', name: 'Essential', description: 'Needed for the site to work, including security and your sign in session. These cannot be switched off.', isRequired: true, defaultChecked: true },
@@ -110,17 +87,118 @@ const staggerContainer: Variants = {
     visible: { transition: { staggerChildren: 0.06 } }
 };
 
+const rowStagger: Variants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.09, delayChildren: 0.15 } }
+};
+
+const rowItem: Variants = {
+    hidden: { opacity: 0, x: -14 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.4, ease: EASE } }
+};
+
+/* Accent palette. Colour carries meaning per module, not decoration. */
+const ACCENTS: Record<string, { tile: string; text: string; ring: string; glow: string }> = {
+    blue: { tile: 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400', text: 'text-blue-600', ring: 'group-hover:border-blue-300 dark:group-hover:border-blue-500/40', glow: 'bg-blue-500' },
+    emerald: { tile: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400', text: 'text-emerald-600', ring: 'group-hover:border-emerald-300 dark:group-hover:border-emerald-500/40', glow: 'bg-emerald-500' },
+    violet: { tile: 'bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400', text: 'text-violet-600', ring: 'group-hover:border-violet-300 dark:group-hover:border-violet-500/40', glow: 'bg-violet-500' },
+    amber: { tile: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400', text: 'text-amber-600', ring: 'group-hover:border-amber-300 dark:group-hover:border-amber-500/40', glow: 'bg-amber-500' },
+    rose: { tile: 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400', text: 'text-rose-600', ring: 'group-hover:border-rose-300 dark:group-hover:border-rose-500/40', glow: 'bg-rose-500' },
+    sky: { tile: 'bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400', text: 'text-sky-600', ring: 'group-hover:border-sky-300 dark:group-hover:border-sky-500/40', glow: 'bg-sky-500' },
+    teal: { tile: 'bg-teal-50 text-teal-600 dark:bg-teal-500/15 dark:text-teal-400', text: 'text-teal-600', ring: 'group-hover:border-teal-300 dark:group-hover:border-teal-500/40', glow: 'bg-teal-500' },
+    indigo: { tile: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400', text: 'text-indigo-600', ring: 'group-hover:border-indigo-300 dark:group-hover:border-indigo-500/40', glow: 'bg-indigo-500' },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Small motion helpers                                               */
+/* ------------------------------------------------------------------ */
+
+function CountUp({ to, duration = 1.4, className }: { to: number; duration?: number; className?: string }) {
+    const ref = useRef<HTMLSpanElement>(null);
+    const inView = useInView(ref, { once: true, amount: 0.5 });
+    const count = useMotionValue(0);
+    const rounded = useTransform(count, latest => new Intl.NumberFormat('en').format(Math.round(latest)));
+
+    useEffect(() => {
+        if (!inView) return;
+        const controls = animate(count, to, { duration, ease: 'easeOut' });
+        return controls.stop;
+    }, [inView, to, duration, count]);
+
+    return <motion.span ref={ref} className={className}>{rounded}</motion.span>;
+}
+
+function HScroll({ children, className }: { children: ReactNode; className?: string }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [canLeft, setCanLeft] = useState(false);
+    const [canRight, setCanRight] = useState(true);
+
+    const update = useCallback(() => {
+        const el = ref.current;
+        if (!el) return;
+        setCanLeft(el.scrollLeft > 8);
+        setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+    }, []);
+
+    useEffect(() => {
+        update();
+        const el = ref.current;
+        if (!el) return;
+        el.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        return () => {
+            el.removeEventListener('scroll', update);
+            window.removeEventListener('resize', update);
+        };
+    }, [update]);
+
+    const scrollBy = (dir: 1 | -1) => {
+        const el = ref.current;
+        if (!el) return;
+        el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.8), behavior: 'smooth' });
+    };
+
+    return (
+        <div className={cn('relative', className)}>
+            <div
+                ref={ref}
+                className="hide-scrollbar flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+                {children}
+            </div>
+
+            <button
+                onClick={() => scrollBy(-1)}
+                disabled={!canLeft}
+                aria-label="Scroll left"
+                className={cn(
+                    'absolute -left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border bg-white shadow-md transition-opacity dark:bg-slate-900 lg:flex',
+                    canLeft ? 'border-slate-200 opacity-100 dark:border-slate-700' : 'pointer-events-none border-slate-100 opacity-0'
+                )}
+            >
+                <ChevronLeft className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+            </button>
+
+            <button
+                onClick={() => scrollBy(1)}
+                disabled={!canRight}
+                aria-label="Scroll right"
+                className={cn(
+                    'absolute -right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border bg-white shadow-md transition-opacity dark:bg-slate-900 lg:flex',
+                    canRight ? 'border-slate-200 opacity-100 dark:border-slate-700' : 'pointer-events-none border-slate-100 opacity-0'
+                )}
+            >
+                <ChevronRight className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+            </button>
+        </div>
+    );
+}
+
 const ListItem = forwardRef<ElementRef<'div'>, ComponentPropsWithoutRef<'div'> & { icon?: LucideIcon }>(
     ({ className, title, children, icon: Icon, ...props }, ref) => (
-        <div
-            ref={ref}
-            className={cn(
-                'flex cursor-pointer select-none items-start rounded-lg p-3 leading-none outline-none transition-colors hover:bg-slate-50 dark:hover:bg-slate-800',
-                className
-            )}
-            {...props}
-        >
-            <div className="mr-3 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        <div ref={ref} className={cn('flex cursor-pointer select-none items-start rounded-lg p-3 leading-none outline-none transition-colors hover:bg-blue-50/70 dark:hover:bg-slate-800', className)} {...props}>
+            <div className="mr-3 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
                 {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
             </div>
             <div className="min-w-0">
@@ -132,39 +210,19 @@ const ListItem = forwardRef<ElementRef<'div'>, ComponentPropsWithoutRef<'div'> &
 );
 ListItem.displayName = 'ListItem';
 
-/* ------------------------------------------------------------------ */
-/*  Section shell. Each section gets a surface, a number and a rule,   */
-/*  so the eye can tell one apart from the next.                       */
-/* ------------------------------------------------------------------ */
-
 type Surface = 'light' | 'tint' | 'dark';
 
 const SURFACE_CLASS: Record<Surface, string> = {
     light: 'bg-white dark:bg-slate-950',
-    tint: 'bg-slate-50 dark:bg-slate-900/40',
+    tint: 'bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-950',
     dark: 'bg-[#070C18] text-white',
 };
 
-function Section({
-    children,
-    surface = 'light',
-    id,
-    className,
-}: {
-    children: ReactNode;
-    surface?: Surface;
-    id?: string;
-    className?: string;
-}) {
+function Section({ children, surface = 'light', id, className }: { children: ReactNode; surface?: Surface; id?: string; className?: string }) {
     return (
         <motion.section
             id={id}
-            className={cn(
-                'border-t py-16 sm:py-24',
-                surface === 'dark' ? 'border-white/10' : 'border-slate-200 dark:border-slate-800',
-                SURFACE_CLASS[surface],
-                className
-            )}
+            className={cn('border-t py-16 sm:py-24', surface === 'dark' ? 'border-white/10' : 'border-slate-200 dark:border-slate-800', SURFACE_CLASS[surface], className)}
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
@@ -175,61 +233,24 @@ function Section({
     );
 }
 
-function SectionHeading({
-    index,
-    eyebrow,
-    title,
-    sub,
-    dark = false,
-    center = false,
-}: {
-    index?: string;
-    eyebrow: string;
-    title: string;
-    sub?: string;
-    dark?: boolean;
-    center?: boolean;
-}) {
+function SectionHeading({ eyebrow, title, sub, dark = false, accent = 'blue' }: { eyebrow: string; title: string; sub?: string; dark?: boolean; accent?: keyof typeof ACCENTS }) {
+    const a = ACCENTS[accent];
     return (
-        <div className={cn('max-w-2xl', center && 'mx-auto text-center')}>
-            <div className={cn('flex items-center gap-3', center && 'justify-center')}>
-                {index ? (
-                    <span className={cn(
-                        'flex h-7 w-7 items-center justify-center rounded-md text-xs font-semibold tabular-nums',
-                        dark ? 'bg-white/10 text-slate-300' : 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                    )}>
-                        {index}
-                    </span>
-                ) : null}
-                <span className={cn(
-                    'text-xs font-medium uppercase tracking-[0.16em]',
-                    dark ? 'text-slate-400' : 'text-slate-400'
-                )}>
-                    {eyebrow}
-                </span>
+        <div className="max-w-2xl">
+            <div className="flex items-center gap-2.5">
+                <span className={cn('h-1.5 w-1.5 rounded-full', a.glow)} />
+                <span className={cn('text-xs font-semibold uppercase tracking-[0.16em]', dark ? 'text-slate-400' : a.text)}>{eyebrow}</span>
             </div>
-
-            <h2 className={cn(
-                'mt-5 text-2xl font-semibold leading-tight tracking-tight sm:text-3xl lg:text-[2.1rem]',
-                dark ? 'text-white' : 'text-slate-900 dark:text-slate-50'
-            )}>
+            <h2 className={cn('mt-4 text-2xl font-semibold leading-tight tracking-tight sm:text-3xl lg:text-[2.1rem]', dark ? 'text-white' : 'text-slate-900 dark:text-slate-50')}>
                 {title}
             </h2>
-
-            {sub ? (
-                <p className={cn(
-                    'mt-4 text-base leading-relaxed md:text-lg',
-                    dark ? 'text-slate-400' : 'text-muted-foreground'
-                )}>
-                    {sub}
-                </p>
-            ) : null}
+            {sub ? <p className={cn('mt-4 text-base leading-relaxed md:text-lg', dark ? 'text-slate-400' : 'text-muted-foreground')}>{sub}</p> : null}
         </div>
     );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Product interface mock, built in code so it stays sharp.           */
+/*  Animated product mockups                                           */
 /* ------------------------------------------------------------------ */
 
 const APP_NAV = [
@@ -243,32 +264,34 @@ const APP_NAV = [
 
 function AppChrome({ active, title, subtitle, children }: { active: string; title: string; subtitle?: string; children: ReactNode }) {
     return (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex h-9 items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-4 dark:border-slate-800 dark:bg-slate-900">
-                <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-                <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-                <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-                <div className="mx-auto hidden h-4 w-40 rounded bg-white text-center text-[9px] leading-4 text-slate-400 dark:bg-slate-800 sm:block">
-                    bbu1.com
-                </div>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg shadow-slate-900/[0.04] dark:border-slate-800 dark:bg-slate-950">
+            <div className="flex h-9 items-center gap-1.5 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100/50 px-4 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-300" />
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
+                <div className="mx-auto hidden h-4 w-40 rounded bg-white text-center text-[9px] leading-4 text-slate-400 dark:bg-slate-800 sm:block">bbu1.com</div>
             </div>
 
             <div className="flex">
                 <div className="hidden w-40 shrink-0 border-r border-slate-200 bg-slate-50/60 py-3 dark:border-slate-800 dark:bg-slate-900/60 sm:block">
-                    {APP_NAV.map((item) => {
+                    {APP_NAV.map((item, i) => {
                         const Icon = item.icon;
                         const isActive = item.label === active;
                         return (
-                            <div
+                            <motion.div
                                 key={item.label}
+                                initial={{ opacity: 0, x: -8 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.05, duration: 0.3 }}
                                 className={cn(
                                     'mx-2 mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs',
-                                    isActive ? 'bg-slate-900 text-white dark:bg-blue-600' : 'text-slate-500 dark:text-slate-400'
+                                    isActive ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30' : 'text-slate-500 dark:text-slate-400'
                                 )}
                             >
                                 <Icon className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">{item.label}</span>
-                            </div>
+                            </motion.div>
                         );
                     })}
                 </div>
@@ -281,25 +304,15 @@ function AppChrome({ active, title, subtitle, children }: { active: string; titl
                         </div>
                         <div className="hidden items-center gap-2 sm:flex">
                             <div className="flex h-7 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-[11px] text-slate-400 dark:border-slate-800">
-                                <Search className="h-3 w-3" />
-                                Search
+                                <Search className="h-3 w-3" /> Search
                             </div>
-                            <div className="h-7 w-7 rounded-full bg-slate-200 dark:bg-slate-800" />
+                            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500" />
                         </div>
                     </div>
                     <div className="p-4">{children}</div>
                 </div>
             </div>
         </div>
-    );
-}
-
-function Money({ value, currency = 'UGX' }: { value: string; currency?: string }) {
-    return (
-        <span className="tabular-nums">
-            <span className="text-[0.75em] text-slate-400">{currency} </span>
-            {value}
-        </span>
     );
 }
 
@@ -314,71 +327,76 @@ function PosScreen() {
         <AppChrome active="Sell" title="Counter" subtitle="Till 1, Nakawa branch">
             <div className="grid gap-4 lg:grid-cols-5">
                 <div className="lg:col-span-3">
-                    <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+                    <motion.div variants={rowStagger} initial="hidden" whileInView="visible" viewport={{ once: true }} className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
                         <div className="grid grid-cols-[1fr_auto_auto] gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:border-slate-800 dark:bg-slate-900">
-                            <span>Item</span>
-                            <span className="text-right">Qty</span>
-                            <span className="text-right">Amount</span>
+                            <span>Item</span><span className="text-right">Qty</span><span className="text-right">Amount</span>
                         </div>
                         {SALE_LINES.map((line, i) => (
-                            <div key={i} className={cn('grid grid-cols-[1fr_auto_auto] items-center gap-3 px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
+                            <motion.div key={i} variants={rowItem} className={cn('grid grid-cols-[1fr_auto_auto] items-center gap-3 px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
                                 <div className="min-w-0">
                                     <p className="truncate text-slate-900 dark:text-slate-100">{line.name}</p>
                                     <p className="text-[10px] text-slate-400">{line.price} each</p>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="flex h-5 w-5 items-center justify-center rounded border border-slate-200 text-slate-400 dark:border-slate-700">
-                                        <Minus className="h-2.5 w-2.5" />
-                                    </span>
+                                    <span className="flex h-5 w-5 items-center justify-center rounded border border-slate-200 text-slate-400 dark:border-slate-700"><Minus className="h-2.5 w-2.5" /></span>
                                     <span className="w-4 text-center text-slate-700 dark:text-slate-200">{line.qty}</span>
-                                    <span className="flex h-5 w-5 items-center justify-center rounded border border-slate-200 text-slate-400 dark:border-slate-700">
-                                        <Plus className="h-2.5 w-2.5" />
-                                    </span>
+                                    <span className="flex h-5 w-5 items-center justify-center rounded border border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-500/30 dark:bg-blue-500/10"><Plus className="h-2.5 w-2.5" /></span>
                                 </div>
                                 <span className="text-right tabular-nums text-slate-900 dark:text-slate-100">{line.total}</span>
-                            </div>
+                            </motion.div>
                         ))}
-                    </div>
+                    </motion.div>
 
                     <div className="mt-3 flex flex-wrap gap-1.5">
-                        {['Bread', 'Milk 500ml', 'Soap', 'Salt', 'Matches'].map((item) => (
-                            <span key={item} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                        {['Bread', 'Milk 500ml', 'Soap', 'Salt', 'Matches'].map((item, i) => (
+                            <motion.span
+                                key={item}
+                                initial={{ opacity: 0, y: 6 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.5 + i * 0.05 }}
+                                className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-500 dark:border-slate-800 dark:text-slate-400"
+                            >
                                 {item}
-                            </span>
+                            </motion.span>
                         ))}
                     </div>
                 </div>
 
                 <div className="lg:col-span-2">
                     <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
-                        <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>Subtotal</span><span className="tabular-nums">54,500</span>
-                        </div>
-                        <div className="mt-1.5 flex items-center justify-between text-xs text-slate-500">
-                            <span>VAT 18%</span><span className="tabular-nums">9,810</span>
-                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-500"><span>Subtotal</span><span className="tabular-nums">54,500</span></div>
+                        <div className="mt-1.5 flex items-center justify-between text-xs text-slate-500"><span>VAT 18%</span><span className="tabular-nums">9,810</span></div>
                         <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
                             <span className="text-xs font-medium text-slate-900 dark:text-slate-100">Total</span>
-                            <span className="text-base font-semibold text-slate-900 dark:text-slate-50"><Money value="64,310" /></span>
+                            <span className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                                <span className="text-[0.7em] text-slate-400">UGX </span>
+                                <CountUp to={64310} className="tabular-nums" />
+                            </span>
                         </div>
 
                         <div className="mt-3 grid grid-cols-3 gap-1.5">
                             {['Cash', 'MoMo', 'Card'].map((method, i) => (
-                                <span key={method} className={cn('rounded-lg border py-2 text-center text-[11px]', i === 0 ? 'border-slate-900 bg-slate-900 text-white dark:border-blue-600 dark:bg-blue-600' : 'border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400')}>
+                                <span key={method} className={cn('rounded-lg border py-2 text-center text-[11px] transition-colors', i === 0 ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400')}>
                                     {method}
                                 </span>
                             ))}
                         </div>
 
-                        <div className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-slate-900 py-2.5 text-xs font-medium text-white dark:bg-blue-600">
-                            <Printer className="h-3.5 w-3.5" />
-                            Complete sale
-                        </div>
+                        <motion.div
+                            animate={{ boxShadow: ['0 0 0 0 rgba(37,99,235,0.35)', '0 0 0 8px rgba(37,99,235,0)', '0 0 0 0 rgba(37,99,235,0)'] }}
+                            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeOut' }}
+                            className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-slate-900 py-2.5 text-xs font-medium text-white dark:bg-blue-600"
+                        >
+                            <Printer className="h-3.5 w-3.5" /> Complete sale
+                        </motion.div>
                     </div>
 
-                    <div className="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800">
-                        <WifiOff className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                        <p className="text-[11px] leading-tight text-slate-500">Offline. 12 sales held, will upload on their own.</p>
+                    <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-500/25 dark:bg-amber-500/10">
+                        <motion.span animate={{ opacity: [1, 0.35, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+                            <WifiOff className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                        </motion.span>
+                        <p className="text-[11px] leading-tight text-amber-800 dark:text-amber-300">Offline. 12 sales held, will upload on their own.</p>
                     </div>
                 </div>
             </div>
@@ -397,36 +415,50 @@ const LEDGER_ROWS = [
 function LedgerScreen() {
     return (
         <AppChrome active="Accounts" title="Journal entry" subtitle="Posted automatically from sale INV-2841">
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+            <motion.div variants={rowStagger} initial="hidden" whileInView="visible" viewport={{ once: true }} className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
                 <div className="grid grid-cols-[1fr_auto_auto] gap-4 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:border-slate-800 dark:bg-slate-900">
-                    <span>Account</span>
-                    <span className="w-20 text-right">Debit</span>
-                    <span className="w-20 text-right">Credit</span>
+                    <span>Account</span><span className="w-20 text-right">Debit</span><span className="w-20 text-right">Credit</span>
                 </div>
                 {LEDGER_ROWS.map((row, i) => (
-                    <div key={i} className={cn('grid grid-cols-[1fr_auto_auto] gap-4 px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
+                    <motion.div key={i} variants={rowItem} className={cn('grid grid-cols-[1fr_auto_auto] gap-4 px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
                         <span className="truncate text-slate-700 dark:text-slate-200">{row.account}</span>
                         <span className="w-20 text-right tabular-nums text-slate-900 dark:text-slate-100">{row.debit || '\u2013'}</span>
                         <span className="w-20 text-right tabular-nums text-slate-900 dark:text-slate-100">{row.credit || '\u2013'}</span>
-                    </div>
+                    </motion.div>
                 ))}
-                <div className="grid grid-cols-[1fr_auto_auto] gap-4 border-t-2 border-slate-900 px-3 py-2.5 text-xs font-semibold dark:border-slate-600">
-                    <span className="text-slate-900 dark:text-slate-50">Balanced</span>
-                    <span className="w-20 text-right tabular-nums text-slate-900 dark:text-slate-50">102,510</span>
-                    <span className="w-20 text-right tabular-nums text-slate-900 dark:text-slate-50">102,510</span>
-                </div>
-            </div>
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.75 }}
+                    className="grid grid-cols-[1fr_auto_auto] gap-4 border-t-2 border-emerald-500 bg-emerald-50/60 px-3 py-2.5 text-xs font-semibold dark:bg-emerald-500/10"
+                >
+                    <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400"><Check className="h-3 w-3" />Balanced</span>
+                    <span className="w-20 text-right tabular-nums text-emerald-700 dark:text-emerald-400">102,510</span>
+                    <span className="w-20 text-right tabular-nums text-emerald-700 dark:text-emerald-400">102,510</span>
+                </motion.div>
+            </motion.div>
 
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 {[
-                    { label: 'Revenue today', value: '1,284,000' },
-                    { label: 'Cost of sales', value: '812,400' },
-                    { label: 'Gross profit', value: '471,600' },
-                ].map((item) => (
-                    <div key={item.label} className="rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800">
+                    { label: 'Revenue today', value: 1284000, accent: 'blue' },
+                    { label: 'Cost of sales', value: 812400, accent: 'amber' },
+                    { label: 'Gross profit', value: 471600, accent: 'emerald' },
+                ].map((item, i) => (
+                    <motion.div
+                        key={item.label}
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.85 + i * 0.08 }}
+                        className="rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800"
+                    >
                         <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">{item.label}</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50"><Money value={item.value} /></p>
-                    </div>
+                        <p className={cn('mt-1 text-sm font-semibold', ACCENTS[item.accent].text)}>
+                            <span className="text-[0.7em] opacity-60">UGX </span>
+                            <CountUp to={item.value} className="tabular-nums" />
+                        </p>
+                    </motion.div>
                 ))}
             </div>
         </AppChrome>
@@ -443,41 +475,42 @@ const STOCK_ROWS = [
 function StockScreen() {
     return (
         <AppChrome active="Stock" title="Stock on hand" subtitle="2 branches, live">
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+            <motion.div variants={rowStagger} initial="hidden" whileInView="visible" viewport={{ once: true }} className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
                 <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:border-slate-800 dark:bg-slate-900">
-                    <span>Item</span>
-                    <span className="w-14 text-right">Nakawa</span>
-                    <span className="w-14 text-right">Ntinda</span>
-                    <span className="w-16 text-right">Status</span>
+                    <span>Item</span><span className="w-14 text-right">Nakawa</span><span className="w-14 text-right">Ntinda</span><span className="w-16 text-right">Status</span>
                 </div>
                 {STOCK_ROWS.map((row, i) => (
-                    <div key={i} className={cn('grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
+                    <motion.div key={i} variants={rowItem} className={cn('grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
                         <div className="min-w-0">
                             <p className="truncate text-slate-900 dark:text-slate-100">{row.name}</p>
                             <p className="font-mono text-[10px] text-slate-400">{row.sku}</p>
                         </div>
-                        <span className="w-14 text-right tabular-nums text-slate-700 dark:text-slate-200">{row.a}</span>
-                        <span className="w-14 text-right tabular-nums text-slate-700 dark:text-slate-200">{row.b}</span>
+                        <span className="w-14 text-right tabular-nums text-slate-700 dark:text-slate-200"><CountUp to={row.a} duration={1} /></span>
+                        <span className="w-14 text-right tabular-nums text-slate-700 dark:text-slate-200"><CountUp to={row.b} duration={1} /></span>
                         <span className="w-16 text-right">
-                            <span className={cn(
-                                'rounded px-1.5 py-0.5 text-[10px] font-medium',
-                                row.status === 'ok' && 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-                                row.status === 'low' && 'bg-amber-100 text-amber-800',
-                                row.status === 'out' && 'bg-red-100 text-red-700'
-                            )}>
+                            <motion.span
+                                animate={row.status !== 'ok' ? { opacity: [1, 0.55, 1] } : undefined}
+                                transition={{ duration: 2.2, repeat: Infinity }}
+                                className={cn(
+                                    'inline-block rounded px-1.5 py-0.5 text-[10px] font-medium',
+                                    row.status === 'ok' && 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+                                    row.status === 'low' && 'bg-amber-100 text-amber-800',
+                                    row.status === 'out' && 'bg-rose-100 text-rose-700'
+                                )}
+                            >
                                 {row.status === 'ok' ? 'In stock' : row.status === 'low' ? 'Low' : 'Out'}
-                            </span>
+                            </motion.span>
                         </span>
-                    </div>
+                    </motion.div>
                 ))}
-            </div>
+            </motion.div>
 
-            <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800">
-                <Package className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                <p className="text-[11px] leading-relaxed text-slate-500">
+            <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.7 }} className="mt-3 flex items-start gap-2.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 dark:border-violet-500/25 dark:bg-violet-500/10">
+                <Package className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-600" />
+                <p className="text-[11px] leading-relaxed text-violet-900 dark:text-violet-300">
                     2 items are at or below their reorder point. A draft purchase order is ready for your supplier.
                 </p>
-            </div>
+            </motion.div>
         </AppChrome>
     );
 }
@@ -489,27 +522,23 @@ function ReportScreen() {
         <AppChrome active="Reports" title="Income statement" subtitle="1 to 31 March, all branches">
             <div className="grid gap-4 lg:grid-cols-5">
                 <div className="lg:col-span-3">
-                    <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+                    <motion.div variants={rowStagger} initial="hidden" whileInView="visible" viewport={{ once: true }} className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
                         {[
-                            { label: 'Revenue', value: '38,420,000', strong: false },
-                            { label: 'Cost of sales', value: '(24,180,000)', strong: false },
-                            { label: 'Gross profit', value: '14,240,000', strong: true },
-                            { label: 'Operating expenses', value: '(6,910,000)', strong: false },
-                            { label: 'Net profit', value: '7,330,000', strong: true },
+                            { label: 'Revenue', value: '38,420,000', strong: false, tone: '' },
+                            { label: 'Cost of sales', value: '(24,180,000)', strong: false, tone: '' },
+                            { label: 'Gross profit', value: '14,240,000', strong: true, tone: 'text-blue-600' },
+                            { label: 'Operating expenses', value: '(6,910,000)', strong: false, tone: '' },
+                            { label: 'Net profit', value: '7,330,000', strong: true, tone: 'text-emerald-600' },
                         ].map((row, i) => (
-                            <div key={i} className={cn('flex items-center justify-between px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800', row.strong && 'font-semibold')}>
+                            <motion.div key={i} variants={rowItem} className={cn('flex items-center justify-between px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800', row.strong && 'font-semibold')}>
                                 <span className={row.strong ? 'text-slate-900 dark:text-slate-50' : 'text-slate-600 dark:text-slate-300'}>{row.label}</span>
-                                <span className="tabular-nums text-slate-900 dark:text-slate-50">{row.value}</span>
-                            </div>
+                                <span className={cn('tabular-nums', row.tone || 'text-slate-900 dark:text-slate-50')}>{row.value}</span>
+                            </motion.div>
                         ))}
-                    </div>
+                    </motion.div>
                     <div className="mt-2 flex gap-1.5">
-                        <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-500 dark:border-slate-800">
-                            <FileText className="h-3 w-3" /> PDF
-                        </span>
-                        <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-500 dark:border-slate-800">
-                            <FileText className="h-3 w-3" /> Excel
-                        </span>
+                        <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-500 dark:border-slate-800"><FileText className="h-3 w-3" /> PDF</span>
+                        <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-500 dark:border-slate-800"><FileText className="h-3 w-3" /> Excel</span>
                     </div>
                 </div>
 
@@ -518,21 +547,30 @@ function ReportScreen() {
                         <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Sales this week</p>
                         <div className="mt-3 flex h-24 items-end gap-1.5">
                             {REPORT_BARS.map((h, i) => (
-                                <div key={i} className={cn('flex-1 rounded-sm', i === REPORT_BARS.length - 1 ? 'bg-slate-900 dark:bg-blue-600' : 'bg-slate-200 dark:bg-slate-800')} style={{ height: `${h}%` }} />
+                                <motion.div
+                                    key={i}
+                                    initial={{ height: '4%' }}
+                                    whileInView={{ height: `${h}%` }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: 0.15 + i * 0.07, duration: 0.6, ease: EASE }}
+                                    className={cn('flex-1 rounded-sm', i === REPORT_BARS.length - 1 ? 'bg-gradient-to-t from-blue-600 to-blue-400' : 'bg-slate-200 dark:bg-slate-800')}
+                                />
                             ))}
                         </div>
                         <div className="mt-2 flex justify-between text-[9px] text-slate-400"><span>Mon</span><span>Sun</span></div>
                     </div>
 
-                    <div className="mt-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                    <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.8 }} className="mt-2 rounded-lg border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-3 dark:border-violet-500/25 dark:from-violet-500/10 dark:to-transparent">
                         <div className="flex items-center gap-1.5">
-                            <Sparkles className="h-3 w-3 text-slate-400" />
-                            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Aura</p>
+                            <motion.span animate={{ rotate: [0, 12, -12, 0] }} transition={{ duration: 3, repeat: Infinity }}>
+                                <Sparkles className="h-3 w-3 text-violet-600" />
+                            </motion.span>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-600">Aura</p>
                         </div>
-                        <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                        <p className="mt-1.5 text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
                             Cooking oil sold 3 times faster this week than last. At current pace you run out on Thursday.
                         </p>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
         </AppChrome>
@@ -542,17 +580,17 @@ function ReportScreen() {
 function ClinicScreen() {
     return (
         <AppChrome active="Sell" title="Dispensing" subtitle="Pharmacy counter">
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-red-700">Allergies</p>
-                <p className="text-xs font-medium text-red-900">Penicillin, sulphur</p>
-            </div>
+            <motion.div initial={{ opacity: 0, y: -6 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 dark:border-rose-500/25 dark:bg-rose-500/10">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-700">Allergies</p>
+                <p className="text-xs font-medium text-rose-900 dark:text-rose-300">Penicillin, sulphur</p>
+            </motion.div>
 
-            <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+            <motion.div variants={rowStagger} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
                 {[
                     { drug: 'Artemether 20mg', dose: '1 tablet twice daily for 3 days', qty: 6, stock: 240 },
                     { drug: 'Paracetamol 500mg', dose: '2 tablets three times daily', qty: 18, stock: 12 },
                 ].map((row, i) => (
-                    <div key={i} className={cn('px-3 py-2.5', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
+                    <motion.div key={i} variants={rowItem} className={cn('px-3 py-2.5', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                                 <p className="truncate text-xs font-medium text-slate-900 dark:text-slate-100">{row.drug}</p>
@@ -560,15 +598,15 @@ function ClinicScreen() {
                             </div>
                             <span className="shrink-0 text-xs tabular-nums text-slate-700 dark:text-slate-200">x{row.qty}</span>
                         </div>
-                        <p className={cn('mt-1 text-[10px]', row.stock < row.qty ? 'text-amber-700' : 'text-slate-400')}>
+                        <p className={cn('mt-1 text-[10px]', row.stock < row.qty ? 'font-medium text-amber-700' : 'text-slate-400')}>
                             {row.stock} in stock{row.stock < row.qty ? ', not enough to dispense' : ''}
                         </p>
-                    </div>
+                    </motion.div>
                 ))}
-            </div>
+            </motion.div>
 
             <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800">
-                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
                 <p className="text-[11px] leading-relaxed text-slate-500">
                     Dispensing is blocked until the pharmacist confirms identity and checks the allergy list.
                 </p>
@@ -582,24 +620,23 @@ function GroupScreen() {
         <AppChrome active="Dashboard" title="Group consolidation" subtitle="4 entities, 14 branches">
             <div className="grid gap-2 sm:grid-cols-4">
                 {[
-                    { label: 'Group revenue', value: '412.8M' },
-                    { label: 'Gross margin', value: '31.4%' },
-                    { label: 'Cash position', value: '88.2M' },
-                    { label: 'Entities', value: '4' },
-                ].map((item) => (
-                    <div key={item.label} className="rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800">
+                    { label: 'Group revenue', value: 412, suffix: '.8M', accent: 'blue' },
+                    { label: 'Gross margin', value: 31, suffix: '.4%', accent: 'emerald' },
+                    { label: 'Cash position', value: 88, suffix: '.2M', accent: 'sky' },
+                    { label: 'Entities', value: 4, suffix: '', accent: 'violet' },
+                ].map((item, i) => (
+                    <motion.div key={item.label} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800">
                         <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">{item.label}</p>
-                        <p className="mt-1 text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-50">{item.value}</p>
-                    </div>
+                        <p className={cn('mt-1 text-sm font-semibold tabular-nums', ACCENTS[item.accent].text)}>
+                            <CountUp to={item.value} duration={1.2} />{item.suffix}
+                        </p>
+                    </motion.div>
                 ))}
             </div>
 
-            <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+            <motion.div variants={rowStagger} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
                 <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:border-slate-800 dark:bg-slate-900">
-                    <span>Entity</span>
-                    <span className="w-20 text-right">Revenue</span>
-                    <span className="w-20 text-right">Net</span>
-                    <span className="w-16 text-right">Books</span>
+                    <span>Entity</span><span className="w-20 text-right">Revenue</span><span className="w-20 text-right">Net</span><span className="w-16 text-right">Books</span>
                 </div>
                 {[
                     { name: 'Retail Ltd', rev: '184.2M', net: '31.0M', closed: true },
@@ -607,21 +644,21 @@ function GroupScreen() {
                     { name: 'Medical Centre Ltd', rev: '61.4M', net: '9.8M', closed: false },
                     { name: 'Properties Ltd', rev: '24.5M', net: '7.1M', closed: true },
                 ].map((row, i) => (
-                    <div key={i} className={cn('grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
+                    <motion.div key={i} variants={rowItem} className={cn('grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2.5 text-xs', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
                         <span className="truncate text-slate-900 dark:text-slate-100">{row.name}</span>
                         <span className="w-20 text-right tabular-nums text-slate-700 dark:text-slate-200">{row.rev}</span>
                         <span className="w-20 text-right tabular-nums text-slate-700 dark:text-slate-200">{row.net}</span>
                         <span className="w-16 text-right">
-                            <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', row.closed ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' : 'bg-amber-100 text-amber-800')}>
+                            <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', row.closed ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-amber-100 text-amber-800')}>
                                 {row.closed ? 'Closed' : 'Open'}
                             </span>
                         </span>
-                    </div>
+                    </motion.div>
                 ))}
-            </div>
+            </motion.div>
 
             <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800">
-                <Network className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <Network className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-500" />
                 <p className="text-[11px] leading-relaxed text-slate-500">
                     Inter company transfers are matched on both sides and removed from the group total.
                 </p>
@@ -631,55 +668,19 @@ function GroupScreen() {
 }
 
 const PRODUCT_SCREENS = [
-    {
-        id: 'sell', label: 'Sell',
-        title: 'Ring up a sale, the rest follows',
-        body: 'The counter is the front door of the whole system. Scan or tap an item, take cash or mobile money, print a receipt. Everything behind it happens on its own.',
-        points: ['Barcode scanners and receipt printers', 'Cash, mobile money, card and credit', 'Keeps working with no connection'],
-        render: () => <PosScreen />,
-    },
-    {
-        id: 'accounts', label: 'Accounts',
-        title: 'Real double entry, no accountant needed',
-        body: 'That one sale writes five ledger lines. Cash up, revenue up, VAT set aside, stock down, cost of sales recorded. Your statements are correct before the next customer is served.',
-        points: ['Profit and loss, balance sheet, cash flow', 'VAT and tax set aside as you sell', 'Every figure traces back to its entry'],
-        render: () => <LedgerScreen />,
-    },
-    {
-        id: 'stock', label: 'Stock',
-        title: 'One stock list across every branch',
-        body: 'Sell in Nakawa and the count changes everywhere immediately. Set a reorder point per item and the system prepares the purchase order before you notice the gap.',
-        points: ['Multiple branches and warehouses', 'Reorder alerts and draft purchase orders', 'Batch and expiry tracking'],
-        render: () => <StockScreen />,
-    },
-    {
-        id: 'reports', label: 'Reports',
-        title: 'Open it and the numbers are already there',
-        body: 'No month end scramble. Statements build from the ledger as the day runs, and Aura points at what changed before you go looking for it.',
-        points: ['Statements ready at any moment', 'Export to PDF or Excel', 'Aura answers questions about your own figures'],
-        render: () => <ReportScreen />,
-    },
-    {
-        id: 'group', label: 'Group',
-        title: 'Several companies, one set of books',
-        body: 'Each entity keeps its own ledger and its own chart of accounts. Head office sees the consolidated position, with inter company transfers matched and removed.',
-        points: ['Multi entity consolidation', 'Period close per entity', 'Approval chains and audit trail'],
-        render: () => <GroupScreen />,
-    },
-    {
-        id: 'clinic', label: 'Clinic',
-        title: 'The same core, shaped for a clinic',
-        body: 'Patients, consultations, lab requests and dispensing run on the same ledger as a shop. The screen changes. What is underneath does not.',
-        points: ['Patient records with allergy warnings', 'Lab requests and results', 'Dispensing that checks stock and identity'],
-        render: () => <ClinicScreen />,
-    },
+    { id: 'sell', label: 'Sell', accent: 'blue' as const, title: 'Ring up a sale, the rest follows', body: 'The counter is the front door of the whole system. Scan or tap an item, take cash or mobile money, print a receipt. Everything behind it happens on its own.', points: ['Barcode scanners and receipt printers', 'Cash, mobile money, card and credit', 'Keeps working with no connection'], render: () => <PosScreen /> },
+    { id: 'accounts', label: 'Accounts', accent: 'emerald' as const, title: 'Real double entry, no accountant needed', body: 'That one sale writes five ledger lines. Cash up, revenue up, VAT set aside, stock down, cost of sales recorded. Your statements are correct before the next customer is served.', points: ['Profit and loss, balance sheet, cash flow', 'VAT and tax set aside as you sell', 'Every figure traces back to its entry'], render: () => <LedgerScreen /> },
+    { id: 'stock', label: 'Stock', accent: 'violet' as const, title: 'One stock list across every branch', body: 'Sell in Nakawa and the count changes everywhere immediately. Set a reorder point per item and the system prepares the purchase order before you notice the gap.', points: ['Multiple branches and warehouses', 'Reorder alerts and draft purchase orders', 'Batch and expiry tracking'], render: () => <StockScreen /> },
+    { id: 'reports', label: 'Reports', accent: 'sky' as const, title: 'Open it and the numbers are already there', body: 'No month end scramble. Statements build from the ledger as the day runs, and Aura points at what changed before you go looking for it.', points: ['Statements ready at any moment', 'Export to PDF or Excel', 'Aura answers questions about your own figures'], render: () => <ReportScreen /> },
+    { id: 'group', label: 'Group', accent: 'indigo' as const, title: 'Several companies, one set of books', body: 'Each entity keeps its own ledger and its own chart of accounts. Head office sees the consolidated position, with inter company transfers matched and removed.', points: ['Multi entity consolidation', 'Period close per entity', 'Approval chains and audit trail'], render: () => <GroupScreen /> },
+    { id: 'clinic', label: 'Clinic', accent: 'rose' as const, title: 'The same core, shaped for a clinic', body: 'Patients, consultations, lab requests and dispensing run on the same ledger as a shop. The screen changes. What is underneath does not.', points: ['Patient records with allergy warnings', 'Lab requests and results', 'Dispensing that checks stock and identity'], render: () => <ClinicScreen /> },
 ];
 
 const SALE_FLOW = [
-    { icon: ShoppingCart, title: 'You sell one bottle of cooking oil', desc: 'Cashier scans it and takes 22,500 in cash.' },
-    { icon: Boxes, title: 'Stock drops by one', desc: 'In that branch and at head office, at the same moment.' },
-    { icon: Receipt, title: 'Five ledger lines are written', desc: 'Cash, revenue, VAT payable, cost of sales, stock.' },
-    { icon: BarChart3, title: 'Your statements move', desc: 'Profit and loss, balance sheet and cash flow all reflect it.' },
+    { icon: ShoppingCart, accent: 'blue', title: 'You sell one bottle of cooking oil', desc: 'Cashier scans it and takes 22,500 in cash.' },
+    { icon: Boxes, accent: 'violet', title: 'Stock drops by one', desc: 'In that branch and at head office, at the same moment.' },
+    { icon: Receipt, accent: 'emerald', title: 'Five ledger lines are written', desc: 'Cash, revenue, VAT payable, cost of sales, stock.' },
+    { icon: BarChart3, accent: 'sky', title: 'Your statements move', desc: 'Profit and loss, balance sheet and cash flow all reflect it.' },
 ];
 
 const REPLACES = [
@@ -691,19 +692,19 @@ const REPLACES = [
 ];
 
 const HOW_IT_WORKS = [
-    { step: '01', title: 'Create an account', desc: 'Email and phone number. No card needed to start.', meta: 'Takes 2 minutes' },
-    { step: '02', title: 'Bring in what you have', desc: 'Import your stock list and opening balances from a spreadsheet. Our team does this with you.', meta: 'Same day' },
-    { step: '03', title: 'Add your team', desc: 'Invite staff and set what each of them can see and do, down to the individual screen.', meta: 'Roles and permissions' },
-    { step: '04', title: 'Start selling', desc: 'Most shops are trading on the system the same day. Larger rollouts run branch by branch.', meta: 'Go live' },
+    { step: '01', accent: 'blue', title: 'Create an account', desc: 'Email and phone number. No card needed to start.', meta: 'Takes 2 minutes' },
+    { step: '02', accent: 'violet', title: 'Bring in what you have', desc: 'Import your stock list and opening balances from a spreadsheet. Our team does this with you.', meta: 'Same day' },
+    { step: '03', accent: 'amber', title: 'Add your team', desc: 'Invite staff and set what each of them can see and do, down to the individual screen.', meta: 'Roles and permissions' },
+    { step: '04', accent: 'emerald', title: 'Start selling', desc: 'Most shops are trading the same day. Larger rollouts run branch by branch.', meta: 'Go live' },
 ];
 
 const BUILT_FOR = [
-    { icon: ShoppingCart, title: 'Shops and supermarkets', desc: 'Counter sales, stock, suppliers, daily cash up.' },
-    { icon: Stethoscope, title: 'Clinics and pharmacies', desc: 'Patients, lab requests, dispensing, billing.' },
-    { icon: Warehouse, title: 'Wholesale and distribution', desc: 'Multi branch stock, delivery routes, credit customers.' },
-    { icon: Building2, title: 'Property and rentals', desc: 'Units, tenants, rent collection, arrears.' },
-    { icon: Landmark, title: 'SACCOs and lenders', desc: 'Savings, shares, dividends, loan books.' },
-    { icon: Briefcase, title: 'Services and agencies', desc: 'Jobs, quotes, invoicing, staff time.' },
+    { icon: ShoppingCart, accent: 'blue', title: 'Shops and supermarkets', desc: 'Counter sales, stock, suppliers, daily cash up.' },
+    { icon: Stethoscope, accent: 'rose', title: 'Clinics and pharmacies', desc: 'Patients, lab requests, dispensing, billing.' },
+    { icon: Warehouse, accent: 'violet', title: 'Wholesale and distribution', desc: 'Multi branch stock, delivery routes, credit customers.' },
+    { icon: Building2, accent: 'amber', title: 'Property and rentals', desc: 'Units, tenants, rent collection, arrears.' },
+    { icon: Landmark, accent: 'emerald', title: 'SACCOs and lenders', desc: 'Savings, shares, dividends, loan books.' },
+    { icon: Briefcase, accent: 'sky', title: 'Services and agencies', desc: 'Jobs, quotes, invoicing, staff time.' },
 ];
 
 const ENTERPRISE_POINTS = [
@@ -711,17 +712,20 @@ const ENTERPRISE_POINTS = [
     { icon: Lock, title: 'Control who does what', desc: 'Roles down to the individual screen, approval chains for spend, and period lock dates so a closed month stays closed.' },
     { icon: FileCheck2, title: 'A record that stands up', desc: 'Every posting keeps who made it and when. Nothing is edited in place, so an auditor can follow any figure back to its source.' },
     { icon: Server, title: 'Your infrastructure or ours', desc: 'Hosted by us, or deployed inside your own environment where regulation or policy requires it.' },
-    { icon: Settings, title: 'Connects to what you run', desc: 'A documented API, webhooks and scheduled exports so BBU1 sits alongside your existing banking, payroll or reporting tools.' },
+    { icon: Settings, title: 'Connects to what you run', desc: 'A documented API, webhooks and scheduled exports so BBU1 sits alongside your banking, payroll or reporting tools.' },
     { icon: Users, title: 'Rollout as a project', desc: 'Data migration, branch by branch go live, staff training, and a named contact through the whole thing.' },
 ];
 
 const PLATFORM_POINTS = [
-    { icon: WifiOff, title: 'Works offline', desc: 'Sales and stock keep working with no connection and sync on their own when it returns.' },
-    { icon: ShieldCheck, title: 'Separated data', desc: 'Every business is isolated at the database level. Encrypted connections, daily backups.' },
-    { icon: Globe, title: 'More than one country', desc: 'Multiple currencies and tax rules you set per region.' },
-    { icon: BrainCircuit, title: 'Aura', desc: 'Ask about your own figures in plain language and get an answer drawn from your data.' },
-    { icon: Settings, title: 'Fits how you work', desc: 'Custom fields, your own approval steps, and an API when you need to connect something.' },
-    { icon: Users, title: 'Grows with you', desc: 'One till or fifty, on the same account, without changing product.' },
+    { icon: WifiOff, accent: 'amber', title: 'Works offline', desc: 'Sales and stock keep working with no connection. Everything queues on the device and uploads on its own when the network returns, in the order it happened.' },
+    { icon: ShieldCheck, accent: 'emerald', title: 'Separated data', desc: 'Every business is isolated at the database level, so one account cannot read another. Connections are encrypted and data is backed up daily.' },
+    { icon: Globe, accent: 'sky', title: 'More than one country', desc: 'Set currency, tax rules and financial year per region. Sell in one currency, report in another, and keep the exchange difference on the books.' },
+    { icon: BrainCircuit, accent: 'violet', title: 'Aura built in', desc: 'Ask about your own figures in plain language. Which branch is slowest, what is about to run out, why margin fell last month, answered from your data.' },
+    { icon: Settings, accent: 'blue', title: 'Fits how you work', desc: 'Custom fields on any record, your own approval steps, your own document numbering, and an API when you need to connect something else.' },
+    { icon: Users, accent: 'indigo', title: 'Grows with you', desc: 'One till or fifty, on the same account. Add branches, entities and staff without changing product or migrating data.' },
+    { icon: Smartphone, accent: 'teal', title: 'Runs on what you own', desc: 'Install it on a phone, a tablet or a desktop. It behaves like an app, updates itself, and needs no app store.' },
+    { icon: KeyRound, accent: 'rose', title: 'Access you control', desc: 'Roles per screen, PIN protection on the money screens, and a record of who changed what and when.' },
+    { icon: LifeBuoy, accent: 'amber', title: 'Help from real people', desc: 'WhatsApp, phone and email during working hours. Larger accounts get a named contact and an onboarding programme.' },
 ];
 
 type CurrencyInfo = { code: string; symbol: string; rate: number; label: string };
@@ -758,12 +762,12 @@ const COUNTRY_TO_CURRENCY: Record<string, string> = {
 };
 
 const ALL_INCLUDED_MODULES = [
-    { title: 'Finance and accounting', icon: Landmark, features: ['General ledger and journals', 'Bank reconciliation', 'Tax returns', 'Payables and receivables', 'Assets and depreciation', 'Budgets and cost centres', 'Multiple currencies', 'Period lock dates', 'Chart of accounts'] },
-    { title: 'Staff and payroll', icon: Users, features: ['Payroll and benefits', 'Hiring and onboarding', 'Staff directory', 'Attendance and shifts', 'Performance reviews', 'Leave', 'Exit process'] },
-    { title: 'Stock and supply', icon: Warehouse, features: ['Multiple warehouses', 'Manufacturing orders', 'Bundled products', 'Purchase orders', 'Stock counts', 'Batch and serial tracking', 'Landed costs', 'Transfers and adjustments', 'Barcode scanning', 'Reorder points'] },
-    { title: 'Sales and customers', icon: Handshake, features: ['Leads and pipeline', 'Campaigns', 'Support tickets', 'Full customer history', 'Price lists and discounts', 'Sales forecasting', 'Returns'] },
-    { title: 'Industry modules', icon: Briefcase, features: ['SACCO savings and shares', 'Loans and credit risk', 'Agent float and SIM stock', 'Leases and property units', 'Fleet and delivery routes', 'Field jobs and dispatch', 'Grants and donors'] },
-    { title: 'Clinic and pharmacy', icon: Stethoscope, features: ['Patient records', 'Consultations and triage', 'Lab requests and results', 'Prescriptions', 'Dispensing with stock control', 'Patient billing'] }
+    { title: 'Finance and accounting', icon: Landmark, accent: 'emerald', features: ['General ledger and journals', 'Bank reconciliation', 'Tax returns', 'Payables and receivables', 'Assets and depreciation', 'Budgets and cost centres', 'Multiple currencies', 'Period lock dates', 'Chart of accounts'] },
+    { title: 'Staff and payroll', icon: Users, accent: 'blue', features: ['Payroll and benefits', 'Hiring and onboarding', 'Staff directory', 'Attendance and shifts', 'Performance reviews', 'Leave', 'Exit process'] },
+    { title: 'Stock and supply', icon: Warehouse, accent: 'violet', features: ['Multiple warehouses', 'Manufacturing orders', 'Bundled products', 'Purchase orders', 'Stock counts', 'Batch and serial tracking', 'Landed costs', 'Transfers and adjustments', 'Barcode scanning', 'Reorder points'] },
+    { title: 'Sales and customers', icon: Handshake, accent: 'sky', features: ['Leads and pipeline', 'Campaigns', 'Support tickets', 'Full customer history', 'Price lists and discounts', 'Sales forecasting', 'Returns'] },
+    { title: 'Industry modules', icon: Briefcase, accent: 'amber', features: ['SACCO savings and shares', 'Loans and credit risk', 'Agent float and SIM stock', 'Leases and property units', 'Fleet and delivery routes', 'Field jobs and dispatch', 'Grants and donors'] },
+    { title: 'Clinic and pharmacy', icon: Stethoscope, accent: 'rose', features: ['Patient records', 'Consultations and triage', 'Lab requests and results', 'Prescriptions', 'Dispensing with stock control', 'Patient billing'] }
 ];
 
 const PLANS = [
@@ -777,7 +781,6 @@ const PLANS = [
 
 function RotatingWord({ words }: { words: string[] }) {
     const [index, setIndex] = useState(0);
-
     useEffect(() => {
         const timer = setInterval(() => setIndex(i => (i + 1) % words.length), 2600);
         return () => clearInterval(timer);
@@ -785,9 +788,7 @@ function RotatingWord({ words }: { words: string[] }) {
 
     return (
         <span className="relative inline-block align-bottom">
-            <span className="invisible" aria-hidden="true">
-                {words.reduce((a, b) => (a.length > b.length ? a : b))}
-            </span>
+            <span className="invisible" aria-hidden="true">{words.reduce((a, b) => (a.length > b.length ? a : b))}</span>
             <AnimatePresence mode="wait">
                 <motion.span
                     key={words[index]}
@@ -795,7 +796,7 @@ function RotatingWord({ words }: { words: string[] }) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -12 }}
                     transition={{ duration: 0.35, ease: EASE }}
-                    className="absolute inset-0 whitespace-nowrap text-blue-400"
+                    className="absolute inset-0 whitespace-nowrap bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent"
                 >
                     {words[index]}
                 </motion.span>
@@ -858,23 +859,16 @@ const MegaMenuHeader = () => {
     const navLinkClass = cn(
         'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
         scrolled
-            ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+            ? 'text-slate-600 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
             : 'text-slate-300 hover:bg-white/10 hover:text-white'
     );
 
     return (
         <>
-            <header className={cn(
-                'fixed top-0 z-40 h-16 w-full transition-colors duration-300',
-                scrolled
-                    ? 'border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95'
-                    : 'border-b border-transparent bg-transparent'
-            )}>
+            <header className={cn('fixed top-0 z-40 h-16 w-full transition-colors duration-300', scrolled ? 'border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90' : 'border-b border-transparent bg-transparent')}>
                 <div className="mx-auto flex h-full max-w-7xl flex-nowrap items-center gap-2 px-4 sm:px-6">
                     <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight">
-                        <span className={cn('transition-colors', scrolled ? 'text-slate-900 dark:text-white' : 'text-white')}>
-                            {siteConfig.name}
-                        </span>
+                        <span className={cn('transition-colors', scrolled ? 'text-slate-900 dark:text-white' : 'text-white')}>{siteConfig.name}</span>
                     </Link>
 
                     <nav ref={navRef} className="relative hidden flex-1 items-center gap-0.5 lg:flex">
@@ -885,21 +879,23 @@ const MegaMenuHeader = () => {
                                 onPointerEnter={(e) => openHover('features', e)}
                                 onPointerLeave={closeHover}
                                 onClick={() => setOpenMenu(openMenu === 'features' ? null : 'features')}
-                                className={cn(navLinkClass, openMenu === 'features' && (scrolled ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white' : 'bg-white/10 text-white'))}
+                                className={cn(navLinkClass, openMenu === 'features' && (scrolled ? 'bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-white' : 'bg-white/10 text-white'))}
                             >
                                 Features
                                 <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', openMenu === 'features' && 'rotate-180')} />
                             </button>
 
                             {openMenu === 'features' ? (
-                                <div
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
                                     onPointerEnter={(e) => openHover('features', e)}
                                     onPointerLeave={closeHover}
-                                    className="absolute left-0 top-full z-50 mt-2 w-[720px] max-w-[92vw] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
+                                    className="absolute left-0 top-full z-50 mt-2 w-[720px] max-w-[92vw] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
                                 >
-                                    <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-800">
-                                        <span className="text-xs font-medium text-slate-500">What is inside</span>
-                                        <Link href="/features" onClick={() => setOpenMenu(null)} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                                    <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-blue-50 to-white px-5 py-3 dark:border-slate-800 dark:from-slate-800 dark:to-slate-900">
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-blue-600">What is inside</span>
+                                        <Link href="/features" onClick={() => setOpenMenu(null)} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-blue-700 dark:text-slate-400 dark:hover:text-white">
                                             All features <ArrowRight size={12} />
                                         </Link>
                                     </div>
@@ -914,7 +910,7 @@ const MegaMenuHeader = () => {
                                             ))}
                                         </ul>
                                     </div>
-                                </div>
+                                </motion.div>
                             ) : null}
                         </div>
 
@@ -934,7 +930,7 @@ const MegaMenuHeader = () => {
                         <Button variant="ghost" size="sm" asChild className={cn('font-medium', scrolled ? 'text-slate-600 dark:text-slate-300' : 'text-slate-300 hover:bg-white/10 hover:text-white')}>
                             <Link href="/login">Log in</Link>
                         </Button>
-                        <Button size="sm" asChild className="bg-blue-600 font-medium text-white hover:bg-blue-700">
+                        <Button size="sm" asChild className="bg-blue-600 font-medium text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700">
                             <Link href="/signup">Get started</Link>
                         </Button>
                         <ModeToggle />
@@ -957,29 +953,22 @@ const MegaMenuHeader = () => {
 
             <AnimatePresence>
                 {isMobileMenuOpen ? (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="fixed inset-x-0 bottom-0 z-[200] overflow-y-auto bg-slate-950"
-                        style={{ top: '64px' }}
-                    >
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="fixed inset-x-0 bottom-0 z-[200] overflow-y-auto bg-slate-950" style={{ top: '64px' }}>
                         <div className="mx-auto w-full max-w-lg px-4 py-5">
                             <nav className="flex flex-col">
                                 {[
-                                    { href: '/', label: 'Home', icon: Home },
-                                    { href: '/features', label: 'Features', icon: Layers },
-                                    { href: '/industries', label: 'Industries', icon: LayoutGrid },
-                                    { href: '/aura-ai', label: 'Aura AI', icon: Sparkles },
-                                    { href: '/download', label: 'Install the app', icon: DownloadCloud },
-                                    { href: '/courses', label: 'Academy', icon: BookOpen },
-                                    { href: '/blog', label: 'Journal', icon: BookOpen },
-                                    { href: '/help-centre', label: 'Help', icon: HelpCircle },
-                                ].map(({ href, label, icon: Icon }) => (
+                                    { href: '/', label: 'Home', icon: Home, accent: 'blue' },
+                                    { href: '/features', label: 'Features', icon: Layers, accent: 'violet' },
+                                    { href: '/industries', label: 'Industries', icon: LayoutGrid, accent: 'emerald' },
+                                    { href: '/aura-ai', label: 'Aura AI', icon: Sparkles, accent: 'sky' },
+                                    { href: '/download', label: 'Install the app', icon: DownloadCloud, accent: 'amber' },
+                                    { href: '/courses', label: 'Academy', icon: BookOpen, accent: 'rose' },
+                                    { href: '/blog', label: 'Journal', icon: BookOpen, accent: 'indigo' },
+                                    { href: '/help-centre', label: 'Help', icon: HelpCircle, accent: 'teal' },
+                                ].map(({ href, label, icon: Icon, accent }) => (
                                     <Link key={href} href={href} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 border-b border-white/10 py-4 text-base font-medium text-white">
-                                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
-                                            <Icon size={16} className="text-slate-300" />
+                                        <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg', ACCENTS[accent].tile)}>
+                                            <Icon size={16} />
                                         </span>
                                         {label}
                                     </Link>
@@ -1008,11 +997,11 @@ const MegaMenuHeader = () => {
 const DynamicPricingSection = () => {
     const [currencyCode, setCurrencyCode] = useState('USD');
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+    const [activeModule, setActiveModule] = useState(0);
     const currency = CURRENCIES[currencyCode] || CURRENCIES.USD;
 
     useEffect(() => {
         let cancelled = false;
-
         const saved = getCookie(COOKIE_CURRENCY_NAME);
         if (saved && CURRENCIES[saved]) { setCurrencyCode(saved); return; }
 
@@ -1032,11 +1021,8 @@ const DynamicPricingSection = () => {
                 const country = String(data.country_code || data.country || '').toUpperCase();
                 const mapped = COUNTRY_TO_CURRENCY[country];
                 if (mapped && CURRENCIES[mapped]) setCurrencyCode(mapped);
-            } catch (error) {
-                // keep the default
-            }
+            } catch (error) { /* keep default */ }
         };
-
         detect();
         return () => { cancelled = true; };
     }, []);
@@ -1055,28 +1041,34 @@ const DynamicPricingSection = () => {
         return new Intl.NumberFormat('en').format(price);
     };
 
+    const activeMod = ALL_INCLUDED_MODULES[activeModule];
+    const ActiveModIcon = activeMod.icon;
+
     return (
-        <section id="pricing" className="border-t border-slate-200 bg-slate-50 py-16 dark:border-slate-800 dark:bg-slate-900/40 sm:py-24">
-            <div className="container mx-auto max-w-7xl px-4 sm:px-6">
+        <section id="pricing" className="relative overflow-hidden border-t border-slate-200 py-16 dark:border-slate-800 sm:py-24">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50/60 to-violet-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950" />
+            <div className="absolute -left-32 top-10 h-72 w-72 rounded-full bg-blue-400/20 blur-3xl" />
+            <div className="absolute -right-32 bottom-10 h-72 w-72 rounded-full bg-violet-400/20 blur-3xl" />
+
+            <div className="container relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                     <SectionHeading
-                        index="06"
                         eyebrow="Pricing"
                         title="One price, every module"
                         sub="You are not charged per module. What changes between plans is how many people can use it and how deep the features go."
+                        accent="indigo"
                     />
 
                     <div className="shrink-0">
                         <label className="mb-2 block text-xs font-medium text-slate-500">Show prices in</label>
                         <Select value={currencyCode} onValueChange={handleCurrencyChange}>
-                            <SelectTrigger className="h-10 w-full rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-900 lg:w-56">
+                            <SelectTrigger className="h-10 w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:w-56">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-72 rounded-lg">
                                 {Object.values(CURRENCIES).map((c) => (
                                     <SelectItem key={c.code} value={c.code}>
-                                        {c.code}
-                                        <span className="ml-2 text-xs text-slate-400">{c.label}</span>
+                                        {c.code}<span className="ml-2 text-xs text-slate-400">{c.label}</span>
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -1084,90 +1076,134 @@ const DynamicPricingSection = () => {
                     </div>
                 </div>
 
-                <div className="mt-8 flex items-center gap-3">
-                    <span className={cn('text-sm transition-colors', billingCycle === 'monthly' ? 'font-medium text-foreground' : 'text-muted-foreground')}>Monthly</span>
+                <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-white/60 bg-white/70 px-4 py-2 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70">
+                    <span className={cn('text-sm transition-colors', billingCycle === 'monthly' ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-500')}>Monthly</span>
                     <button
                         onClick={() => setBillingCycle(prev => (prev === 'monthly' ? 'yearly' : 'monthly'))}
-                        className={cn('relative h-6 w-11 rounded-full p-0.5 transition-colors', billingCycle === 'yearly' ? 'bg-slate-900 dark:bg-blue-600' : 'bg-slate-300 dark:bg-slate-700')}
+                        className={cn('relative h-6 w-11 rounded-full p-0.5 transition-colors', billingCycle === 'yearly' ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700')}
                         aria-label="Toggle billing period"
                     >
-                        <span className={cn('block h-5 w-5 rounded-full bg-white transition-transform', billingCycle === 'yearly' ? 'translate-x-5' : 'translate-x-0')} />
+                        <motion.span layout transition={{ type: 'spring', stiffness: 500, damping: 32 }} className={cn('block h-5 w-5 rounded-full bg-white shadow', billingCycle === 'yearly' ? 'translate-x-5' : 'translate-x-0')} />
                     </button>
-                    <span className={cn('flex items-center gap-2 text-sm transition-colors', billingCycle === 'yearly' ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+                    <span className={cn('flex items-center gap-2 text-sm transition-colors', billingCycle === 'yearly' ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-500')}>
                         Yearly
-                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Save 20%</span>
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Save 20%</span>
                     </span>
                 </div>
 
                 <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                     {PLANS.map((plan, index) => (
-                        <Card key={index} className={cn('flex h-full flex-col rounded-2xl shadow-none transition-colors', plan.highlight ? 'border-2 border-slate-900 dark:border-blue-600' : 'border border-slate-200 hover:border-slate-300 dark:border-slate-800')}>
-                            <CardHeader className="pb-4">
-                                {plan.highlight ? (
-                                    <span className="mb-2 w-fit rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white dark:bg-blue-600">Most popular</span>
-                                ) : null}
-                                <CardTitle className="text-lg font-semibold tracking-tight">{plan.name}</CardTitle>
-                                <CardDescription className="text-sm">{plan.idealFor}</CardDescription>
-                                <div className="mt-5">
-                                    <div className="flex items-baseline gap-1.5">
-                                        <span className="text-3xl font-semibold tracking-tight">{currency.symbol} {formatPrice(plan.basePrice)}</span>
-                                        <span className="text-sm text-muted-foreground">/mo</span>
+                        <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: index * 0.08, duration: 0.5, ease: EASE }}
+                            whileHover={{ y: -6 }}
+                        >
+                            <Card className={cn('flex h-full flex-col rounded-2xl bg-white transition-shadow dark:bg-slate-950', plan.highlight ? 'border-2 border-slate-900 shadow-xl dark:border-white' : 'border border-slate-200 shadow-sm hover:shadow-lg dark:border-slate-800')}>
+                                <CardHeader className="pb-4">
+                                    {plan.highlight ? (
+                                        <span className="mb-2 w-fit rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white dark:bg-white dark:text-slate-900">Most popular</span>
+                                    ) : null}
+                                    <CardTitle className="text-lg font-semibold tracking-tight">{plan.name}</CardTitle>
+                                    <CardDescription className="text-sm">{plan.idealFor}</CardDescription>
+                                    <div className="mt-5">
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-3xl font-semibold tracking-tight">{currency.symbol} {formatPrice(plan.basePrice)}</span>
+                                            <span className="text-sm text-muted-foreground">/mo</span>
+                                        </div>
+                                        <p className="mt-1 h-4 text-xs text-muted-foreground">{billingCycle === 'yearly' ? 'Billed yearly' : ''}</p>
                                     </div>
-                                    <p className="mt-1 h-4 text-xs text-muted-foreground">{billingCycle === 'yearly' ? 'Billed yearly' : ''}</p>
-                                </div>
-                            </CardHeader>
+                                </CardHeader>
 
-                            <CardContent className="flex-grow space-y-5">
-                                <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800">
-                                    <Users className="h-4 w-4 text-slate-400" />
-                                    {plan.userLimit}
-                                </div>
-                                <ul className="space-y-2.5">
-                                    {plan.features.map((f, i) => (
-                                        <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />{f}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
+                                <CardContent className="flex-grow space-y-5">
+                                    <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800">
+                                        <Users className="h-4 w-4 text-slate-400" />{plan.userLimit}
+                                    </div>
+                                    <ul className="space-y-2.5">
+                                        {plan.features.map((f, i) => (
+                                            <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />{f}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </CardContent>
 
-                            <CardFooter>
-                                <Button className={cn('h-11 w-full rounded-xl text-sm font-medium', plan.highlight ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700' : 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-transparent dark:text-white dark:hover:bg-slate-800')} asChild>
-                                    <Link href={plan.btnText === 'Talk to sales' ? '/contact' : '/signup'}>{plan.btnText}</Link>
-                                </Button>
-                            </CardFooter>
-                        </Card>
+                                <CardFooter>
+                                    <Button className={cn('h-11 w-full rounded-xl text-sm font-medium', plan.highlight ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900' : 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-transparent dark:text-white dark:hover:bg-slate-800')} asChild>
+                                        <Link href={plan.btnText === 'Talk to sales' ? '/contact' : '/signup'}>{plan.btnText}</Link>
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        </motion.div>
                     ))}
                 </div>
 
-                <div className="mt-12 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8">
-                    <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">What is included on every plan</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">No add on fees. If a module applies to your business, it is already there.</p>
+                {/* Interactive module explorer */}
+                <div className="mt-14 overflow-hidden rounded-2xl border border-white/60 bg-white/80 shadow-lg backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
+                    <div className="border-b border-slate-200 px-6 py-6 dark:border-slate-800 sm:px-8">
+                        <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">What is included on every plan</h3>
+                        <p className="mt-2 text-sm text-muted-foreground">No add on fees. Tap a module to see what is inside it.</p>
 
-                    <div className="mt-7 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                        {ALL_INCLUDED_MODULES.map((module) => {
-                            const Icon = module.icon;
-                            return (
-                                <div key={module.title}>
-                                    <div className="flex items-center gap-2.5 border-b border-slate-100 pb-2.5 dark:border-slate-800">
-                                        {Icon ? <Icon className="h-4 w-4 text-slate-400" /> : null}
-                                        <h4 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-50">{module.title}</h4>
+                        <div className="mt-6">
+                            <HScroll>
+                                {ALL_INCLUDED_MODULES.map((module, i) => {
+                                    const Icon = module.icon;
+                                    const a = ACCENTS[module.accent];
+                                    const isActive = activeModule === i;
+                                    return (
+                                        <button
+                                            key={module.title}
+                                            onClick={() => setActiveModule(i)}
+                                            className={cn(
+                                                'group flex shrink-0 snap-start items-center gap-2.5 rounded-xl border px-4 py-3 text-left transition-all',
+                                                isActive
+                                                    ? 'border-slate-900 bg-slate-900 text-white shadow-md dark:border-white dark:bg-white dark:text-slate-900'
+                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                                            )}
+                                        >
+                                            <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors', isActive ? 'bg-white/15 text-white dark:bg-slate-900/10 dark:text-slate-900' : a.tile)}>
+                                                <Icon className="h-4 w-4" />
+                                            </span>
+                                            <span className="whitespace-nowrap text-sm font-medium">{module.title}</span>
+                                        </button>
+                                    );
+                                })}
+                            </HScroll>
+                        </div>
+                    </div>
+
+                    <div className="px-6 py-7 sm:px-8">
+                        <AnimatePresence mode="wait">
+                            <motion.div key={activeMod.title} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.28, ease: EASE }}>
+                                <div className="flex items-center gap-3">
+                                    <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', ACCENTS[activeMod.accent].tile)}>
+                                        <ActiveModIcon className="h-5 w-5" />
+                                    </span>
+                                    <div>
+                                        <p className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{activeMod.title}</p>
+                                        <p className="text-xs text-slate-400">{activeMod.features.length} capabilities</p>
                                     </div>
-                                    <ul className="mt-3 space-y-1.5">
-                                        {module.features.map((feature, idx) => (
-                                            <li key={idx} className="text-sm text-muted-foreground">{feature}</li>
-                                        ))}
-                                    </ul>
                                 </div>
-                            );
-                        })}
+
+                                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="mt-6 grid gap-x-8 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                                    {activeMod.features.map((feature, idx) => (
+                                        <motion.div key={idx} variants={fadeUp} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <Check className={cn('h-4 w-4 shrink-0', ACCENTS[activeMod.accent].text)} />
+                                            {feature}
+                                        </motion.div>
+                                    ))}
+                                </motion.div>
+                            </motion.div>
+                        </AnimatePresence>
                     </div>
                 </div>
 
                 <p className="mt-8 text-sm text-muted-foreground">
-                    Prices exclude local VAT or GST where it applies. Converted from USD at an indicative rate and
-                    charged in {currency.code}. Need on premise hosting, white labelling or a group rollout?{' '}
-                    <Link href="/contact" className="font-medium text-slate-900 underline underline-offset-4 dark:text-white">Talk to sales</Link>.
+                    Prices exclude local VAT or GST where it applies. Converted from USD at an indicative rate and charged in {currency.code}.
+                    Need on premise hosting, white labelling or a group rollout?{' '}
+                    <Link href="/contact" className="font-medium text-blue-700 underline underline-offset-4 dark:text-blue-400">Talk to sales</Link>.
                 </p>
             </div>
         </section>
@@ -1182,9 +1218,7 @@ const PartnerWithUsSection = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
-        if (formErrors[e.target.name as 'name' | 'email']) {
-            setFormErrors(prev => ({ ...prev, [e.target.name]: undefined }));
-        }
+        if (formErrors[e.target.name as 'name' | 'email']) setFormErrors(prev => ({ ...prev, [e.target.name]: undefined }));
     };
 
     const validate = () => {
@@ -1208,25 +1242,25 @@ const PartnerWithUsSection = () => {
 
     return (
         <Section id="partner" surface="light">
-            <SectionHeading index="08" eyebrow="Partners" title="Work with us" sub="Two ways to earn from BBU1 without being on the payroll." />
+            <SectionHeading eyebrow="Partners" title="Work with us" sub="Two ways to earn from BBU1 without being on the payroll." accent="amber" />
 
             <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2">
-                <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-                    <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        <Megaphone className="h-4 w-4" />
+                <motion.div whileHover={{ y: -4 }} className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                    <div className={cn('mb-5 flex h-11 w-11 items-center justify-center rounded-xl', ACCENTS.amber.tile)}>
+                        <Megaphone className="h-5 w-5" />
                     </div>
                     <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">Refer businesses</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                         For anyone with a network of business owners. You get a code, they sign up with it, and you are paid every month they stay.
                     </p>
                     <ul className="mt-5 flex-1 space-y-2.5">
-                        <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />Recurring payment, not one off</li>
-                        <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />Materials provided</li>
+                        <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />Recurring payment, not one off</li>
+                        <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />Materials provided</li>
                     </ul>
                     <Dialog>
                         <DialogTrigger asChild>
                             <Button variant="outline" className="mt-6 h-11 w-full rounded-xl border-slate-200 text-sm font-medium dark:border-slate-700">
-                                Join the programme <ArrowRight className="ml-2 h-4 w-4 text-slate-400" />
+                                Join the programme <ArrowRight className="ml-2 h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1" />
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="w-[calc(100%-1.5rem)] rounded-2xl p-0 sm:max-w-lg">
@@ -1238,7 +1272,7 @@ const PartnerWithUsSection = () => {
                                 <ol className="space-y-3">
                                     {['You get a referral code.', 'A business signs up using it.', 'You are paid each month they remain a customer.'].map((line, i) => (
                                         <li key={i} className="flex gap-3 text-sm text-muted-foreground">
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{i + 1}</span>
+                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-50 text-xs font-semibold text-amber-700">{i + 1}</span>
                                             <span className="pt-0.5">{line}</span>
                                         </li>
                                     ))}
@@ -1249,24 +1283,24 @@ const PartnerWithUsSection = () => {
                             </div>
                         </DialogContent>
                     </Dialog>
-                </div>
+                </motion.div>
 
-                <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-                    <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        <GitBranch className="h-4 w-4" />
+                <motion.div whileHover={{ y: -4 }} className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                    <div className={cn('mb-5 flex h-11 w-11 items-center justify-center rounded-xl', ACCENTS.violet.tile)}>
+                        <GitBranch className="h-5 w-5" />
                     </div>
                     <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">Build on it</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                         For developers and agencies. Set BBU1 up for your clients, connect it to their other systems, or run it under your own brand.
                     </p>
                     <ul className="mt-5 flex-1 space-y-2.5">
-                        <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />API access and documentation</li>
-                        <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />Share of implementation revenue</li>
+                        <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />API access and documentation</li>
+                        <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />Share of implementation revenue</li>
                     </ul>
                     <Dialog onOpenChange={(open) => { if (open) resetForm(); }}>
                         <DialogTrigger asChild>
                             <Button variant="outline" className="mt-6 h-11 w-full rounded-xl border-slate-200 text-sm font-medium dark:border-slate-700">
-                                Get in touch <ArrowRight className="ml-2 h-4 w-4 text-slate-400" />
+                                Get in touch <ArrowRight className="ml-2 h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1" />
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl p-0 sm:max-w-lg">
@@ -1297,13 +1331,7 @@ const PartnerWithUsSection = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-medium text-slate-500">What you would build</label>
-                                    <textarea
-                                        name="details"
-                                        value={formData.details}
-                                        placeholder="We work with retail clients and want to..."
-                                        onChange={handleInputChange}
-                                        className="flex min-h-[110px] w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                    />
+                                    <textarea name="details" value={formData.details} placeholder="We work with retail clients and want to..." onChange={handleInputChange} className="flex min-h-[110px] w-full resize-y rounded-lg border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
                                 </div>
                                 <Button type="button" onClick={() => handleEmailTrigger('Solution partner')} className="h-11 w-full rounded-xl bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700">
                                     Send enquiry
@@ -1311,7 +1339,7 @@ const PartnerWithUsSection = () => {
                             </div>
                         </DialogContent>
                     </Dialog>
-                </div>
+                </motion.div>
             </div>
         </Section>
     );
@@ -1363,7 +1391,6 @@ export default function HomePage() {
     useEffect(() => {
         if (!mounted) return;
         if (process.env.NODE_ENV === 'development') return;
-
         const trackVisitor = async () => {
             try {
                 await supabase.from('system_global_telemetry').insert({
@@ -1378,11 +1405,8 @@ export default function HomePage() {
                         session_id: getCookie('bbu1_session_id') || 'new_visitor'
                     }
                 });
-            } catch (err) {
-                // telemetry is best effort
-            }
+            } catch (err) { /* telemetry is best effort */ }
         };
-
         trackVisitor();
     }, [mounted, supabase]);
 
@@ -1397,6 +1421,10 @@ export default function HomePage() {
 
     return (
         <div className="flex min-h-screen flex-col">
+            <style jsx global>{`
+                .hide-scrollbar::-webkit-scrollbar { display: none; }
+            `}</style>
+
             <NewsletterPopup />
             <MegaMenuHeader />
 
@@ -1404,12 +1432,13 @@ export default function HomePage() {
 
                 {/* HERO */}
                 <section id="hero" className="relative overflow-hidden bg-[#070C18] pt-16">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_50%_-5%,rgba(37,99,235,0.13)_0%,transparent_65%)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_50%_-5%,rgba(37,99,235,0.20)_0%,transparent_65%)]" />
+                    <div className="absolute -left-40 top-40 h-96 w-96 rounded-full bg-violet-600/10 blur-3xl" />
+                    <div className="absolute -right-40 top-20 h-96 w-96 rounded-full bg-sky-500/10 blur-3xl" />
                     <div
-                        className="absolute inset-0 opacity-[0.35]"
+                        className="absolute inset-0 opacity-[0.4]"
                         style={{
-                            backgroundImage:
-                                'linear-gradient(to right, rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.05) 1px, transparent 1px)',
+                            backgroundImage: 'linear-gradient(to right, rgba(148,163,184,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.06) 1px, transparent 1px)',
                             backgroundSize: '64px 64px',
                             maskImage: 'radial-gradient(ellipse 70% 50% at 50% 0%, black 30%, transparent 75%)',
                             WebkitMaskImage: 'radial-gradient(ellipse 70% 50% at 50% 0%, black 30%, transparent 75%)',
@@ -1430,7 +1459,7 @@ export default function HomePage() {
                             </motion.p>
 
                             <motion.div variants={fadeUp} className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-                                <Button asChild size="lg" className="h-12 w-full rounded-xl bg-blue-600 px-8 text-base font-medium text-white hover:bg-blue-500 sm:w-auto">
+                                <Button asChild size="lg" className="h-12 w-full rounded-xl bg-blue-600 px-8 text-base font-medium text-white shadow-xl shadow-blue-600/30 hover:bg-blue-500 sm:w-auto">
                                     <Link href="/signup">Start free trial</Link>
                                 </Button>
                                 <Button asChild size="lg" variant="outline" className="h-12 w-full rounded-xl border-white/20 bg-white/[0.06] px-8 text-base font-medium text-white hover:bg-white/[0.12] hover:text-white sm:w-auto">
@@ -1438,36 +1467,37 @@ export default function HomePage() {
                                 </Button>
                             </motion.div>
 
-                            <motion.p variants={fadeUp} className="mt-6 text-sm text-slate-500">
-                                No card needed. Set up in a day.
-                            </motion.p>
+                            <motion.p variants={fadeUp} className="mt-6 text-sm text-slate-500">No card needed. Set up in a day.</motion.p>
                         </motion.div>
 
-                        <motion.div
-                            initial={{ opacity: 0, y: 24 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.7, ease: EASE, delay: 0.2 }}
-                            className="relative mx-auto mt-14 max-w-5xl"
-                        >
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2 sm:p-3">
+                        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE, delay: 0.2 }} className="relative mx-auto mt-14 max-w-5xl">
+                            <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-2 shadow-2xl sm:p-3">
                                 <PosScreen />
                             </div>
 
                             <div className="mt-4 grid gap-3 sm:grid-cols-3">
                                 {[
-                                    { icon: Wallet, label: 'Cash and mobile money', value: 'Taken at the till' },
-                                    { icon: Boxes, label: 'Stock', value: 'Drops in every branch' },
-                                    { icon: Receipt, label: 'Ledger', value: '5 lines posted, balanced' },
-                                ].map((item) => {
+                                    { icon: Wallet, label: 'Cash and mobile money', value: 'Taken at the till', accent: 'emerald' },
+                                    { icon: Boxes, label: 'Stock', value: 'Drops in every branch', accent: 'violet' },
+                                    { icon: Receipt, label: 'Ledger', value: '5 lines posted, balanced', accent: 'sky' },
+                                ].map((item, i) => {
                                     const Icon = item.icon;
                                     return (
-                                        <div key={item.label} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                                            <Icon className="h-4 w-4 shrink-0 text-slate-400" />
+                                        <motion.div
+                                            key={item.label}
+                                            initial={{ opacity: 0, y: 12 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.5 + i * 0.12 }}
+                                            className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 transition-colors hover:border-white/25 hover:bg-white/[0.07]"
+                                        >
+                                            <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', ACCENTS[item.accent].tile)}>
+                                                <Icon className="h-4 w-4" />
+                                            </span>
                                             <div className="min-w-0">
                                                 <p className="truncate text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
                                                 <p className="truncate text-sm text-slate-200">{item.value}</p>
                                             </div>
-                                        </div>
+                                        </motion.div>
                                     );
                                 })}
                             </div>
@@ -1475,83 +1505,93 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                {/* 01 SALE FLOW, dark so it reads as a distinct panel */}
+                {/* SALE FLOW */}
                 <Section id="flow" surface="dark">
-                    <SectionHeading
-                        index="01"
-                        eyebrow="How it fits together"
-                        title="What happens when you sell one bottle of oil"
-                        sub="This is the whole idea. Four things move at once, and nobody types anything twice."
-                        dark
-                    />
+                    <SectionHeading eyebrow="How it fits together" title="What happens when you sell one bottle of oil" sub="This is the whole idea. Four things move at once, and nobody types anything twice." dark />
 
                     <div className="mt-12 grid gap-4 lg:grid-cols-4">
                         {SALE_FLOW.map((item, i) => {
                             const Icon = item.icon;
+                            const a = ACCENTS[item.accent];
                             return (
-                                <div key={i} className="relative">
-                                    <div className="h-full rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-white/20">
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.12, duration: 0.5, ease: EASE }}
+                                    className="relative"
+                                >
+                                    <motion.div whileHover={{ y: -4 }} className="h-full rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-white/25 hover:bg-white/[0.06]">
                                         <div className="mb-5 flex items-center justify-between">
-                                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.07] text-slate-200">
-                                                <Icon className="h-4 w-4" />
+                                            <span className={cn('flex h-11 w-11 items-center justify-center rounded-xl', a.tile)}>
+                                                <Icon className="h-5 w-5" />
                                             </span>
                                             <span className="text-2xl font-semibold tabular-nums text-white/10">{i + 1}</span>
                                         </div>
                                         <h3 className="text-sm font-semibold leading-snug tracking-tight text-white">{item.title}</h3>
                                         <p className="mt-2 text-sm leading-relaxed text-slate-400">{item.desc}</p>
-                                    </div>
+                                    </motion.div>
 
                                     {i < SALE_FLOW.length - 1 ? (
                                         <div className="flex justify-center py-2 lg:absolute lg:-right-3 lg:top-1/2 lg:z-10 lg:-translate-y-1/2 lg:py-0">
-                                            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-[#070C18] text-slate-500">
+                                            <motion.span
+                                                animate={{ opacity: [0.3, 1, 0.3] }}
+                                                transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
+                                                className="flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-[#070C18] text-blue-400"
+                                            >
                                                 <ArrowDown className="h-3 w-3 lg:hidden" />
                                                 <ArrowRight className="hidden h-3 w-3 lg:block" />
-                                            </span>
+                                            </motion.span>
                                         </div>
                                     ) : null}
-                                </div>
+                                </motion.div>
                             );
                         })}
                     </div>
 
-                    <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-5">
-                        <p className="text-sm leading-relaxed text-slate-400">
+                    <div className="mt-8 rounded-2xl border border-white/10 bg-gradient-to-r from-blue-600/10 to-violet-600/10 px-6 py-5">
+                        <p className="text-sm leading-relaxed text-slate-300">
                             In most businesses those four things live in four places, and somebody spends their evening
                             making them agree. That evening is what BBU1 gives you back.
                         </p>
                     </div>
                 </Section>
 
-                {/* 02 PRODUCT */}
+                {/* PRODUCT */}
                 <Section id="product" surface="light">
-                    <SectionHeading
-                        index="02"
-                        eyebrow="Inside the system"
-                        title="Six screens, one set of numbers"
-                        sub="Pick a part of the business and see what your team would actually be looking at."
-                    />
+                    <SectionHeading eyebrow="Inside the system" title="Six screens, one set of numbers" sub="Pick a part of the business and see what your team would actually be looking at." accent="blue" />
 
-                    <div className="mt-8 flex flex-wrap gap-2">
-                        {PRODUCT_SCREENS.map((item, i) => (
-                            <button
-                                key={item.id}
-                                onClick={() => setActiveScreen(i)}
-                                className={cn(
-                                    'rounded-full border px-4 py-2 text-sm font-medium transition-colors',
-                                    activeScreen === i
-                                        ? 'border-slate-900 bg-slate-900 text-white dark:border-blue-600 dark:bg-blue-600'
-                                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-transparent dark:text-slate-300'
-                                )}
-                            >
-                                {item.label}
-                            </button>
-                        ))}
+                    <div className="mt-8">
+                        <HScroll>
+                            {PRODUCT_SCREENS.map((item, i) => {
+                                const a = ACCENTS[item.accent];
+                                const isActive = activeScreen === i;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setActiveScreen(i)}
+                                        className={cn(
+                                            'relative shrink-0 snap-start rounded-full border px-5 py-2.5 text-sm font-medium transition-all',
+                                            isActive
+                                                ? 'border-transparent bg-slate-900 text-white shadow-lg dark:bg-white dark:text-slate-900'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                                        )}
+                                    >
+                                        <span className="flex items-center gap-2 whitespace-nowrap">
+                                            <span className={cn('h-1.5 w-1.5 rounded-full transition-colors', isActive ? 'bg-current opacity-60' : a.glow)} />
+                                            {item.label}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </HScroll>
                     </div>
 
                     <div className="mt-8 grid items-start gap-8 lg:grid-cols-12 lg:gap-12">
                         <div className="lg:col-span-7">
                             <AnimatePresence mode="wait">
-                                <motion.div key={screen.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3, ease: EASE }}>
+                                <motion.div key={screen.id} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.35, ease: EASE }}>
                                     {screen.render()}
                                 </motion.div>
                             </AnimatePresence>
@@ -1559,83 +1599,94 @@ export default function HomePage() {
 
                         <div className="lg:col-span-5 lg:pt-6">
                             <AnimatePresence mode="wait">
-                                <motion.div key={screen.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3, ease: EASE }}>
-                                    <h3 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">{screen.title}</h3>
+                                <motion.div key={screen.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} transition={{ duration: 0.3, ease: EASE }}>
+                                    <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', ACCENTS[screen.accent].tile)}>{screen.label}</span>
+                                    <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">{screen.title}</h3>
                                     <p className="mt-4 text-base leading-relaxed text-muted-foreground">{screen.body}</p>
                                     <ul className="mt-6 space-y-3">
                                         {screen.points.map((point, i) => (
-                                            <li key={i} className="flex gap-3 text-sm text-muted-foreground">
-                                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />{point}
-                                            </li>
+                                            <motion.li key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.08 }} className="flex gap-3 text-sm text-muted-foreground">
+                                                <Check className={cn('mt-0.5 h-4 w-4 shrink-0', ACCENTS[screen.accent].text)} />{point}
+                                            </motion.li>
                                         ))}
                                     </ul>
                                 </motion.div>
                             </AnimatePresence>
 
-                            <Link href="/features" className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white">
-                                See all features <ArrowRight className="h-4 w-4 text-slate-400" />
+                            <Link href="/features" className="group mt-7 inline-flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-400">
+                                See all features <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                             </Link>
                         </div>
                     </div>
                 </Section>
 
-                {/* 03 REPLACES */}
+                {/* REPLACES */}
                 <Section surface="tint">
-                    <SectionHeading
-                        index="03"
-                        eyebrow="Why bother"
-                        title="What BBU1 replaces"
-                        sub="Most businesses we meet are running four systems that do not know about each other."
-                    />
+                    <SectionHeading eyebrow="Why bother" title="What BBU1 replaces" sub="Most businesses we meet are running four systems that do not know about each other." accent="rose" />
 
-                    <div className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                    <div className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         {REPLACES.map((row, i) => (
-                            <div key={i} className={cn('grid gap-3 px-5 py-5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900 sm:grid-cols-2 sm:gap-8 sm:px-7', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}>
-                                <p className="text-sm text-muted-foreground line-through decoration-slate-300">{row.before}</p>
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 10 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.07 }}
+                                className={cn('group grid gap-3 px-5 py-5 transition-colors hover:bg-gradient-to-r hover:from-emerald-50/60 hover:to-transparent dark:hover:from-emerald-500/5 sm:grid-cols-2 sm:gap-8 sm:px-7', i > 0 && 'border-t border-slate-100 dark:border-slate-800')}
+                            >
+                                <p className="text-sm text-muted-foreground line-through decoration-rose-300">{row.before}</p>
                                 <p className="flex items-start gap-2.5 text-sm font-medium text-slate-900 dark:text-slate-100">
-                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />{row.after}
+                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />{row.after}
                                 </p>
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
                 </Section>
 
-                {/* 04 HOW IT WORKS, given its own strong treatment */}
+                {/* HOW IT WORKS, horizontal rail */}
                 <Section surface="light">
-                    <SectionHeading index="04" eyebrow="Getting started" title="How it works" sub="Four steps. A single shop is usually trading the same day, and a group rollout runs branch by branch." />
+                    <SectionHeading eyebrow="Getting started" title="How it works" sub="Four steps. A single shop is usually trading the same day, and a group rollout runs branch by branch." accent="emerald" />
 
-                    <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 sm:grid-cols-2 lg:grid-cols-4">
-                        {HOW_IT_WORKS.map((item) => (
-                            <div key={item.step} className="group bg-white p-7 transition-colors hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-3xl font-semibold tabular-nums tracking-tight text-slate-200 transition-colors group-hover:text-slate-900 dark:text-slate-800 dark:group-hover:text-slate-100">
-                                        {item.step}
-                                    </span>
-                                    <span className="rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:border-slate-800">
-                                        {item.meta}
-                                    </span>
-                                </div>
-                                <h3 className="mt-6 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{item.title}</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
-                            </div>
-                        ))}
+                    <div className="mt-12">
+                        <HScroll>
+                            {HOW_IT_WORKS.map((item, i) => {
+                                const a = ACCENTS[item.accent];
+                                return (
+                                    <motion.div
+                                        key={item.step}
+                                        initial={{ opacity: 0, x: 30 }}
+                                        whileInView={{ opacity: 1, x: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: i * 0.1, duration: 0.5, ease: EASE }}
+                                        whileHover={{ y: -6 }}
+                                        className="group w-[280px] shrink-0 snap-start sm:w-[320px]"
+                                    >
+                                        <div className={cn('h-full rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition-all hover:shadow-xl dark:border-slate-800 dark:bg-slate-900', a.ring)}>
+                                            <div className="flex items-center justify-between">
+                                                <span className={cn('flex h-12 w-12 items-center justify-center rounded-xl text-lg font-semibold', a.tile)}>
+                                                    {item.step}
+                                                </span>
+                                                <span className={cn('rounded-full px-3 py-1 text-[11px] font-semibold', a.tile)}>{item.meta}</span>
+                                            </div>
+                                            <h3 className="mt-6 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{item.title}</h3>
+                                            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
+                                            <div className={cn('mt-6 h-1 w-0 rounded-full transition-all duration-500 group-hover:w-full', a.glow)} />
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </HScroll>
                     </div>
                 </Section>
 
-                {/* 05 ENTERPRISE, dark panel */}
+                {/* ENTERPRISE, horizontal rail */}
                 <Section id="enterprise" surface="dark">
-                    <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
+                    <div className="grid gap-10 lg:grid-cols-12 lg:gap-14">
                         <div className="lg:col-span-5">
-                            <SectionHeading
-                                index="05"
-                                eyebrow="For larger organisations"
-                                title="Small enough for a stall. Built for a group."
-                                sub="The same platform runs a single till and a holding company with several subsidiaries. You do not change product when you grow."
-                                dark
-                            />
+                            <SectionHeading eyebrow="For larger organisations" title="Small enough for a stall. Built for a group." sub="The same platform runs a single till and a holding company with several subsidiaries. You do not change product when you grow." dark />
 
                             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                                <Button asChild className="h-12 rounded-xl bg-white px-7 text-sm font-medium text-slate-900 hover:bg-slate-100">
+                                <Button asChild className="h-12 rounded-xl bg-white px-7 text-sm font-medium text-slate-900 shadow-xl hover:bg-slate-100">
                                     <a href={siteConfig.contactInfo.enterpriseLink} target="_blank" rel="noopener noreferrer">Talk to our enterprise team</a>
                                 </Button>
                                 <Button asChild variant="outline" className="h-12 rounded-xl border-white/20 bg-white/[0.06] px-7 text-sm font-medium text-white hover:bg-white/[0.12] hover:text-white">
@@ -1643,69 +1694,98 @@ export default function HomePage() {
                                 </Button>
                             </div>
 
-                            <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+                            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-8 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-2 shadow-2xl">
                                 <GroupScreen />
-                            </div>
+                            </motion.div>
                         </div>
 
                         <div className="lg:col-span-7">
-                            <div className="grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2">
-                                {ENTERPRISE_POINTS.map((item) => {
+                            <HScroll>
+                                {ENTERPRISE_POINTS.map((item, i) => {
                                     const Icon = item.icon;
                                     return (
-                                        <div key={item.title} className="bg-[#070C18] p-6 transition-colors hover:bg-white/[0.04]">
-                                            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.07] text-slate-200">
-                                                {Icon ? <Icon className="h-4 w-4" /> : <Building className="h-4 w-4" />}
+                                        <motion.div
+                                            key={item.title}
+                                            initial={{ opacity: 0, x: 30 }}
+                                            whileInView={{ opacity: 1, x: 0 }}
+                                            viewport={{ once: true }}
+                                            transition={{ delay: i * 0.08, duration: 0.5, ease: EASE }}
+                                            whileHover={{ y: -5 }}
+                                            className="w-[280px] shrink-0 snap-start sm:w-[320px]"
+                                        >
+                                            <div className="h-full rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-blue-400/40 hover:bg-white/[0.07]">
+                                                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/25 to-violet-500/25 text-blue-300">
+                                                    {Icon ? <Icon className="h-5 w-5" /> : <Building className="h-5 w-5" />}
+                                                </div>
+                                                <h3 className="text-sm font-semibold tracking-tight text-white">{item.title}</h3>
+                                                <p className="mt-2 text-sm leading-relaxed text-slate-400">{item.desc}</p>
                                             </div>
-                                            <h3 className="text-sm font-semibold tracking-tight text-white">{item.title}</h3>
-                                            <p className="mt-2 text-sm leading-relaxed text-slate-400">{item.desc}</p>
-                                        </div>
+                                        </motion.div>
                                     );
                                 })}
-                            </div>
+                            </HScroll>
                         </div>
                     </div>
                 </Section>
 
                 {/* WHO USES IT */}
                 <Section surface="tint">
-                    <SectionHeading eyebrow="Who uses it" title="Built around how your trade works" sub="The core is the same. What sits on top changes with the business." />
+                    <SectionHeading eyebrow="Who uses it" title="Built around how your trade works" sub="The core is the same. What sits on top changes with the business." accent="violet" />
 
                     <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                        {BUILT_FOR.map((item) => {
+                        {BUILT_FOR.map((item, i) => {
                             const Icon = item.icon;
+                            const a = ACCENTS[item.accent];
                             return (
-                                <div key={item.title} className="group rounded-2xl border border-slate-200 bg-white p-6 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950">
-                                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition-colors group-hover:bg-slate-900 group-hover:text-white dark:bg-slate-800 dark:text-slate-300">
-                                        {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+                                <motion.div
+                                    key={item.title}
+                                    initial={{ opacity: 0, y: 18 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.07, duration: 0.45, ease: EASE }}
+                                    whileHover={{ y: -5 }}
+                                    className={cn('group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-xl dark:border-slate-800 dark:bg-slate-950', a.ring)}
+                                >
+                                    <div className={cn('mb-4 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', a.tile)}>
+                                        {Icon ? <Icon className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}
                                     </div>
                                     <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{item.title}</h3>
                                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
-                                </div>
+                                </motion.div>
                             );
                         })}
                     </div>
 
-                    <Link href="/industries" className="mt-8 inline-flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white">
-                        See all industries <ArrowRight className="h-4 w-4 text-slate-400" />
+                    <Link href="/industries" className="group mt-8 inline-flex items-center gap-2 text-sm font-medium text-violet-700 dark:text-violet-400">
+                        See all industries <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Link>
                 </Section>
 
                 {/* PLATFORM */}
                 <Section surface="light">
-                    <SectionHeading eyebrow="The platform" title="What holds it together" />
+                    <SectionHeading eyebrow="The platform" title="What holds it together" sub="The parts you do not see, and the reason the rest of it can be this simple." accent="sky" />
 
-                    <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 sm:grid-cols-2 lg:grid-cols-3">
-                        {PLATFORM_POINTS.map((item) => {
+                    <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        {PLATFORM_POINTS.map((item, i) => {
                             const Icon = item.icon;
+                            const a = ACCENTS[item.accent];
                             return (
-                                <div key={item.title} className="bg-white p-7 transition-colors hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900">
-                                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                        {Icon ? <Icon className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+                                <motion.div
+                                    key={item.title}
+                                    initial={{ opacity: 0, y: 18 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: (i % 3) * 0.08, duration: 0.45, ease: EASE }}
+                                    whileHover={{ y: -5 }}
+                                    className={cn('group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-xl dark:border-slate-800 dark:bg-slate-900', a.ring)}
+                                >
+                                    <div className={cn('absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-20', a.glow)} />
+                                    <div className={cn('relative mb-4 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', a.tile)}>
+                                        {Icon ? <Icon className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}
                                     </div>
-                                    <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{item.title}</h3>
-                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
-                                </div>
+                                    <h3 className="relative text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{item.title}</h3>
+                                    <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
+                                </motion.div>
                             );
                         })}
                     </div>
@@ -1717,10 +1797,10 @@ export default function HomePage() {
                 <Section surface="light">
                     <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
                         <div className="lg:col-span-4">
-                            <SectionHeading index="07" eyebrow="Questions" title="Things people ask" />
+                            <SectionHeading eyebrow="Questions" title="Things people ask" accent="teal" />
                             <p className="mt-6 text-sm text-muted-foreground">
                                 Not answered here?{' '}
-                                <Link href="/contact" className="font-medium text-slate-900 underline underline-offset-4 dark:text-white">Ask us directly</Link>.
+                                <Link href="/contact" className="font-medium text-teal-700 underline underline-offset-4 dark:text-teal-400">Ask us directly</Link>.
                             </p>
                         </div>
 
@@ -1728,7 +1808,9 @@ export default function HomePage() {
                             <Accordion type="single" collapsible className="w-full">
                                 {siteConfig.faqItems.map((faq, i) => (
                                     <AccordionItem key={i} value={`faq-${i}`} className="border-slate-200 dark:border-slate-800">
-                                        <AccordionTrigger className="py-5 text-left text-base font-medium hover:no-underline">{faq.q}</AccordionTrigger>
+                                        <AccordionTrigger className="py-5 text-left text-base font-medium hover:no-underline data-[state=open]:text-teal-700 dark:data-[state=open]:text-teal-400">
+                                            {faq.q}
+                                        </AccordionTrigger>
                                         <AccordionContent className="pb-5 text-sm leading-relaxed text-muted-foreground">{faq.a}</AccordionContent>
                                     </AccordionItem>
                                 ))}
@@ -1740,8 +1822,12 @@ export default function HomePage() {
                 <PartnerWithUsSection />
 
                 {/* FINAL CTA */}
-                <section className="border-t border-white/10 bg-[#070C18] py-20 sm:py-28">
-                    <div className="absolute-none container mx-auto max-w-7xl px-4 sm:px-6">
+                <section className="relative overflow-hidden border-t border-white/10 bg-[#070C18] py-20 sm:py-28">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_100%,rgba(37,99,235,0.18)_0%,transparent_70%)]" />
+                    <div className="absolute -left-32 bottom-0 h-80 w-80 rounded-full bg-violet-600/10 blur-3xl" />
+                    <div className="absolute -right-32 top-0 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl" />
+
+                    <div className="container relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
                         <div className="mx-auto max-w-2xl text-center">
                             <h2 className="text-2xl font-semibold leading-tight tracking-tight text-white sm:text-3xl lg:text-4xl">
                                 Try it with your own numbers
@@ -1752,7 +1838,7 @@ export default function HomePage() {
                             </p>
 
                             <div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-                                <Button asChild size="lg" className="h-12 rounded-xl bg-blue-600 px-8 text-base font-medium text-white hover:bg-blue-500">
+                                <Button asChild size="lg" className="h-12 rounded-xl bg-blue-600 px-8 text-base font-medium text-white shadow-xl shadow-blue-600/30 hover:bg-blue-500">
                                     <Link href="/signup">Start free trial</Link>
                                 </Button>
                                 <Button asChild size="lg" variant="outline" className="h-12 rounded-xl border-white/20 bg-white/[0.06] px-8 text-base font-medium text-white hover:bg-white/[0.12] hover:text-white">
@@ -1762,8 +1848,8 @@ export default function HomePage() {
 
                             <div className="mt-10 flex flex-col items-center gap-4 border-t border-white/10 pt-8 sm:flex-row sm:justify-center sm:gap-8">
                                 <p className="text-sm text-slate-500">Running several branches or companies?</p>
-                                <Link href="/contact" className="inline-flex items-center gap-2 text-sm font-medium text-white">
-                                    Talk to the enterprise team <ArrowRight className="h-4 w-4 text-slate-400" />
+                                <Link href="/contact" className="group inline-flex items-center gap-2 text-sm font-medium text-white">
+                                    Talk to the enterprise team <ArrowRight className="h-4 w-4 text-blue-400 transition-transform group-hover:translate-x-1" />
                                 </Link>
                             </div>
                         </div>
@@ -1775,20 +1861,13 @@ export default function HomePage() {
             {mounted ? (
                 <AnimatePresence>
                     {showCookieBanner ? (
-                        <motion.div
-                            initial={{ opacity: 0, y: 40 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 40 }}
-                            transition={{ duration: 0.25 }}
-                            className="fixed inset-x-0 bottom-0 z-[100] p-4"
-                        >
-                            <Card className="mx-auto max-h-[80vh] max-w-xl overflow-y-auto rounded-2xl border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} transition={{ duration: 0.25 }} className="fixed inset-x-0 bottom-0 z-[100] p-4">
+                            <Card className="mx-auto max-h-[80vh] max-w-xl overflow-y-auto rounded-2xl border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                                 <CardHeader className="pb-4">
                                     <CardTitle className="text-base font-semibold">Cookies</CardTitle>
                                     <CardDescription className="text-sm leading-relaxed">
-                                        We use essential cookies to keep the site working. Analytics and marketing
-                                        cookies are off unless you turn them on.{' '}
-                                        <Link href="/privacy" className="font-medium text-slate-900 underline underline-offset-4 dark:text-white">Privacy policy</Link>
+                                        We use essential cookies to keep the site working. Analytics and marketing cookies are off unless you turn them on.{' '}
+                                        <Link href="/privacy" className="font-medium text-blue-700 underline underline-offset-4 dark:text-blue-400">Privacy policy</Link>
                                     </CardDescription>
                                 </CardHeader>
 
@@ -1796,19 +1875,13 @@ export default function HomePage() {
                                     <CardFooter className="flex flex-col gap-2 pt-0 sm:flex-row sm:justify-end">
                                         <Button variant="ghost" className="h-10 w-full rounded-lg text-sm font-medium text-muted-foreground sm:w-auto" onClick={() => setIsCustomizingCookies(true)}>Choose</Button>
                                         <Button variant="outline" className="h-10 w-full rounded-lg border-slate-200 text-sm font-medium dark:border-slate-700 sm:w-auto" onClick={handleRejectNonEssential}>Essential only</Button>
-                                        <Button className="h-10 w-full rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 sm:w-auto" onClick={handleAcceptAllCookies}>Accept all</Button>
+                                        <Button className="h-10 w-full rounded-lg bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 sm:w-auto" onClick={handleAcceptAllCookies}>Accept all</Button>
                                     </CardFooter>
                                 ) : (
                                     <CardContent className="space-y-4 pt-0">
                                         {siteConfig.cookieCategories.map(category => (
                                             <div key={category.id} className="flex items-start gap-3 border-t border-slate-100 py-3 first:border-t-0 dark:border-slate-800">
-                                                <Checkbox
-                                                    id={category.id}
-                                                    checked={cookiePreferences[category.id]}
-                                                    onCheckedChange={(v) => setCookiePreferences(prev => ({ ...prev, [category.id]: v === true }))}
-                                                    disabled={category.isRequired}
-                                                    className="mt-0.5"
-                                                />
+                                                <Checkbox id={category.id} checked={cookiePreferences[category.id]} onCheckedChange={(v) => setCookiePreferences(prev => ({ ...prev, [category.id]: v === true }))} disabled={category.isRequired} className="mt-0.5" />
                                                 <div className="grid gap-1.5 leading-none">
                                                     <label htmlFor={category.id} className="text-sm font-medium">{category.name}</label>
                                                     <p className="text-sm leading-relaxed text-muted-foreground">{category.description}</p>
@@ -1817,7 +1890,7 @@ export default function HomePage() {
                                         ))}
                                         <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:justify-end">
                                             <Button variant="ghost" className="h-10 rounded-lg text-sm font-medium text-muted-foreground" onClick={() => setIsCustomizingCookies(false)}>Back</Button>
-                                            <Button className="h-10 rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700" onClick={handleSaveCookiePreferences}>Save</Button>
+                                            <Button className="h-10 rounded-lg bg-blue-600 text-sm font-medium text-white hover:bg-blue-700" onClick={handleSaveCookiePreferences}>Save</Button>
                                         </div>
                                     </CardContent>
                                 )}
