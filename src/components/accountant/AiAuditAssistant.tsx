@@ -8,8 +8,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useCopilot, type CopilotMessage } from '@/context/CopilotContext';
 import {
-  Send, Bot, User, Loader2, ChevronRight, Cog,
-  Fingerprint, Activity, Zap, Database,
+  Send, User, Loader2, ChevronRight, Cog,
+  Activity, Zap, Database,
   BarChart3, ShieldCheck,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -19,6 +19,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import remarkGfm from 'remark-gfm';
+
+import { AuraAvatar } from '@/components/copilot/AuraAvatar';
 
 const AgentStep = ({ data }: { data: any }) => {
     if (!data) return null;
@@ -91,8 +93,18 @@ export function AiAuditAssistant() {
   }, [data]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-        scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    // scrollIntoView() scrolls EVERY scrollable ancestor including the page,
+    // which is what was yanking the whole view down to the composer.
+    // Scroll only the thread's own container, and only when the user is
+    // already near the bottom, so it never fights someone reading back.
+    const anchor = scrollRef.current;
+    if (!anchor) return;
+    const box = anchor.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null
+             ?? anchor.parentElement;
+    if (!box) return;
+    const distanceFromBottom = box.scrollHeight - box.scrollTop - box.clientHeight;
+    if (distanceFromBottom < 160) {
+        box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
     }
   }, [messages, finalAnswer, data, isChatLoading]);
 
@@ -115,16 +127,21 @@ export function AiAuditAssistant() {
   }, [contextReady]);
 
   const handleSuggestionClick = (action: string) => {
+      // NOTE: `setMessages` here uses CopilotContext's back-compat shim,
+      // which translates the flattened {id, role, content} shape into the
+      // real v5 UIMessage[] `useChat` expects. The second argument to
+      // handleSubmit (`options.body`) is a leftover from the pre-v5 AI SDK
+      // and is no longer read — sendMessage() already carries businessId/
+      // userId via the transport's prepareSendMessagesRequest, so a plain
+      // resend still works correctly.
       const newMessages: CopilotMessage[] = [
           ...messages,
           { id: `asst-${Date.now()}`, role: 'assistant', content: finalAnswer || "Proceeding..." },
           { id: `user-${Date.now()}`, role: 'user', content: action }
-      ] as any;
+      ];
       setMessages(newMessages);
       setFinalAnswer(''); setSuggestedActions([]); setInput('');
-      handleSubmit(new Event('submit') as any, {
-          options: { body: { businessId, userId, messages: newMessages } }
-      });
+      handleSubmit(action);
   };
 
   const suggestedPrompts = [
@@ -146,37 +163,31 @@ export function AiAuditAssistant() {
   return (
     <div className="w-full h-full flex flex-col border rounded-2xl sm:rounded-3xl bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] overflow-hidden min-h-[500px] sm:min-h-[700px]">
       {/* Sovereignty Header */}
-      <header className="px-4 sm:px-8 py-4 sm:py-5 border-b bg-slate-950 text-white flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <div className="p-2 sm:p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20 shrink-0">
-                <Fingerprint className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400 animate-pulse" />
-              </div>
-              <div className="min-w-0">
-                  <h2 className="text-xs sm:text-sm font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-none text-blue-50 truncate">Aura Executive</h2>
-                  <div className="flex items-center gap-2 mt-1.5">
-                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-ping" />
-                      <p className="text-[8px] sm:text-[9px] text-slate-400 font-mono tracking-widest uppercase truncate">Protocol: {industry}</p>
-                  </div>
-              </div>
+      <header className="h-14 px-3 sm:px-5 border-b bg-slate-950 text-white flex items-center gap-2.5 shrink-0">
+          <AuraAvatar
+            agent="auditor"
+            state={isChatLoading ? 'thinking' : 'idle'}
+            status={businessId ? 'online' : 'syncing'}
+            className="h-11 w-11"
+          />
+          <div className="min-w-0 flex-1">
+              <h2 className="text-[13px] font-bold leading-tight text-white truncate">Aura Auditor</h2>
+              <p className="text-[11px] leading-tight text-slate-400 truncate">{industry}</p>
           </div>
-          <div className="hidden sm:flex items-center gap-3 shrink-0">
-              <Badge className="bg-slate-800 text-slate-400 text-[9px] font-mono border-slate-700">ID: {businessId?.slice(0, 8) || 'SYNCING'}</Badge>
-          </div>
+          <Badge className="hidden sm:inline-flex bg-slate-800 text-slate-400 text-[9px] font-mono border-slate-700 shrink-0">
+            {businessId?.slice(0, 8) || 'SYNCING'}
+          </Badge>
       </header>
 
       <ScrollArea className="flex-grow p-4 sm:p-8 bg-slate-50/30">
         <div className="space-y-6 sm:space-y-8 max-w-4xl mx-auto">
             {messages.length === 0 && !isChatLoading && (
-                <div className="text-center py-10 sm:py-16 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                    <div className="flex justify-center mb-6 sm:mb-8 relative">
-                        <div className="p-4 sm:p-6 bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 relative z-10">
-                            <Bot className="h-10 w-10 sm:h-16 sm:w-16 text-slate-900" />
-                        </div>
-                        <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full" />
-                        <Zap size={20} className="absolute -top-2 right-1/2 translate-x-8 sm:translate-x-12 text-blue-500 fill-current animate-bounce" />
+                <div className="text-center py-6 sm:py-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                    <div className="flex justify-center mb-4 sm:mb-6">
+                        <AuraAvatar agent="auditor" className="h-20 w-20 sm:h-24 sm:w-24" />
                     </div>
-                    <h3 className="text-lg sm:text-2xl font-black text-slate-900 mb-3 tracking-tight px-4">Autonomous Forensic Kernel</h3>
-                    <p className="mb-8 sm:mb-10 text-xs sm:text-sm text-slate-500 max-w-lg mx-auto leading-relaxed px-4">
+                    <h3 className="text-base sm:text-xl font-bold text-slate-900 mb-2 tracking-tight px-4">What would you like checked?</h3>
+                    <p className="mb-6 sm:mb-8 text-xs sm:text-sm text-slate-500 max-w-lg mx-auto leading-relaxed px-4">
                         Secure logic link established to industry module map.
                         Authorized to audit system architecture, calculate global taxes, and execute executive reporting.
                     </p>
@@ -272,7 +283,7 @@ export function AiAuditAssistant() {
             )}
 
             {isChatLoading && !finalAnswer && (
-                <div className="flex items-center gap-3 sm:gap-4 ml-11 sm:ml-14 py-4 sm:py-6">
+                <div className="flex items-center gap-3 ml-11 sm:ml-14 py-3 sm:py-4">
                     <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                     <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-slate-400 animate-pulse">Computing forensic drift...</span>
                 </div>

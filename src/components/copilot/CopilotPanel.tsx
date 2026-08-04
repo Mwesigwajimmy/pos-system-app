@@ -11,18 +11,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  Sparkles, Send, User, Loader2, Cpu,
+  Send, User, Loader2, Cpu,
   FileDown, Compass, X, ShieldCheck,
   Presentation,
 } from 'lucide-react';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 
 import { useCopilot } from '@/context/CopilotContext';
+import { AuraAvatar } from './AuraAvatar';
 import AuraBoardroom from './AuraBoardroom';
 
 const downloadFileFromBase64 = (fileName: string, mimeType: string, content: string): void => {
@@ -57,7 +58,7 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
     if (config) {
       const Icon = config.icon;
       return (
-        <div className={cn("text-xs ml-11 my-2 p-3 border rounded-2xl animate-in fade-in slide-in-from-left-2 shadow-sm", config.color)}>
+        <div className={cn("text-xs ml-[46px] my-2 p-3 border rounded-2xl animate-in fade-in slide-in-from-left-2 shadow-sm", config.color)}>
           <div className="flex items-center gap-2.5">
             <Icon className="h-4 w-4 shrink-0" />
             <div className="min-w-0">
@@ -75,7 +76,7 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (data.tool || data.event === 'on_agent_action') {
     const toolName = data.tool || data.data?.tool;
     return (
-      <div className="text-[10px] text-muted-foreground ml-11 my-1.5 p-2.5 border rounded-xl bg-slate-50 border-dashed border-slate-200">
+      <div className="text-[10px] text-muted-foreground ml-[46px] my-1.5 p-2.5 border rounded-xl bg-slate-50 border-dashed border-slate-200">
         <div className="flex items-center gap-2">
           <Cpu className="h-3 w-3 text-emerald-500 animate-pulse" />
           <p className="font-medium text-slate-500 text-[10px]">
@@ -138,17 +139,18 @@ export default function CopilotPanel() {
   }, [streamData, router]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-        const scrollContainer = scrollRef.current.closest('[data-radix-scroll-area-viewport]');
-        if (scrollContainer) {
-            scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
-        }
+    if (!scrollRef.current) return;
+    const box = scrollRef.current.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+    if (!box) return;
+    const distanceFromBottom = box.scrollHeight - box.scrollTop - box.clientHeight;
+    if (distanceFromBottom < 160) {
+        box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
     }
   }, [messages, isChatLoading, streamData]);
 
   useEffect(() => {
     if (isReady && inputRef.current) {
-        inputRef.current.focus();
+        inputRef.current.focus({ preventScroll: true });
     }
   }, [isReady]);
 
@@ -173,33 +175,25 @@ export default function CopilotPanel() {
       </AnimatePresence>
 
       {/* HEADER */}
-      <header className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-100 bg-white flex items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative shrink-0">
-            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-slate-900 to-blue-950 flex items-center justify-center shadow-md">
-              <Sparkles className="h-4 w-4 sm:h-[18px] sm:w-[18px] text-blue-400" />
-            </div>
-            <span className={cn(
-              "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white",
-              isReady ? "bg-blue-500" : "bg-amber-400 animate-pulse"
-            )} />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-sm font-bold text-slate-900 truncate">Aura Assistant</h2>
-            <p className="text-[11px] text-slate-400 truncate">{isReady ? "Online — ask me anything" : "Connecting..."}</p>
-          </div>
+      <header className="h-14 px-3 sm:px-4 border-b border-slate-100 bg-white flex items-center gap-2.5 shrink-0">
+        <AuraAvatar
+          agent="aura"
+          state={isChatLoading ? 'thinking' : !isReady ? 'loading' : 'idle'}
+          status={isReady ? 'online' : 'syncing'}
+          className="h-11 w-11"
+        />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[13px] font-bold text-slate-900 truncate leading-tight">Aura</h2>
+          <p className="text-[11px] text-slate-400 truncate leading-tight">{isReady ? "Online" : "Connecting..."}</p>
         </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={closeCopilot}
-            aria-label="Close chat"
-            className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={closeCopilot}
+          aria-label="Close chat"
+          className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+        >
+          <X size={18} />
+        </button>
       </header>
 
       {/* CONTENT AREA */}
@@ -208,13 +202,11 @@ export default function CopilotPanel() {
           chat content instead of scrolling, pushing the composer footer
           below the visible viewport (only reachable by zooming out). */}
       <ScrollArea className="flex-1 min-h-0 bg-slate-50/60">
-        <div className="space-y-5 max-w-2xl mx-auto p-4 sm:p-6">
+        <div className="space-y-4 w-full p-3 sm:p-5">
 
             {isReady && messages.length === 0 && (
                 <div className="py-10 sm:py-14 text-center">
-                    <div className="relative inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-slate-900 to-blue-950 shadow-xl mb-5">
-                       <Sparkles className="h-7 w-7 sm:h-9 sm:w-9 text-blue-400" />
-                    </div>
+                    <AuraAvatar agent="aura" className="h-24 w-24 mb-4" />
                     <h3 className="text-base sm:text-lg font-bold text-slate-900">How can I help?</h3>
                     <p className="text-[13px] text-slate-400 mt-1.5 max-w-xs mx-auto leading-relaxed">
                         Ask about your sales, ledger, inventory, or anything else across your business.
@@ -238,12 +230,10 @@ export default function CopilotPanel() {
             {messages.map((m: any) => (
               <div key={m.id} className={cn('flex items-end gap-2.5', m.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-2 duration-300')}>
                 {m.role === 'assistant' && (
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-slate-900 to-blue-950 flex items-center justify-center shrink-0 shadow-sm">
-                    <Sparkles className="h-3.5 w-3.5 text-blue-400" />
-                  </div>
+                  <AuraAvatar agent="aura" className="h-9 w-9" interactive={false} />
                 )}
                 <div className={cn(
-                    'rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 max-w-[80%] text-[13px] sm:text-[14px] shadow-sm leading-relaxed',
+                    'rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 max-w-[85%] sm:max-w-[80%] text-[13px] sm:text-[14px] shadow-sm leading-relaxed break-words',
                     m.role === 'user'
                         ? 'bg-slate-900 text-white rounded-br-md'
                         : 'bg-white text-slate-800 border border-slate-100 rounded-bl-md'
@@ -257,7 +247,7 @@ export default function CopilotPanel() {
                 </div>
 
                 {m.role === 'user' && (
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center border border-slate-200 shrink-0 shadow-sm">
+                  <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center border border-slate-200 shrink-0 shadow-sm">
                     <User className="h-3.5 w-3.5 text-slate-400" />
                   </div>
                 )}
@@ -273,7 +263,7 @@ export default function CopilotPanel() {
             )}
 
             {isChatLoading && (
-                <div className="flex items-center gap-2.5 ml-9 sm:ml-11">
+                <div className="flex items-center gap-2.5 ml-[46px]">
                     <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-full px-3.5 py-2.5 shadow-sm">
                         <span className="h-1.5 w-1.5 rounded-full bg-slate-300 animate-bounce [animation-delay:-0.3s]" />
                         <span className="h-1.5 w-1.5 rounded-full bg-slate-300 animate-bounce [animation-delay:-0.15s]" />

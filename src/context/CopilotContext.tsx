@@ -2,39 +2,17 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v29.0 OMEGA-ULTIMATUM (THE SDK v5 MIGRATION WELD)
+ * VERSION: v29.1 OMEGA-ULTIMATUM (RATE-LIMIT PROTECTED + TYPE EXPORT)
  * SDK_VERSION: @ai-sdk/react 3.0.192, built on ai@6.0.190
  * JURISDICTION: Global ERP / Multi-Tenant / Multi-Country
  *
- * CORE ARCHITECTURAL UPGRADES:
- * 1. AGGRESSIVE IDENTITY RETRIEVAL: unchanged from v28.2.
- * 2. LIVE TOKEN SYNC: unchanged from v28.2 — subscribes to
- *    onAuthStateChange instead of fetching the token once.
- * 3. ⚠️ SDK v5 REWRITE (ROOT CAUSE FIX): Verified directly against
- *    node_modules/@ai-sdk/react/dist/index.js and node_modules/ai/dist/
- *    index.js — the installed useChat() does NOT return `input`,
- *    `handleInputChange`, `handleSubmit`, `append`, `isLoading`, or
- *    `data`. That was the old (pre-v5) API shape. This version only
- *    returns: messages, setMessages, sendMessage, regenerate,
- *    clearError, stop, error, resumeStream, status, addToolOutput, ...
- *    This is why `handleInputChange` was `undefined` on every single
- *    render, in every environment (dev, local prod, live prod) — it
- *    never existed. Confirmed root cause of the typing bug.
+ * v29.0: Real rate-limit protection via check_and_increment_aura_usage()
+ * (atomic Postgres function, row-locked per user).
  *
- *    FIX: `input` is now local component state, managed by hand.
- *    `sendMessage({ text })` is used instead of `append`. `isLoading`
- *    is derived from `status` ('submitted' | 'streaming' | ...).
- *    `messages` (v5 UIMessage[] with `.parts`) are flattened back into
- *    the old `{id, role, content}` shape so CopilotPanel.tsx needs ZERO
- *    changes. `data` (old generic stream array) is reconstructed by
- *    scanning message parts for `data-agentStep` parts emitted by the
- *    edge function (aura-quantum-audit v28.1+).
- * 4. DYNAMIC TRANSPORT: Auth/identity values (token, businessId,
- *    pathname, etc.) change over the life of the chat session, but
- *    useChat's transport is created once. Fresh values are threaded in
- *    via refs read inside `prepareSendMessagesRequest`, so every send
- *    uses current identity without needing to recreate the chat
- *    instance (which would wipe message history).
+ * v29.1: Exports a `CopilotMessage` type matching the flattened
+ * {id, role, content} shape `messages` is normalized into below.
+ * AiAuditAssistant.tsx imports this type; it previously didn't exist
+ * anywhere in this file, which would fail at build time.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -52,6 +30,12 @@ import { useBusiness } from '@/context/BusinessContext';
 import { createClient } from '@/lib/supabase/client';
 import { useSync } from '@/components/core/SyncProvider';
 
+export interface CopilotMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 const CopilotContext = createContext<any>(undefined);
 const supabase = createClient();
 
@@ -66,9 +50,6 @@ function NeuralSanctuary({
   const pathname = usePathname();
   const isSyncing = useRef(false);
 
-  // 🔄 Refs so the transport always reads *current* identity values
-  // without needing useChat() to be torn down and recreated (which
-  // would reset message history on every identity change).
   const sessionTokenRef = useRef(sessionToken);
   const businessIdRef = useRef(businessId);
   const userIdRef = useRef(userId);
@@ -106,7 +87,7 @@ function NeuralSanctuary({
         ...body,
       },
     }),
-  }), []); // created once — always reads fresh values via the refs above
+  }), []);
 
   const {
     messages: rawMessages,
@@ -114,7 +95,7 @@ function NeuralSanctuary({
     status,
     error: chatError,
     stop,
-    setMessages,
+    setMessages: setRawMessages,
   } = useChat({
     id: `aura-vault-${businessId}`,
     transport,
@@ -127,9 +108,7 @@ function NeuralSanctuary({
 
   const isLoading = status === 'submitted' || status === 'streaming';
 
-  // ✅ BACK-COMPAT SHAPE: flatten v5 UIMessage[] (with `.parts`) into the
-  // old {id, role, content} shape CopilotPanel.tsx already expects.
-  const messages = useMemo(() => (rawMessages || []).map((m: any) => ({
+  const messages: CopilotMessage[] = useMemo(() => (rawMessages || []).map((m: any) => ({
     id: m.id,
     role: m.role,
     content: (m.parts || [])
@@ -138,11 +117,6 @@ function NeuralSanctuary({
       .join(''),
   })), [rawMessages]);
 
-  // ✅ BACK-COMPAT SHAPE: reconstruct the old generic `data` stream array
-  // from custom 'data-agentStep' parts the edge function now emits,
-  // plus a synthetic on_error entry if useChat surfaced a fetch/stream
-  // error. CopilotPanel.tsx's AgentStep renderer and its on_error /
-  // on_tool_end effect both consume this exact shape unmodified.
   const data = useMemo(() => {
     const items: any[] = [];
     for (const m of rawMessages || []) {
@@ -158,8 +132,6 @@ function NeuralSanctuary({
     return items;
   }, [rawMessages, chatError]);
 
-  // ✅ `input` is now genuinely local state — the SDK no longer manages
-  // this for us.
   const [inputValue, setInputValue] = useState('');
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,7 +139,6 @@ function NeuralSanctuary({
   }, []);
 
   const handleSubmit = useCallback(async (e?: any, options?: any) => {
-    // SECURITY: Ensure message only fires if token has arrived
     if (!sessionToken) {
       toast.info("Aura: Initializing secure link... please try again in a moment.");
       return;
@@ -175,7 +146,6 @@ function NeuralSanctuary({
 
     if (isSyncing.current || isLoading) return;
 
-    // Form submission path (composer's onSubmit)
     if (e && e.preventDefault) {
       e.preventDefault();
       const text = inputValue.trim();
@@ -190,7 +160,6 @@ function NeuralSanctuary({
       return;
     }
 
-    // Programmatic path (suggestion buttons / startAIAssistance passing a string)
     if (typeof e === 'string' && e.trim().length > 0) {
       isSyncing.current = true;
       try {
@@ -201,11 +170,33 @@ function NeuralSanctuary({
     }
   }, [sendMessage, isLoading, sessionToken, inputValue]);
 
+  // ⚠️ NOTE: MissionControlPage's `handleSuggestionClick` previously passed
+  // a second `options.body` argument to handleSubmit, expecting it to be
+  // forwarded to the request — that was the pre-v5 AI SDK behavior. This
+  // handleSubmit no longer reads a second argument at all; sendMessage()
+  // already carries businessId/userId via prepareSendMessagesRequest
+  // above, so a plain string resend still works, but any code relying on
+  // custom per-call body overrides via the second argument will silently
+  // have that argument ignored. Flagged here rather than guessed at.
+
   const startAIAssistance = useCallback(async (prompt: string) => {
     if (!prompt || isLoading) return;
     setIsOpen(true);
     setTimeout(() => { if (sessionToken) handleSubmit(prompt); }, 850);
   }, [isLoading, sessionToken, handleSubmit, setIsOpen]);
+
+  // setMessages back-compat shim: callers (e.g. MissionControlPage's
+  // handleSuggestionClick) historically pass the flattened
+  // {id, role, content} shape. useChat's real setMessages expects v5
+  // UIMessage[] (with `.parts`), so we translate on the way in.
+  const setMessages = useCallback((next: CopilotMessage[] | ((prev: CopilotMessage[]) => CopilotMessage[])) => {
+    const resolved = typeof next === 'function' ? (next as any)(messages) : next;
+    setRawMessages((resolved || []).map((m: CopilotMessage) => ({
+      id: m.id,
+      role: m.role,
+      parts: [{ type: 'text', text: m.content }],
+    })));
+  }, [messages, setRawMessages]);
 
   const contextValue = useMemo(() => ({
     messages: messages || [],

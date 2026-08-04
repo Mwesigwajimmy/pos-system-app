@@ -4,14 +4,16 @@
  * --- BBU1 SOVEREIGN AI GATEWAY ---
  * Floating trigger that opens the Aura copilot panel. Reflects live
  * connection status (Active / Syncing / Desync) from CopilotContext.
+ *
+ * Previously used its own older, 4-state AuraAvatar that looked
+ * different from the one in the panel/mission-control views. Now uses
+ * the shared component from './AuraAvatar' (via copilot/), same 7-state
+ * agent-based version everywhere.
  */
 
 import React from 'react';
 import {
-  Zap,
-  Loader2,
   Fingerprint,
-  Sparkles,
   ShieldCheck,
   Cpu,
   ShieldAlert,
@@ -21,13 +23,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCopilot } from '@/context/CopilotContext';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AuraAvatar, type AuraState } from '@/components/copilot/AuraAvatar';
 
 export default function GlobalCopilot() {
   const { toggleCopilot, isOpen, isReady, isLoading, businessId, userId } = useCopilot();
@@ -66,6 +68,14 @@ export default function GlobalCopilot() {
   const status = getStatusConfig();
   const StatusIcon = status.icon;
 
+  // Map the existing connection status onto a facial expression.
+  const avatarState: AuraState =
+    isLoading || !isReady ? 'thinking'
+    : status.label === 'Desync' ? 'down'
+    : 'idle';
+
+  const avatarStatus = status.label === 'Active' ? 'online' : status.label === 'Syncing' ? 'syncing' : 'offline';
+
   return (
     <div
       className={cn(
@@ -100,50 +110,21 @@ export default function GlobalCopilot() {
               <Button
                 onClick={toggleCopilot}
                 size="icon"
+                variant="ghost"
+                aria-label="Open Aura copilot"
                 className={cn(
-                  "h-14 w-14 sm:h-16 sm:w-16 rounded-2xl sm:rounded-[1.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.4)] transition-all duration-700 hover:scale-110 active:scale-95 flex items-center justify-center overflow-hidden border border-white/10",
-                  isOpen
-                    ? "bg-slate-950 rotate-90 border-emerald-500/60 scale-105"
-                    : "bg-gradient-to-br from-slate-900 via-slate-950 to-black group-hover:border-emerald-500/40"
+                  "h-16 w-16 sm:h-20 sm:w-20 p-0 rounded-full bg-transparent hover:bg-transparent",
+                  "flex items-center justify-center transition-transform duration-500",
+                  "hover:scale-110 active:scale-95",
+                  isOpen && "scale-105"
                 )}
               >
-                <AnimatePresence mode="wait">
-                  {isLoading && !isReady ? (
-                    <motion.div
-                      key="loading"
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.5 }}
-                    >
-                      <Loader2 className="h-6 w-6 sm:h-7 sm:w-7 animate-spin text-emerald-400" />
-                    </motion.div>
-                  ) : isOpen ? (
-                    <motion.div
-                      key="open"
-                      initial={{ opacity: 0, rotate: -90 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: 90 }}
-                    >
-                      <Sparkles className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-400 fill-current drop-shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="closed"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                    >
-                      <Zap className={cn(
-                        "h-6 w-6 sm:h-7 sm:w-7 transition-all duration-700",
-                        isReady ? "text-emerald-400 fill-emerald-400/20 group-hover:fill-emerald-400" : "text-slate-600"
-                      )} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="absolute inset-0 opacity-[0.03] pointer-events-none group-hover:opacity-10 transition-opacity">
-                    <div className="absolute inset-0 bg-[linear-gradient(transparent_0%,rgba(16,185,129,1)_50%,transparent_100%)] bg-[length:100%_15px] animate-[scan_2s_linear_infinite]" />
-                </div>
+                <AuraAvatar
+                  agent="aura"
+                  state={avatarState}
+                  status={avatarStatus}
+                  className="h-16 w-16 sm:h-20 sm:w-20"
+                />
               </Button>
             </div>
             }
