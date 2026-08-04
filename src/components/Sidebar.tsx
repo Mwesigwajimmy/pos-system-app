@@ -587,6 +587,23 @@ const navSections: NavItem[] = [
     },
 ];
 
+// Shared text treatment for nav labels — same Tailwind text scale and weights
+// as Header.tsx (text-sm / text-xs, font-medium / font-semibold), no
+// arbitrary pixel sizes and no letter-spacing utilities, so the sidebar and
+// header read as one typographic system.
+const NAV_LABEL_CLASS = "text-sm font-medium";
+const NAV_SUBITEM_CLASS = "text-sm font-medium";
+const TOOLTIP_CLASS = "text-xs font-medium";
+// Flat active-state chip — mirrors the "urgent" badge and "Open / Seal"
+// button already used in Header.tsx (bg-x-50 text-x-700 border border-x-100),
+// replacing the old blurred-glow ring treatment so active rows match the
+// rest of the app's flat, bordered style instead of standing out from it.
+const ACTIVE_CLASS = "bg-blue-50 text-blue-700 border border-blue-100 font-semibold";
+// Tooltips are portaled outside the sidebar's overflow-hidden container, but
+// still need an explicit z-index above the sidebar (z-150) and flyout (z-148)
+// stacking contexts, or they can render visually "behind" those panels.
+const TOOLTIP_Z = "z-[200]";
+
 const NavLinkComponent = ({ href, label, Icon, isSidebarOpen, onClick }: { href: string; label: string; Icon: React.ElementType; isSidebarOpen: boolean; onClick?: () => void; }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
@@ -601,13 +618,13 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen, onClick }: { href:
           <TooltipTrigger
             render={
               <Link href={href} onClick={onClick}>
-                <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("group w-full justify-center transition-all h-10 w-10 mx-auto rounded-xl", isActive && "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600 shadow-sm")} aria-label={label}>
+                <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("group w-full justify-center transition-all h-10 w-10 mx-auto rounded-md", isActive && ACTIVE_CLASS)} aria-label={label}>
                   <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
                 </Button>
               </Link>
             }
           />
-          <TooltipContent side="right" className="font-bold text-[10px] uppercase tracking-widest">{label}</TooltipContent>
+          <TooltipContent side="right" className={cn(TOOLTIP_Z, TOOLTIP_CLASS)}>{label}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
@@ -615,7 +632,7 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen, onClick }: { href:
 
   return (
     <Link href={href} onClick={onClick}>
-      <Button variant={isActive ? "secondary" : "ghost"} className={cn("group w-full justify-start font-bold text-xs uppercase tracking-tight transition-all h-11 px-4 rounded-xl", isActive ? "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600" : "text-slate-500 hover:text-slate-900")}>
+      <Button variant={isActive ? "secondary" : "ghost"} className={cn("group w-full justify-start transition-all h-11 px-4 rounded-md", NAV_LABEL_CLASS, isActive ? ACTIVE_CLASS : "text-slate-500 hover:text-slate-900")}>
         <Icon className="mr-3 h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />{label}
       </Button>
     </Link>
@@ -635,8 +652,8 @@ const ModuleRailIcon = ({ title, Icon, isActive, isOpen, onClick }: { title: str
               variant={isActive || isOpen ? "secondary" : "ghost"}
               size="icon"
               className={cn(
-                "group w-full justify-center transition-all h-10 w-10 mx-auto rounded-xl",
-                (isActive || isOpen) && "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600 shadow-sm"
+                "group w-full justify-center transition-all h-10 w-10 mx-auto rounded-md",
+                (isActive || isOpen) && ACTIVE_CLASS
               )}
               aria-label={title}
             >
@@ -644,7 +661,7 @@ const ModuleRailIcon = ({ title, Icon, isActive, isOpen, onClick }: { title: str
             </Button>
           }
         />
-        <TooltipContent side="right" className="font-bold text-[10px] uppercase tracking-widest">{title}</TooltipContent>
+        <TooltipContent side="right" className={cn(TOOLTIP_Z, TOOLTIP_CLASS)}>{title}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
@@ -716,6 +733,10 @@ export default function Sidebar() {
         }
     };
 
+    // Clicking a module icon closes the main sidebar (if it happened to be
+    // expanded) and opens that module's flyout cleanly next to the rail. The
+    // flyout then stays open — across route changes, hover, anything — until
+    // the user explicitly closes it (X) or shrinks it to icons (Minimize2).
     const handleModuleRailClick = (e: React.MouseEvent, moduleKey: string) => {
         e.stopPropagation();
         setActiveFlyoutModule(prev => (prev === moduleKey ? null : moduleKey));
@@ -838,8 +859,9 @@ export default function Sidebar() {
                         type="button"
                         onClick={(e) => handleModuleRailClick(e, item.module)}
                         className={cn(
-                            "group w-full flex items-center gap-3 h-11 px-4 rounded-xl font-bold text-xs uppercase tracking-tight transition-all",
-                            (isModuleActive || isFlyoutOpenForThis) ? "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                            "group w-full flex items-center gap-3 h-11 px-4 rounded-md transition-all",
+                            NAV_LABEL_CLASS,
+                            (isModuleActive || isFlyoutOpenForThis) ? ACTIVE_CLASS : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                         )}
                     >
                         <item.icon className="h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
@@ -876,7 +898,7 @@ export default function Sidebar() {
 
                     return (
                         <AccordionItem key={item.module} value={item.module} className="not-last:border-b-0">
-                            <AccordionTrigger className={cn("group px-4 py-3 text-xs font-bold uppercase tracking-tight rounded-xl hover:bg-slate-50 hover:no-underline transition-colors", isModuleActive && "text-blue-600 bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40")}>
+                            <AccordionTrigger className={cn("group px-4 py-3 rounded-md hover:bg-slate-50 hover:no-underline transition-colors", NAV_LABEL_CLASS, isModuleActive && ACTIVE_CLASS)}>
                                 <div className="flex items-center flex-1">
                                     <item.icon className="mr-3 h-5 w-5 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
                                     <span>{item.title}</span>
@@ -889,7 +911,7 @@ export default function Sidebar() {
                                         <Link
                                             key={subItem.href}
                                             href={subItem.href}
-                                            className={cn("group flex items-center py-2.5 px-4 text-[11px] font-bold uppercase tracking-wide rounded-xl no-underline hover:no-underline transition-all", isSubItemActive ? "text-blue-600 bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
+                                            className={cn("group flex items-center py-2.5 px-4 rounded-md no-underline hover:no-underline transition-all", NAV_SUBITEM_CLASS, isSubItemActive ? ACTIVE_CLASS : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
                                         >
                                             <subItem.icon className="mr-3 h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" /><span>{subItem.label}</span>
                                         </Link>
@@ -919,7 +941,8 @@ export default function Sidebar() {
                 className={cn(
                     // Flush, edge-to-edge panel — no floating card margin, no
                     // rounded corners, no drop shadow. A right border does the
-                    // job of separating it from the main content instead.
+                    // job of separating it from the main content instead, same
+                    // as Header.tsx's own flat, bordered aesthetic.
                     "h-full lg:h-dvh bg-white border-r border-slate-200 flex flex-col overflow-hidden transition-[transform,opacity,width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] z-[150] shrink-0",
                     "fixed lg:sticky top-0 left-0",
                     !isSidebarOpen
@@ -930,13 +953,14 @@ export default function Sidebar() {
                 )}
             >
                 <div className={cn("flex items-center border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110] h-16", isSidebarOpen ? "justify-between" : "justify-center")}>
-                    {/* Mirrors the identity shown in the top Header bar, so it's still visible while the mobile drawer covers the header. */}
+                    {/* Mirrors the identity block in Header.tsx (avatar + name, same
+                        sizes/weights), so it's still visible while the mobile drawer covers the header. */}
                     {isSidebarOpen && (
                         <div className="flex items-center gap-2 min-w-0">
-                            <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-[10px] shrink-0 shadow-sm shadow-blue-600/30">
+                            <div className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-semibold text-xs shrink-0">
                                 {(profile?.full_name || "A").charAt(0).toUpperCase()}
                             </div>
-                            <span className="text-xs font-black text-slate-900 truncate min-w-0">
+                            <span className="text-sm font-semibold text-slate-900 truncate min-w-0">
                                 {profile?.full_name || "Authorized Operator"}
                             </span>
                         </div>
@@ -944,14 +968,14 @@ export default function Sidebar() {
                     {/* The only close/collapse control now — bigger and higher-contrast
                         than before (it used to be barely visible, especially on mobile
                         where it was the sole way to dismiss the drawer). */}
-                    <Button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} variant="ghost" size="icon" className={cn("h-11 w-11 text-slate-600 border border-slate-200 bg-slate-50 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all rounded-xl shrink-0 shadow-sm", !isSidebarOpen && "bg-blue-50 text-blue-600 border-blue-100 shadow-sm")}>
-                        {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                    <Button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} variant="ghost" size="icon" className={cn("h-9 w-9 text-slate-600 border border-slate-200 bg-slate-50 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 transition-all rounded-md shrink-0 shadow-sm", !isSidebarOpen && "bg-blue-50 text-blue-700 border-blue-100")}>
+                        {isSidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
                     </Button>
                 </div>
 
                 <nav className="flex-1 min-h-0 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
                     {isLoading ? (
-                        <div className="py-20 flex flex-col items-center gap-4 opacity-40"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
+                        <div className="py-20 flex flex-col items-center gap-4 opacity-40"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
                     ) : (
                         <div className="animate-in fade-in duration-700">
                             {isMobileView ? renderAccordionNav(finalNavItems) : renderDesktopNav(finalNavItems, isSidebarOpen)}
@@ -961,26 +985,26 @@ export default function Sidebar() {
 
                 <div className={cn("p-4 mt-auto border-t border-slate-100 space-y-3 bg-white", !isSidebarOpen && "flex flex-col items-center")}>
                     {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
-                        <Button variant="secondary" className="group w-full h-auto py-2.5 px-3 justify-start bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold border border-blue-100 rounded-xl shadow-sm" asChild>
+                        <Button variant="secondary" className="group w-full h-auto py-2.5 px-3 justify-start bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium border border-blue-100 rounded-md shadow-sm" asChild>
                             <Link href="/accounting/daily-ledger" className="flex items-center gap-3 no-underline hover:no-underline">
-                                <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-white text-blue-500 shadow-sm shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6">
+                                <span className="flex items-center justify-center h-8 w-8 rounded-md bg-white text-blue-500 shadow-sm shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6">
                                     <Unlock size={15} />
                                 </span>
                                 <span className="flex flex-col items-start leading-tight text-left min-w-0">
-                                    <span className="text-[11px] font-black uppercase tracking-wide">Open / Seal</span>
-                                    <span className="text-[9px] font-semibold text-blue-500/80 normal-case truncate">Daily Register</span>
+                                    <span className="text-sm font-semibold">Open / Seal</span>
+                                    <span className="text-xs font-medium text-blue-500/80 truncate">Daily Register</span>
                                 </span>
                             </Link>
                         </Button>
                     )}
-                    <Button variant="default" className={cn("group w-full justify-start bg-slate-900 hover:bg-red-600 text-white font-bold shadow-lg shadow-slate-900/10 transition-all active:scale-95 h-12 rounded-xl", !isSidebarOpen && "justify-center px-0 w-12")} onClick={(e) => { e.stopPropagation(); handleLogout(); }}>
-                        <LogOut className={cn("h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5", isSidebarOpen && "mr-3")} />
-                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Sign Out</span>}
+                    <Button variant="default" className={cn("group w-full justify-start bg-slate-900 hover:bg-red-600 text-white font-medium shadow-sm transition-all active:scale-95 h-10 rounded-md", !isSidebarOpen && "justify-center px-0 w-10")} onClick={(e) => { e.stopPropagation(); handleLogout(); }}>
+                        <LogOut className={cn("h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5", isSidebarOpen && "mr-2")} />
+                        {isSidebarOpen && <span className="text-sm">Sign out</span>}
                     </Button>
                     <Link href="/settings" className="w-full">
-                        <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", !isSidebarOpen && "justify-center px-0 w-11 mx-auto")}>
-                            <Settings className={cn("h-5 w-5 transition-transform duration-200 group-hover:rotate-45", isSidebarOpen && "mr-3")} />
-                            {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
+                        <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-medium hover:bg-slate-50 hover:text-slate-900 transition-all group h-10 rounded-md", !isSidebarOpen && "justify-center px-0 w-10 mx-auto")}>
+                            <Settings className={cn("h-4 w-4 transition-transform duration-200 group-hover:rotate-45", isSidebarOpen && "mr-2")} />
+                            {isSidebarOpen && <span className="text-sm">Settings</span>}
                         </Button>
                     </Link>
                 </div>
@@ -988,7 +1012,9 @@ export default function Sidebar() {
 
             {/* SUBMENU FLYOUT — opens next to the collapsed icon rail when a module
                 icon is clicked, instead of expanding the whole sidebar. Can be
-                shrunk to an icon-only strip or closed independently. */}
+                shrunk to an icon-only strip or closed independently. It stays open
+                across navigation and hover — only the X (close) or Minimize2 (shrink
+                to icons) controls, or clicking the backdrop, change its state. */}
             {activeFlyoutModule && flyoutModuleItem && !isMobileView && (
                 <>
                     <div
@@ -997,12 +1023,12 @@ export default function Sidebar() {
                     />
                     <div
                         className={cn(
-                            // Flush against the rail/expanded sidebar, same as the
-                            // sidebar itself now — no rounding, no floating shadow,
-                            // just a border to read as a distinct panel. Starts below
-                            // the top header bar (mt-3/mt-4 + h-16 ≈ 5rem) instead of
-                            // top-0, so it no longer covers the company name there.
-                            "fixed top-20 h-[calc(100dvh-5rem)] bg-white border-r border-slate-200 z-[148] flex flex-col overflow-hidden transition-[left,width] duration-200",
+                            // Flush against the rail/expanded sidebar, same border
+                            // treatment as the sidebar itself — no rounding, no
+                            // floating shadow. Starts exactly at top-16 (4rem) so its
+                            // own header row lines up flush with the main header,
+                            // instead of the old top-20 gap that left a visible seam.
+                            "fixed top-16 h-[calc(100dvh-4rem)] bg-white border-r border-slate-200 z-[148] flex flex-col overflow-hidden transition-[left,width] duration-200",
                             isSidebarOpen ? "left-72" : "left-20",
                             isFlyoutMinimized ? "w-20" : "w-72"
                         )}
@@ -1011,7 +1037,7 @@ export default function Sidebar() {
                             {!isFlyoutMinimized && (
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <flyoutModuleItem.icon className="h-5 w-5 text-blue-600 shrink-0" />
-                                    <span className="text-xs font-black uppercase tracking-tight text-slate-900 truncate">{flyoutModuleItem.title}</span>
+                                    <span className="text-sm font-semibold text-slate-900 truncate">{flyoutModuleItem.title}</span>
                                 </div>
                             )}
                             <div className="flex items-center gap-1 shrink-0">
@@ -1019,7 +1045,7 @@ export default function Sidebar() {
                                     onClick={() => setIsFlyoutMinimized(prev => !prev)}
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                                    className="h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-md"
                                     aria-label={isFlyoutMinimized ? "Expand submenu" : "Minimize submenu"}
                                 >
                                     {isFlyoutMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
@@ -1029,7 +1055,7 @@ export default function Sidebar() {
                                         onClick={() => { setActiveFlyoutModule(null); setIsFlyoutMinimized(false); }}
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                        className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md"
                                         aria-label="Close submenu"
                                     >
                                         <X className="h-4 w-4" />
@@ -1048,13 +1074,13 @@ export default function Sidebar() {
                                                 <TooltipTrigger
                                                     render={
                                                         <Link href={subItem.href} onClick={closeFlyout}>
-                                                            <Button variant={isSubItemActive ? "secondary" : "ghost"} size="icon" className={cn("w-full h-10 mx-auto rounded-xl", isSubItemActive && "bg-blue-500/10 ring-1 ring-blue-500/40 text-blue-600")} aria-label={subItem.label}>
+                                                            <Button variant={isSubItemActive ? "secondary" : "ghost"} size="icon" className={cn("w-full h-10 mx-auto rounded-md", isSubItemActive && ACTIVE_CLASS)} aria-label={subItem.label}>
                                                                 <subItem.icon className="h-4.5 w-4.5" />
                                                             </Button>
                                                         </Link>
                                                     }
                                                 />
-                                                <TooltipContent side="right" className="font-bold text-[10px] uppercase tracking-widest">{subItem.label}</TooltipContent>
+                                                <TooltipContent side="right" className={cn(TOOLTIP_Z, TOOLTIP_CLASS)}>{subItem.label}</TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
                                     );
@@ -1064,7 +1090,7 @@ export default function Sidebar() {
                                         key={subItem.href}
                                         href={subItem.href}
                                         onClick={closeFlyout}
-                                        className={cn("group flex items-center py-2.5 px-3 text-[11px] font-bold uppercase tracking-wide rounded-xl no-underline hover:no-underline transition-all", isSubItemActive ? "text-blue-600 bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
+                                        className={cn("group flex items-center py-2.5 px-3 rounded-md no-underline hover:no-underline transition-all", NAV_SUBITEM_CLASS, isSubItemActive ? ACTIVE_CLASS : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
                                     >
                                         <subItem.icon className="mr-3 h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" /><span>{subItem.label}</span>
                                     </Link>
