@@ -2,17 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v29.1 OMEGA-ULTIMATUM (RATE-LIMIT PROTECTED + TYPE EXPORT)
+ * VERSION: v29.2 OMEGA-ULTIMATUM (SHARED BOARDROOM STATE)
  * SDK_VERSION: @ai-sdk/react 3.0.192, built on ai@6.0.190
  * JURISDICTION: Global ERP / Multi-Tenant / Multi-Country
  *
- * v29.0: Real rate-limit protection via check_and_increment_aura_usage()
- * (atomic Postgres function, row-locked per user).
- *
- * v29.1: Exports a `CopilotMessage` type matching the flattened
- * {id, role, content} shape `messages` is normalized into below.
- * AiAuditAssistant.tsx imports this type; it previously didn't exist
- * anywhere in this file, which would fail at build time.
+ * v29.0: Real rate-limit protection via check_and_increment_aura_usage().
+ * v29.1: Exports CopilotMessage type.
+ * v29.2: `boardroomData` / `setBoardroomData` / `closeBoardroom` are now
+ * owned here instead of as local useState in CopilotPanel.tsx and
+ * MissionControlPage.tsx. This means the full-screen AuraBoardroom
+ * presentation can be triggered from ANY component in the app that calls
+ * useCopilot() — not just the two chat surfaces that used to hold their
+ * own private copy. AuraForensicGuard.tsx specifically depended on
+ * `boardroomData`/`closeBoardroom` existing on the context; previously
+ * these were undefined here, which meant the guard's boardroom overlay
+ * could never render and its onClose would throw if ever wired up.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -36,6 +40,13 @@ export interface CopilotMessage {
   content: string;
 }
 
+/** Shape of the payload AuraBoardroom expects — matches the `prepare_boardroom_presentation` tool output. */
+export interface BoardroomData {
+  presenter_role: string;
+  meeting_title: string;
+  slides: any[];
+}
+
 const CopilotContext = createContext<any>(undefined);
 const supabase = createClient();
 
@@ -49,6 +60,11 @@ function NeuralSanctuary({
 }: any) {
   const pathname = usePathname();
   const isSyncing = useRef(false);
+
+  // ✅ v29.2: shared boardroom state, was previously local to each
+  // consuming component (CopilotPanel, MissionControlPage separately).
+  const [boardroomData, setBoardroomData] = useState<BoardroomData | null>(null);
+  const closeBoardroom = useCallback(() => setBoardroomData(null), []);
 
   const sessionTokenRef = useRef(sessionToken);
   const businessIdRef = useRef(businessId);
@@ -117,6 +133,25 @@ function NeuralSanctuary({
       .join(''),
   })), [rawMessages]);
 
+  // ✅ v29.2: `data-agentStep` parts with action === 'prepare_boardroom_presentation'
+  // now feed the shared boardroom state directly here, so ANY page using
+  // useCopilot() gets the boardroom overlay automatically — not just
+  // whichever chat surface happens to be mounted at the time.
+  useEffect(() => {
+    for (const m of rawMessages || []) {
+      for (const part of (m.parts || [])) {
+        if (part.type === 'data-agentStep' && part.data?.event === 'on_tool_end') {
+          try {
+            const output = typeof part.data.output === 'string' ? JSON.parse(part.data.output) : part.data.output;
+            if (output?.action === 'prepare_boardroom_presentation' && output.payload) {
+              setBoardroomData(output.payload);
+            }
+          } catch (e) { /* not a boardroom payload, ignore */ }
+        }
+      }
+    }
+  }, [rawMessages]);
+
   const data = useMemo(() => {
     const items: any[] = [];
     for (const m of rawMessages || []) {
@@ -170,25 +205,12 @@ function NeuralSanctuary({
     }
   }, [sendMessage, isLoading, sessionToken, inputValue]);
 
-  // ⚠️ NOTE: MissionControlPage's `handleSuggestionClick` previously passed
-  // a second `options.body` argument to handleSubmit, expecting it to be
-  // forwarded to the request — that was the pre-v5 AI SDK behavior. This
-  // handleSubmit no longer reads a second argument at all; sendMessage()
-  // already carries businessId/userId via prepareSendMessagesRequest
-  // above, so a plain string resend still works, but any code relying on
-  // custom per-call body overrides via the second argument will silently
-  // have that argument ignored. Flagged here rather than guessed at.
-
   const startAIAssistance = useCallback(async (prompt: string) => {
     if (!prompt || isLoading) return;
     setIsOpen(true);
     setTimeout(() => { if (sessionToken) handleSubmit(prompt); }, 850);
   }, [isLoading, sessionToken, handleSubmit, setIsOpen]);
 
-  // setMessages back-compat shim: callers (e.g. MissionControlPage's
-  // handleSuggestionClick) historically pass the flattened
-  // {id, role, content} shape. useChat's real setMessages expects v5
-  // UIMessage[] (with `.parts`), so we translate on the way in.
   const setMessages = useCallback((next: CopilotMessage[] | ((prev: CopilotMessage[]) => CopilotMessage[])) => {
     const resolved = typeof next === 'function' ? (next as any)(messages) : next;
     setRawMessages((resolved || []).map((m: CopilotMessage) => ({
@@ -218,11 +240,15 @@ function NeuralSanctuary({
     tenantId,
     organizationId,
     tenantData,
-    tenantModules: tenantData?.tenantModules || []
+    tenantModules: tenantData?.tenantModules || [],
+    // ✅ v29.2: shared boardroom state
+    boardroomData,
+    setBoardroomData,
+    closeBoardroom,
   }), [
     messages, isLoading, data, inputValue, isOpen, businessId, userId,
     tenantId, organizationId, tenantData, handleSubmit, handleInputChange,
-    startAIAssistance, setIsOpen, setMessages
+    startAIAssistance, setIsOpen, setMessages, boardroomData, closeBoardroom
   ]);
 
   return (
@@ -305,7 +331,13 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
           handleSubmit: () => {},
           setMessages: () => {},
           setInput: () => {},
-          data: undefined
+          data: undefined,
+          // ✅ v29.2: keep the shape consistent even before handshake —
+          // AuraForensicGuard reads these unconditionally, so they must
+          // exist here too, not just in the ready branch.
+          boardroomData: null,
+          setBoardroomData: () => {},
+          closeBoardroom: () => {},
       }}>
         {children}
       </CopilotContext.Provider>

@@ -5,6 +5,13 @@
  * The chat surface itself (header + thread + composer). Mounted inside
  * CopilotDock, which handles the responsive slide-in (desktop) / full
  * popup (mobile) shell and backdrop around it.
+ *
+ * v2 CHANGE: `boardroomData` is no longer local useState — it now comes
+ * from CopilotContext (`boardroomData`, `closeBoardroom`), shared across
+ * every component using useCopilot(). A boardroom triggered from
+ * MissionControlPage or AuraForensicGuard will now correctly show here
+ * too, and vice versa. Local setBoardroomData call removed from the
+ * streamData effect — CopilotContext sets it directly now.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -99,7 +106,6 @@ export default function CopilotPanel() {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [boardroomData, setBoardroomData] = useState<any | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
   const {
@@ -112,6 +118,8 @@ export default function CopilotPanel() {
     data: streamData = [],
     isReady = false,
     closeCopilot,
+    boardroomData,    // ✅ from CopilotContext, not local useState
+    closeBoardroom,   // ✅ from CopilotContext
   } = useCopilot();
 
   useEffect(() => {
@@ -132,7 +140,7 @@ export default function CopilotPanel() {
           const output = typeof parsed.data.output === 'string' ? JSON.parse(parsed.data.output) : parsed.data.output;
           if (output.action === "navigate") router.push(output.payload.url);
           if (output.action === "download_file") downloadFileFromBase64(output.payload.fileName, output.payload.mimeType, output.payload.content);
-          if (output.action === "prepare_boardroom_presentation") setBoardroomData(output.payload);
+          // prepare_boardroom_presentation handled by CopilotContext now
         }
       } catch (e) { }
     }
@@ -169,7 +177,7 @@ export default function CopilotPanel() {
             presenter={boardroomData.presenter_role}
             title={boardroomData.meeting_title}
             slides={boardroomData.slides}
-            onClose={() => setBoardroomData(null)}
+            onClose={closeBoardroom}
           />
         )}
       </AnimatePresence>

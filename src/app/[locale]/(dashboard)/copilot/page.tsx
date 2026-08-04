@@ -2,39 +2,43 @@
 
 /**
  * --- BBU1 EXECUTIVE MISSION CONTROL ---
- * VERSION: v24.3 FINAL RESTORATION
+ * VERSION: v25.0 (SHARED AVATAR + SHARED BOARDROOM STATE)
  * JURISDICTION: Global ERP / Director Level
- * 
- * CORE ARCHITECTURAL RESTORATION:
- * 1. KEYBOARD ACTIVATION: Removed all internal gates on the command input. 
- *    Typing is now enabled the millisecond the interface loads.
- * 2. BUSINESS VOCABULARY: Migrated technical terminology to executive language 
- *    (e.g., "Node" to "Account Identifier").
- * 3. VISUAL STABILIZATION: Removed italic formatting and preserved full 
- *    layout structural integrity.
+ *
+ * v25.0 CHANGES FROM v24.3:
+ * 1. AVATAR: Replaced inline Sparkles icons with the shared AuraAvatar
+ *    component (src/components/copilot/AuraAvatar.tsx) — same face used
+ *    in CopilotPanel.tsx, GlobalCopilot.tsx, and AiAuditAssistant.tsx.
+ * 2. BOARDROOM STATE: `boardroomData` is no longer local useState here.
+ *    It now comes from CopilotContext (`boardroomData`, `closeBoardroom`),
+ *    shared across every component that calls useCopilot(). This means
+ *    a boardroom presentation triggered from ANY chat surface in the app
+ *    (not just this page) will now correctly display here too, and vice
+ *    versa. The local `setBoardroomData` call inside the streamData
+ *    effect below was removed — CopilotContext sets it directly from the
+ *    same tool-output data now.
  */
 
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useCopilot } from '@/context/CopilotContext'; 
-import { 
-  Sparkles, Send, User, Loader2, Server, Cog, 
+import { useCopilot } from '@/context/CopilotContext';
+import {
+  Sparkles, Send, Loader2, Cog,
   Activity, Compass, FileDown, Fingerprint, ShieldCheck,
-  Presentation, Terminal, Globe, Lock,
-  Wifi, WifiOff
+  Presentation, Lock,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import remarkGfm from 'remark-gfm';
 
 // ✅ EXECUTIVE LINK: The visual stage for the Executive Council
-import AuraBoardroom from '@/components/copilot/AuraBoardroom'; 
+import AuraBoardroom from '@/components/copilot/AuraBoardroom';
+import { AuraAvatar } from '@/components/copilot/AuraAvatar';
 
 /**
  * AgentStep Component
@@ -45,7 +49,7 @@ const AgentStep = ({ data }: { data: any }) => {
 
     try {
         const outputData = data.output ? (typeof data.output === 'string' ? JSON.parse(data.output) : data.output) : {};
-        
+
         const actionConfigs: Record<string, { icon: any, color: string, label: string }> = {
             navigate: { icon: Compass, color: "text-sky-500 bg-sky-500/5 border-sky-500/20", label: "Strategic Navigation" },
             download_file: { icon: FileDown, color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/20", label: "Business Report Generated" },
@@ -91,14 +95,21 @@ export default function MissionControlPage() {
   const router = useRouter();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [boardroomData, setBoardroomData] = useState<any | null>(null);
-  
-  const { 
-    messages, input, handleInputChange, handleSubmit, 
-    isLoading, data: streamData, isReady, businessId, userId, tenantData 
+
+  const {
+    messages, input, handleInputChange, handleSubmit,
+    isLoading, data: streamData, isReady, businessId, userId, tenantData,
+    boardroomData,    // ✅ from CopilotContext, not local useState
+    closeBoardroom,   // ✅ from CopilotContext
   } = useCopilot();
 
   // SYSTEM ACTIONS ORCHESTRATOR
+  // Note: boardroom triggering itself now happens inside CopilotContext
+  // (it watches the same streamData/rawMessages for
+  // prepare_boardroom_presentation tool output). This effect still
+  // handles navigate/download_file since those are page-level side
+  // effects (routing, browser download) that don't belong in the shared
+  // context.
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
@@ -113,7 +124,7 @@ export default function MissionControlPage() {
             link.download = output.payload.fileName;
             link.click();
           }
-          if (output.action === "prepare_boardroom_presentation") setBoardroomData(output.payload);
+          // prepare_boardroom_presentation handled by CopilotContext now
         }
       } catch (e) { }
     }
@@ -142,9 +153,9 @@ export default function MissionControlPage() {
   const onAttemptSubmit = (e: React.FormEvent) => {
     if (e && e.preventDefault) e.preventDefault();
     const cleanContent = (input || '').trim();
-    
+
     if (cleanContent.length > 0 && !isLoading) {
-        handleSubmit(cleanContent); 
+        handleSubmit(cleanContent);
     }
   };
 
@@ -163,14 +174,14 @@ export default function MissionControlPage() {
 
   return (
     <div className="flex flex-col h-full bg-white border rounded-[32px] shadow-[0_32px_120px_rgba(0,0,0,0.1)] overflow-hidden min-h-[750px] border-slate-100 relative">
-      
+
       <AnimatePresence>
         {boardroomData && (
-          <AuraBoardroom 
+          <AuraBoardroom
             presenter={boardroomData.presenter_role}
             title={boardroomData.meeting_title}
             slides={boardroomData.slides}
-            onClose={() => setBoardroomData(null)}
+            onClose={closeBoardroom}
           />
         )}
       </AnimatePresence>
@@ -179,14 +190,17 @@ export default function MissionControlPage() {
           <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
               <Fingerprint size={140} className="text-emerald-500" />
           </div>
-          
+
           <div className="flex items-center gap-5 relative z-10">
-              <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 shadow-inner">
-                <Activity className="h-6 w-6 text-emerald-400 animate-pulse" />
-              </div>
+              <AuraAvatar
+                agent="analyst"
+                state={isLoading ? 'thinking' : 'idle'}
+                status={businessId ? 'online' : 'syncing'}
+                className="h-14 w-14"
+              />
               <div>
                 <h1 className="text-base font-black uppercase tracking-[0.25em] text-white">Aura Mission Control</h1>
-                <p className="text-[10px] text-slate-500 font-mono mt-1.5 tracking-[0.2em] uppercase">Executive Business Assistant v24.1</p>
+                <p className="text-[10px] text-slate-500 font-mono mt-1.5 tracking-[0.2em] uppercase">Executive Business Assistant v25.0</p>
               </div>
           </div>
 
@@ -202,12 +216,12 @@ export default function MissionControlPage() {
                    </p>
                 </div>
               </div>
-              
+
               <div className="h-12 w-px bg-slate-800/50" />
-              
+
               <div className="flex flex-col items-center">
                 <span className={cn(
-                    "h-3 w-3 rounded-full mb-1.5 transition-all duration-1000", 
+                    "h-3 w-3 rounded-full mb-1.5 transition-all duration-1000",
                     identityIsAnchored ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)]" : "bg-amber-500 animate-pulse"
                 )}></span>
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
@@ -219,7 +233,7 @@ export default function MissionControlPage() {
 
       <ScrollArea className="flex-1 p-10 bg-[radial-gradient(#f1f5f9_1px,transparent_1px)] [background-size:32px_32px]" ref={scrollAreaRef}>
         <div className="space-y-10 max-w-5xl mx-auto pb-20">
-          
+
           {identityIsAnchored && messages.length === 0 && (
               <div className="py-40 text-center animate-in fade-in duration-1000">
                   <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative inline-block mb-8">
@@ -240,16 +254,16 @@ export default function MissionControlPage() {
             </div>
           )}
 
-          {messages.map((message: any) => ( 
+          {messages.map((message: any) => (
             <div key={message.id} className={cn('flex items-start gap-5', message.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-4 duration-500')}>
               {message.role === 'assistant' && (
                 <div className="w-11 h-11 rounded-[14px] bg-slate-950 flex items-center justify-center shadow-2xl shrink-0 border border-emerald-500/20 relative overflow-hidden group">
-                    <Sparkles className="h-5 w-5 text-emerald-400 z-10"/>
+                    <AuraAvatar agent="analyst" className="h-full w-full" interactive={false} />
                     <div className="absolute inset-0 bg-emerald-500/5 animate-pulse" />
                 </div>
               )}
               <div className={cn(
-                'max-w-[82%] rounded-[24px] p-7 text-[15px] shadow-sm border transition-all leading-relaxed', 
+                'max-w-[82%] rounded-[24px] p-7 text-[15px] shadow-sm border transition-all leading-relaxed',
                 message.role === 'user' ? 'bg-slate-900 text-white border-slate-800 rounded-tr-none' : 'bg-white text-slate-800 border-slate-100 rounded-tl-none'
               )}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none">
@@ -264,7 +278,7 @@ export default function MissionControlPage() {
           {isLoading && messages[messages.length-1]?.role === 'assistant' && (
              <div className="flex items-start gap-5 animate-in fade-in slide-in-from-bottom-3">
                 <div className="w-11 h-11 rounded-[14px] bg-slate-950 flex items-center justify-center border border-emerald-500/20">
-                    <Sparkles className="h-5 w-5 text-emerald-400 animate-pulse"/>
+                    <AuraAvatar agent="analyst" state="thinking" className="h-full w-full" interactive={false} />
                 </div>
                <div className="max-w-[82%] rounded-[24px] p-7 text-[15px] bg-white border border-emerald-50/50 rounded-tl-none shadow-sm relative">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none">
@@ -282,27 +296,27 @@ export default function MissionControlPage() {
       <footer className="border-t bg-white p-10 shadow-[0_-25px_80px_rgba(0,0,0,0.05)] relative z-20">
         <form onSubmit={onAttemptSubmit} className="flex items-center gap-5 max-w-6xl mx-auto">
           <div className="relative flex-1 group">
-              <Input 
+              <Input
                 ref={inputRef}
-                value={input || ''} 
+                value={input || ''}
                 onChange={handleInputChange}
-                placeholder={!isReady ? "Syncing business records..." : "Direct Aura to perform a financial audit..."} 
-                disabled={isLoading} 
-                className="h-18 rounded-[20px] bg-slate-50 border-none shadow-inner text-[16px] px-8 focus-visible:ring-2 focus-visible:ring-emerald-500/50" 
+                placeholder={!isReady ? "Syncing business records..." : "Direct Aura to perform a financial audit..."}
+                disabled={isLoading}
+                className="h-18 rounded-[20px] bg-slate-50 border-none shadow-inner text-[16px] px-8 focus-visible:ring-2 focus-visible:ring-emerald-500/50"
               />
               <div className="absolute right-7 top-1/2 -translate-y-1/2">
                 {isReady ? <ShieldCheck size={24} className="text-emerald-500" /> : <Loader2 size={20} className="text-slate-200 animate-spin" />}
               </div>
           </div>
-          <Button 
-            type="submit" 
-            disabled={!canSend} 
+          <Button
+            type="submit"
+            disabled={!canSend}
             className={cn("h-18 w-18 rounded-[20px] shadow-2xl transition-all", canSend ? "bg-slate-950 hover:bg-emerald-950" : "bg-slate-100 opacity-30")}
           >
              {isLoading ? <Loader2 className="h-8 w-8 animate-spin text-emerald-400" /> : <Send className="h-8 w-8 text-white" />}
           </Button>
         </form>
-        
+
         <div className="flex items-center justify-between mt-7 max-w-6xl mx-auto px-2">
             <div className="flex gap-6">
                 <div className="flex flex-col">
