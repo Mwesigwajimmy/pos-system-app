@@ -4,9 +4,10 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useRef, useCallback, ReactNode, forwardRef, ElementRef, ComponentPropsWithoutRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence, Variants, useInView, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -178,6 +179,71 @@ function CountUp({ to, duration = 1.4, className, replayKey }: { to: number; dur
     return <motion.span ref={ref} className={className}>{rounded}</motion.span>;
 }
 
+
+function useMobileAutoScroll(ref: React.RefObject<HTMLDivElement>, count: number, delay = 3800) {
+    useEffect(() => {
+        const el = ref.current;
+        if (!el || count < 2) return;
+
+        const mq = window.matchMedia('(min-width: 1024px)');
+        let timer: ReturnType<typeof setInterval> | null = null;
+        let i = 0;
+        let paused = false;
+        let visible = false;
+
+        const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+        const step = () => {
+            if (paused || !visible || mq.matches) return;
+            i = (i + 1) % count;
+            const child = el.children[i] as HTMLElement | undefined;
+            if (child) el.scrollTo({ left: child.offsetLeft, behavior: 'smooth' });
+        };
+        const start = () => { if (!timer && !paused) timer = setInterval(step, delay); };
+
+        // only run while the rail is actually on screen, otherwise it has
+        // already cycled past several cards by the time you scroll to it
+        const io = new IntersectionObserver(
+            ([entry]) => { visible = entry.isIntersecting; if (visible) start(); else stop(); },
+            { threshold: 0.35 }
+        );
+        io.observe(el);
+
+        const hold = () => { paused = true; stop(); };
+        el.addEventListener('pointerdown', hold, { passive: true });
+        el.addEventListener('wheel', hold, { passive: true });
+
+        const onChange = () => { if (mq.matches) stop(); else start(); };
+        mq.addEventListener('change', onChange);
+
+        return () => {
+            stop();
+            io.disconnect();
+            mq.removeEventListener('change', onChange);
+            el.removeEventListener('pointerdown', hold);
+            el.removeEventListener('wheel', hold);
+        };
+    }, [ref, count, delay]);
+}
+
+function MobileRail({ count, grid, className, children, delay }: { count: number; grid: string; className?: string; children: ReactNode; delay?: number }) {
+    const ref = useRef<HTMLDivElement>(null);
+    useMobileAutoScroll(ref, count, delay);
+    return (
+        <div
+            ref={ref}
+            className={cn(
+                'relative flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+                'lg:grid lg:overflow-visible lg:pb-0',
+                grid, className
+            )}
+        >
+            {children}
+        </div>
+    );
+}
+
+const RAIL_CARD = 'w-[82vw] shrink-0 snap-center sm:w-[22rem] lg:w-auto';
+
 function AutoRail({
     items, delay = 5200, accent = 'blue', cardWidth = 320, renderItem, label,
 }: {
@@ -290,10 +356,22 @@ function SectionHeading({ eyebrow, title, sub, dark = false, accent = 'blue' }: 
     const a = ACCENTS[accent];
     return (
         <div className="max-w-2xl">
-            <div className="flex items-center gap-2.5">
-                <motion.span animate={{ scale: [1, 1.6, 1], opacity: [1, 0.4, 1] }} transition={{ duration: 2.4, repeat: Infinity }} className={cn('h-1.5 w-1.5 rounded-full', a.glow)} />
-                <span className={cn('text-xs font-semibold uppercase tracking-[0.16em]', dark ? 'text-slate-400' : a.text)}>{eyebrow}</span>
-            </div>
+            <motion.div
+                whileHover={{ scaleX: 1.06 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 22 }}
+                style={{ transformOrigin: 'left center' }}
+                className={cn(
+                    'inline-flex items-center gap-2 rounded-[5px] px-3 py-1.5 font-mono text-[11px] font-medium tracking-tight',
+                    dark ? 'bg-white text-slate-900' : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                )}
+            >
+                <motion.span
+                    animate={{ opacity: [1, 0.25, 1] }}
+                    transition={{ duration: 2.4, repeat: Infinity }}
+                    className={cn('h-[7px] w-[7px] rounded-[1px]', a.glow)}
+                />
+                {eyebrow}
+            </motion.div>
             <h2 className={cn('mt-4 text-2xl font-semibold leading-tight tracking-tight sm:text-3xl lg:text-[2.1rem]', dark ? 'text-white' : 'text-slate-900 dark:text-slate-50')}>
                 {title}
             </h2>
@@ -854,26 +932,28 @@ const PLANS = [
 
 /* ------------------------------------------------------------------ */
 
-function RotatingWord({ words }: { words: string[] }) {
+function RotatingLine({ lines, interval = 3000 }: { lines: string[]; interval?: number }) {
     const [index, setIndex] = useState(0);
     useEffect(() => {
-        const timer = setInterval(() => setIndex(i => (i + 1) % words.length), 2600);
+        const timer = setInterval(() => setIndex(i => (i + 1) % lines.length), interval);
         return () => clearInterval(timer);
-    }, [words.length]);
+    }, [lines.length, interval]);
 
     return (
-        <span className="relative inline-block align-bottom">
-            <span className="invisible" aria-hidden="true">{words.reduce((a, b) => (a.length > b.length ? a : b))}</span>
+        <span className="relative block">
+            <span className="invisible" aria-hidden="true">
+                {lines.reduce((a, b) => (a.length > b.length ? a : b))}
+            </span>
             <AnimatePresence mode="wait">
                 <motion.span
-                    key={words[index]}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -12 }}
-                    transition={{ duration: 0.35, ease: EASE }}
-                    className="absolute inset-0 whitespace-nowrap bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent"
+                    key={lines[index]}
+                    initial={{ opacity: 0, y: 18, filter: 'blur(6px)' }}
+                    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, y: -18, filter: 'blur(6px)' }}
+                    transition={{ duration: 0.45, ease: EASE }}
+                    className="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-sky-400 via-blue-400 to-indigo-400 bg-clip-text text-center text-transparent"
                 >
-                    {words[index]}
+                    {lines[index]}
                 </motion.span>
             </AnimatePresence>
         </span>
@@ -940,7 +1020,10 @@ const MegaMenuHeader = () => {
         <>
             <header className={cn('fixed top-0 z-40 h-16 w-full transition-colors duration-300', scrolled ? 'border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90' : 'border-b border-transparent bg-transparent')}>
                 <div className="mx-auto flex h-full max-w-7xl flex-nowrap items-center gap-2 px-4 sm:px-6">
-                    <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight">
+                    <Link href="/" className="group flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight">
+                        <motion.span whileHover={{ scale: 1.08, rotate: -3 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }} className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center">
+                            <Image src="/images/logo.png" alt="" width={28} height={28} priority className="h-7 w-7 object-contain" />
+                        </motion.span>
                         <span className={cn('transition-colors', scrolled ? 'text-slate-900 dark:text-white' : 'text-white')}>{siteConfig.name}</span>
                     </Link>
 
@@ -1117,7 +1200,9 @@ const DynamicPricingSection = () => {
     const ActiveModIcon = activeMod.icon;
 
     return (
-        <section id="pricing" className="relative overflow-hidden border-t border-slate-200 py-16 dark:border-slate-800 sm:py-24">
+        <section id="pricing" className="relative overflow-hidden border-t border-slate-200 bg-gradient-to-b from-blue-50/70 via-white to-white py-16 dark:border-slate-800 dark:from-blue-950/30 dark:via-slate-950 dark:to-slate-950 sm:py-24">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_45%_at_50%_0%,rgba(37,99,235,0.14)_0%,rgba(37,99,235,0)_70%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_45%_40%_at_88%_88%,rgba(45,212,191,0.12)_0%,rgba(45,212,191,0)_65%)]" />
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50/70 to-violet-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950" />
             <motion.div animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.32, 0.2] }} transition={{ duration: 9, repeat: Infinity }} className="absolute -left-32 top-10 h-72 w-72 rounded-full bg-blue-400 blur-3xl" />
             <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.34, 0.2] }} transition={{ duration: 11, repeat: Infinity, delay: 2 }} className="absolute -right-32 bottom-10 h-72 w-72 rounded-full bg-violet-400 blur-3xl" />
@@ -1151,9 +1236,9 @@ const DynamicPricingSection = () => {
                     </span>
                 </div>
 
-                <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <MobileRail count={PLANS.length} grid="lg:grid-cols-4" className="mt-10">
                     {PLANS.map((plan, index) => (
-                        <motion.div key={index} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.09, duration: 0.5, ease: EASE }} whileHover={{ y: -8 }}>
+                        <motion.div key={index} className={RAIL_CARD} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.09, duration: 0.5, ease: EASE }} whileHover={{ y: -8 }}>
                             <Card className={cn('flex h-full flex-col rounded-2xl bg-white transition-shadow dark:bg-slate-950', plan.highlight ? 'border-2 border-slate-900 shadow-2xl dark:border-white' : 'border border-slate-200 shadow-md hover:shadow-xl dark:border-slate-800')}>
                                 <CardHeader className="pb-4">
                                     {plan.highlight ? (
@@ -1191,7 +1276,7 @@ const DynamicPricingSection = () => {
                             </Card>
                         </motion.div>
                     ))}
-                </div>
+                </MobileRail>
 
                 <div ref={modRef} className="mt-14 overflow-hidden rounded-2xl border border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
                     <div className="border-b border-slate-200 px-6 py-6 dark:border-slate-800 sm:px-8">
@@ -1304,8 +1389,8 @@ const PartnerWithUsSection = () => {
         <Section id="partner" surface="light">
             <SectionHeading eyebrow="Partners" title="Work with us" sub="Two ways to earn from BBU1 without being on the payroll." accent="amber" />
 
-            <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2">
-                <motion.div initial={{ opacity: 0, x: -24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} whileHover={{ y: -6 }} className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+            <MobileRail count={2} grid="lg:grid-cols-2" className="mt-10">
+                <motion.div initial={{ opacity: 0, x: -24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} whileHover={{ y: -6, scaleX: 1.02 }} className="w-[82vw] shrink-0 snap-center sm:w-[22rem] lg:w-auto group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-7">
                     <div className={cn('mb-5 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', ACCENTS.amber.tile)}>
                         <Megaphone className="h-5 w-5" />
                     </div>
@@ -1318,10 +1403,8 @@ const PartnerWithUsSection = () => {
                         <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />Materials provided</li>
                     </ul>
                     <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="mt-6 h-11 w-full rounded-xl border-slate-200 text-sm font-medium dark:border-slate-700">
-                                Join the programme <ArrowRight className="ml-2 h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1" />
-                            </Button>
+                        <DialogTrigger className={cn(buttonVariants({ variant: "outline" }), "mt-6 h-11 w-full rounded-xl border-slate-200 text-sm font-medium dark:border-slate-700")}>
+                            Join the programme <ArrowRight className="ml-2 h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1" />
                         </DialogTrigger>
                         <DialogContent className="w-[calc(100%-1.5rem)] rounded-2xl p-0 sm:max-w-lg">
                             <DialogHeader className="border-b border-slate-200 px-5 py-4 text-left dark:border-slate-800 sm:px-6">
@@ -1345,7 +1428,7 @@ const PartnerWithUsSection = () => {
                     </Dialog>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, x: 24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} whileHover={{ y: -6 }} className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                <motion.div initial={{ opacity: 0, x: 24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} whileHover={{ y: -6 }} className="w-[82vw] shrink-0 snap-center sm:w-[22rem] lg:w-auto group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-7">
                     <div className={cn('mb-5 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', ACCENTS.violet.tile)}>
                         <GitBranch className="h-5 w-5" />
                     </div>
@@ -1358,10 +1441,8 @@ const PartnerWithUsSection = () => {
                         <li className="flex gap-2.5 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />Share of implementation revenue</li>
                     </ul>
                     <Dialog onOpenChange={(open) => { if (open) resetForm(); }}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="mt-6 h-11 w-full rounded-xl border-slate-200 text-sm font-medium dark:border-slate-700">
-                                Get in touch <ArrowRight className="ml-2 h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1" />
-                            </Button>
+                        <DialogTrigger className={cn(buttonVariants({ variant: "outline" }), "mt-6 h-11 w-full rounded-xl border-slate-200 text-sm font-medium dark:border-slate-700")}>
+                            Get in touch <ArrowRight className="ml-2 h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1" />
                         </DialogTrigger>
                         <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl p-0 sm:max-w-lg">
                             <DialogHeader className="border-b border-slate-200 px-5 py-4 text-left dark:border-slate-800 sm:px-6">
@@ -1400,10 +1481,128 @@ const PartnerWithUsSection = () => {
                         </DialogContent>
                     </Dialog>
                 </motion.div>
-            </div>
+            </MobileRail>
         </Section>
     );
 };
+
+
+type AuraState = 'idle' | 'thinking' | 'happy';
+
+const AURA_MOUTH: Record<AuraState, string> = {
+    idle: 'M 42 56 Q 50 61 58 56',
+    thinking: 'M 43 57 Q 50 59 57 57',
+    happy: 'M 40 54 Q 50 66 60 54 Q 50 60 40 54',
+};
+
+function AuraAvatar({ state = 'idle', className, interactive = true }: { state?: AuraState; className?: string; interactive?: boolean }) {
+    const [blink, setBlink] = useState(false);
+    const [wink, setWink] = useState(false);
+    const [hover, setHover] = useState(false);
+    const active: AuraState = hover && interactive && state !== 'thinking' ? 'happy' : state;
+    const uid = React.useId().replace(/:/g, '');
+
+    useEffect(() => {
+        let t: ReturnType<typeof setTimeout>;
+        const loop = () => {
+            t = setTimeout(() => { setBlink(true); setTimeout(() => setBlink(false), 130); loop(); }, 2600 + Math.random() * 3200);
+        };
+        loop();
+        return () => clearTimeout(t);
+    }, []);
+
+    useEffect(() => {
+        let t: ReturnType<typeof setTimeout>;
+        const loop = () => {
+            t = setTimeout(() => { setWink(true); setTimeout(() => setWink(false), 480); loop(); }, 9000 + Math.random() * 9000);
+        };
+        loop();
+        return () => clearTimeout(t);
+    }, []);
+
+    const drift = active === 'happy' ? 1.6 : 2.8;
+    const Eye = ({ cx, closed }: { cx: number; closed: boolean }) => closed
+        ? <path d={`M ${cx - 10} 38 Q ${cx} 46 ${cx + 10} 38`} stroke="#0b2a63" strokeWidth="4" strokeLinecap="round" fill="none" />
+        : <><ellipse cx={cx} cy="38" rx="10" ry="11" fill="#fff" fillOpacity="0.96" /><circle cx={cx} cy={active === 'thinking' ? 34.5 : 38} r="5" fill="#0b2a63" /><circle cx={cx + 2} cy={active === 'thinking' ? 32.3 : 35.8} r="1.6" fill="#fff" fillOpacity="0.92" /></>;
+
+    return (
+        <span
+            className={cn('inline-flex shrink-0 items-center justify-center', className)}
+            onMouseEnter={() => interactive && setHover(true)}
+            onMouseLeave={() => interactive && setHover(false)}
+        >
+            <svg viewBox="0 0 100 100" className="h-full w-full overflow-visible">
+                <defs>
+                    <linearGradient id={`af-${uid}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#1d4ed8" />
+                    </linearGradient>
+                    <radialGradient id={`ash-${uid}`} cx="0.5" cy="0.5" r="0.5">
+                        <stop offset="0%" stopColor="#0b2a63" stopOpacity="0.5" /><stop offset="100%" stopColor="#0b2a63" stopOpacity="0" />
+                    </radialGradient>
+                </defs>
+                <motion.ellipse cx="50" cy="96" rx="25" ry="4.5" fill={`url(#ash-${uid})`} animate={{ rx: [25, 20, 25], opacity: [0.9, 0.55, 0.9] }} transition={{ duration: drift, repeat: Infinity, ease: 'easeInOut' }} />
+                <motion.g style={{ transformOrigin: '50px 45px' }} animate={{ rotate: active === 'thinking' ? -6 : 0, y: [0, -3.5, 0] }} transition={{ rotate: { type: 'spring', stiffness: 200, damping: 18 }, y: { duration: drift, repeat: Infinity, ease: 'easeInOut' } }}>
+                    <path d="M 26 92 Q 26 74 50 74 Q 74 74 74 92 Z" fill="#1e3a8a" />
+                    <path d="M 40 74 L 50 84 L 60 74 Z" fill="#fff" fillOpacity="0.92" />
+                    <line x1="50" y1="6" x2="50" y2="-1" stroke="#93c5fd" strokeOpacity="0.8" strokeWidth="2.5" strokeLinecap="round" />
+                    <motion.circle cx="50" cy="-2" r="3.2" fill="#93c5fd" animate={{ opacity: [0.45, 1, 0.45] }} transition={{ duration: active === 'thinking' ? 0.8 : 2.2, repeat: Infinity }} />
+                    <rect x="14" y="6" width="72" height="68" rx="26" fill={`url(#af-${uid})`} />
+                    <rect x="14" y="6" width="72" height="68" rx="26" fill="none" stroke="#fff" strokeOpacity="0.22" strokeWidth="1.5" />
+                    <Eye cx={36} closed={blink} />
+                    <Eye cx={64} closed={blink || wink} />
+                    <motion.path animate={{ d: AURA_MOUTH[active] }} transition={{ type: 'spring', stiffness: 200, damping: 18 }} stroke="#fff" strokeOpacity="0.8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill={active === 'happy' ? '#fff' : 'none'} fillOpacity={active === 'happy' ? 0.28 : 0} />
+                    <circle cx="78" cy="66" r="9" fill="#fff" />
+                    <circle cx="78" cy="66" r="6.2" fill="#22c55e" />
+                </motion.g>
+            </svg>
+        </span>
+    );
+}
+
+function AuraFloating() {
+    const [open, setOpen] = useState(false);
+    return (
+        <>
+            <AnimatePresence>
+                {open ? (
+                    <motion.div
+                        initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 16, scale: 0.96 }}
+                        transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+                        className="fixed bottom-28 right-5 z-50 w-[min(20rem,calc(100vw-2.5rem))] rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+                    >
+                        <div className="flex items-start gap-3">
+                            <AuraAvatar className="h-11 w-11" interactive={false} />
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white">Aura</p>
+                                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+                                    Ask about your sales, stock or ledger in plain language and get an answer drawn from your own data.
+                                </p>
+                            </div>
+                        </div>
+                        <Button asChild className="mt-4 h-10 w-full rounded-xl bg-blue-600 text-sm font-medium text-white hover:bg-blue-700">
+                            <Link href="/signup">Try Aura free</Link>
+                        </Button>
+                    </motion.div>
+                ) : null}
+            </AnimatePresence>
+
+            <motion.button
+                type="button"
+                onClick={() => setOpen(v => !v)}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.94 }}
+                aria-label={open ? 'Close Aura' : 'Open Aura'}
+                className="fixed bottom-6 right-5 z-50 flex h-16 w-16 items-center justify-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-blue-300/50"
+            >
+                {open
+                    ? <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-xl"><X className="h-6 w-6" /></span>
+                    : <AuraAvatar className="h-16 w-16" />}
+            </motion.button>
+        </>
+    );
+}
 
 export default function HomePage() {
     const supabase = createClient();
@@ -1413,7 +1612,7 @@ export default function HomePage() {
     const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
 
     const productRef = useRef<HTMLDivElement>(null);
-    const { index: activeScreen, select: selectScreen, paused: screenPaused, setPaused: setScreenPaused, running: screenRunning } = useAutoAdvance(PRODUCT_SCREENS.length, 8000, productRef);
+    const { index: activeScreen, select: selectScreen, paused: screenPaused, setPaused: setScreenPaused, running: screenRunning } = useAutoAdvance(PRODUCT_SCREENS.length, 4200, productRef);
 
     const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce(
         (acc, cat) => ({ ...acc, [cat.id]: cat.defaultChecked }), {} as CookiePreferences
@@ -1494,9 +1693,9 @@ export default function HomePage() {
 
                 {/* HERO */}
                 <section id="hero" className="relative overflow-hidden bg-[#070C18] pt-16">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_50%_-5%,rgba(37,99,235,0.20)_0%,transparent_65%)]" />
-                    <motion.div animate={{ opacity: [0.08, 0.18, 0.08], scale: [1, 1.1, 1] }} transition={{ duration: 10, repeat: Infinity }} className="absolute -left-40 top-40 h-96 w-96 rounded-full bg-violet-600 blur-3xl" />
-                    <motion.div animate={{ opacity: [0.08, 0.18, 0.08], scale: [1, 1.12, 1] }} transition={{ duration: 12, repeat: Infinity, delay: 3 }} className="absolute -right-40 top-20 h-96 w-96 rounded-full bg-sky-500 blur-3xl" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_50%_-5%,rgba(37,99,235,0.42)_0%,rgba(37,99,235,0)_65%)]" />
+                    <motion.div animate={{ opacity: [0.22, 0.42, 0.22], scale: [1, 1.1, 1] }} transition={{ duration: 10, repeat: Infinity }} className="absolute -left-40 top-40 h-[30rem] w-[30rem] rounded-full bg-violet-500 blur-3xl" />
+                    <motion.div animate={{ opacity: [0.24, 0.45, 0.24], scale: [1, 1.12, 1] }} transition={{ duration: 12, repeat: Infinity, delay: 3 }} className="absolute -right-40 top-20 h-[30rem] w-[30rem] rounded-full bg-sky-400 blur-3xl" />
                     <div
                         className="absolute inset-0 opacity-[0.4]"
                         style={{
@@ -1511,8 +1710,15 @@ export default function HomePage() {
                         <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="mx-auto max-w-3xl text-center">
                             <motion.h1 variants={fadeUp} className="text-[2rem] font-semibold leading-[1.12] tracking-tight text-white sm:text-5xl lg:text-[3.4rem]">
                                 Sell at the counter.
-                                <br />
-                                Your <RotatingWord words={['books', 'stock', 'reports', 'payroll', 'tax']} /> write themselves.
+                                <RotatingLine
+                                    lines={[
+                                        'Your books write themselves.',
+                                        'Your stock counts itself.',
+                                        'Your reports are already done.',
+                                        'Your payroll runs on time.',
+                                        'Your tax returns file themselves.',
+                                    ]}
+                                />
                             </motion.h1>
 
                             <motion.p variants={fadeUp} className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
@@ -1567,12 +1773,12 @@ export default function HomePage() {
 
                     <SectionHeading eyebrow="How it fits together" title="What happens when you sell one bottle of oil" sub="This is the whole idea. Four things move at once, and nobody types anything twice." accent="sky" />
 
-                    <div className="mt-12 grid gap-4 lg:grid-cols-4">
+                    <MobileRail count={SALE_FLOW.length} grid="lg:grid-cols-4" className="mt-12" delay={4000}>
                         {SALE_FLOW.map((item, i) => {
                             const Icon = item.icon;
                             const a = ACCENTS[item.accent];
                             return (
-                                <motion.div key={i} initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.14, duration: 0.55, ease: EASE }} className="relative">
+                                <motion.div key={i} initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.14, duration: 0.55, ease: EASE }} className={cn(RAIL_CARD, 'relative')}>
                                     <motion.div whileHover={{ y: -6 }} className={cn('group h-full rounded-2xl border border-white bg-white p-6 shadow-md transition-all hover:shadow-xl', a.ring)}>
                                         <div className="mb-5 flex items-center justify-between">
                                             <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 3, repeat: Infinity, delay: i * 0.4 }} className={cn('flex h-12 w-12 items-center justify-center rounded-xl', a.tile)}>
@@ -1596,7 +1802,7 @@ export default function HomePage() {
                                 </motion.div>
                             );
                         })}
-                    </div>
+                    </MobileRail>
 
                     <div className="mt-8 rounded-2xl border border-white bg-white/70 px-6 py-5 shadow-sm backdrop-blur">
                         <p className="text-sm leading-relaxed text-slate-700">
@@ -1736,10 +1942,6 @@ export default function HomePage() {
                                     <Link href="/contact">Request a scoping call</Link>
                                 </Button>
                             </div>
-
-                            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-8 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-2 shadow-2xl">
-                                <GroupScreen />
-                            </motion.div>
                         </div>
 
                         <div className="lg:col-span-7">
@@ -1765,6 +1967,10 @@ export default function HomePage() {
                                 }}
                             />
                         </div>
+
+                        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.6 }} className="lg:col-span-12 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-2 shadow-2xl sm:p-3">
+                            <GroupScreen />
+                        </motion.div>
                     </div>
                 </Section>
 
@@ -1772,12 +1978,21 @@ export default function HomePage() {
                 <Section surface="tint">
                     <SectionHeading eyebrow="Who uses it" title="Built around how your trade works" sub="The core is the same. What sits on top changes with the business." accent="violet" />
 
-                    <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="mt-6 flex items-center gap-2.5 text-slate-400 lg:hidden">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">Swipe</span>
+                        <motion.span animate={{ x: [0, 6, 0] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                        </motion.span>
+                    </div>
+
+                    <div className="relative mt-4">
+                        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-24 bg-gradient-to-l from-slate-50 via-slate-50/70 to-slate-50/0 dark:from-slate-900 dark:via-slate-900/70 dark:to-slate-900/0 lg:block" />
+                        <MobileRail count={BUILT_FOR.length} grid="lg:grid-cols-3" delay={4200}>
                         {BUILT_FOR.map((item, i) => {
                             const Icon = item.icon;
                             const a = ACCENTS[item.accent];
                             return (
-                                <motion.div key={item.title} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.45, ease: EASE }} whileHover={{ y: -6 }} className={cn('group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-all hover:shadow-xl dark:border-slate-800 dark:bg-slate-950', a.ring)}>
+                                <motion.div key={item.title} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.45, ease: EASE }} whileHover={{ y: -6, scaleX: 1.03 }} style={{ transformOrigin: 'center' }} className={cn('group relative w-[78vw] shrink-0 snap-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-950 sm:w-[20rem]', a.ring)}>
                                     <div className={cn('absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-25', a.glow)} />
                                     <div className={cn('relative mb-4 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', a.tile)}>
                                         {Icon ? <Icon className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}
@@ -1787,6 +2002,7 @@ export default function HomePage() {
                                 </motion.div>
                             );
                         })}
+                        </MobileRail>
                     </div>
 
                     <Link href="/industries" className="group mt-8 inline-flex items-center gap-2 text-sm font-medium text-violet-700 dark:text-violet-400">
@@ -1798,12 +2014,12 @@ export default function HomePage() {
                 <Section surface="light">
                     <SectionHeading eyebrow="The platform" title="What holds it together" sub="The parts you do not see, and the reason the rest of it can be this simple." accent="sky" />
 
-                    <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <MobileRail count={PLATFORM_POINTS.length} grid="lg:grid-cols-3" className="mt-10">
                         {PLATFORM_POINTS.map((item, i) => {
                             const Icon = item.icon;
                             const a = ACCENTS[item.accent];
                             return (
-                                <motion.div key={item.title} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.1, duration: 0.45, ease: EASE }} whileHover={{ y: -6 }} className={cn('group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-all hover:shadow-xl dark:border-slate-800 dark:bg-slate-900', a.ring)}>
+                                <motion.div key={item.title} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.1, duration: 0.45, ease: EASE }} whileHover={{ y: -6 }} className={cn(RAIL_CARD, 'group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-all hover:shadow-xl dark:border-slate-800 dark:bg-slate-900', a.ring)}>
                                     <div className={cn('absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-25', a.glow)} />
                                     <div className={cn('relative mb-4 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', a.tile)}>
                                         {Icon ? <Icon className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}
@@ -1813,7 +2029,7 @@ export default function HomePage() {
                                 </motion.div>
                             );
                         })}
-                    </div>
+                    </MobileRail>
                 </Section>
 
                 <DynamicPricingSection />
@@ -1924,6 +2140,7 @@ export default function HomePage() {
                     ) : null}
                 </AnimatePresence>
             ) : null}
+            <AuraFloating />
         </div>
     );
 }
