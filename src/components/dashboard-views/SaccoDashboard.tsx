@@ -94,7 +94,7 @@ export default function SaccoDashboard() {
 
       {/* KPI Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-green-600">
+        <Card className="border-l-4 border-l-green-600 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Deposits Today</CardTitle>
           </CardHeader>
@@ -109,7 +109,7 @@ export default function SaccoDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-orange-600">
+        <Card className="border-l-4 border-l-orange-600 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Withdrawals Today</CardTitle>
           </CardHeader>
@@ -124,7 +124,7 @@ export default function SaccoDashboard() {
           </CardContent>
         </Card>
 
-        <Card className={`border-l-4 ${netCashFlow >= 0 ? 'border-l-emerald-600' : 'border-l-red-600'}`}>
+        <Card className={`border-l-4 shadow-sm ${netCashFlow >= 0 ? 'border-l-emerald-600' : 'border-l-red-600'}`}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Net Cash Flow Today</CardTitle>
           </CardHeader>
@@ -139,7 +139,7 @@ export default function SaccoDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Membership</CardTitle>
           </CardHeader>
@@ -155,7 +155,7 @@ export default function SaccoDashboard() {
 
       {/* Chart + Recent Activity */}
       <div className="grid h-full gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="shadow-md lg:col-span-4">
+        <Card className="shadow-sm lg:col-span-4">
           <CardHeader>
             <CardTitle>Deposit Growth</CardTitle>
             <CardDescription>Savings trend over the last 7 days</CardDescription>
@@ -192,7 +192,7 @@ export default function SaccoDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="flex flex-col shadow-md lg:col-span-3">
+        <Card className="flex flex-col shadow-sm lg:col-span-3">
           <CardHeader>
             <CardTitle>Recent Transactions</CardTitle>
             <CardDescription>Latest activity across the cooperative</CardDescription>

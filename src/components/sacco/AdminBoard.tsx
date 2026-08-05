@@ -42,7 +42,8 @@ import {
     CalendarClock,
     Activity,
     Loader2,
-    Lock
+    Lock,
+    ClipboardCheck
 } from "lucide-react";
 
 // --- Types ---
@@ -56,7 +57,7 @@ interface SystemStatus {
     compliance_contact_email?: string;
 }
 
-// --- API Interactions (Secure RPCs — unchanged) ---
+// --- API Interactions (Secure RPCs — unchanged; only new optional params appended) ---
 
 // 1. Get System Health/Status
 async function fetchSystemStatus(tenantId: string) {
@@ -85,6 +86,7 @@ async function generateRegulatoryReport(tenantId: string, options: {
     outputFormat: string;
     includeComparative: boolean;
     deliveryEmail: string;
+    ccEmails?: string;
 }) {
     const db = createClient();
     // Returns a job ID or download URL
@@ -95,7 +97,8 @@ async function generateRegulatoryReport(tenantId: string, options: {
         p_standard: options.standard,
         p_output_format: options.outputFormat,
         p_include_comparative: options.includeComparative,
-        p_delivery_email: options.deliveryEmail
+        p_delivery_email: options.deliveryEmail,
+        p_cc_emails: options.ccEmails || null
     });
     if (error) throw new Error(error.message);
     return data;
@@ -106,13 +109,15 @@ async function runBatchKYC(tenantId: string, options: {
     scope: string;
     watchlist: string;
     rescreenCleared: boolean;
+    notifyOnComplete: boolean;
 }) {
     const db = createClient();
     const { data, error } = await db.rpc('trigger_batch_kyc_check', {
         p_tenant_id: tenantId,
         p_scope: options.scope,
         p_watchlist_source: options.watchlist,
-        p_rescreen_cleared: options.rescreenCleared
+        p_rescreen_cleared: options.rescreenCleared,
+        p_notify_on_complete: options.notifyOnComplete
     });
     if (error) throw new Error(error.message);
     return data; // Returns count of profiles processed
@@ -122,13 +127,15 @@ async function runBatchKYC(tenantId: string, options: {
 async function processYearEnd(tenantId: string, options: {
     closingDate: string;
     notes: string;
+    approvalReference: string;
 }) {
     const db = createClient();
     // This RPC locks the period, calculates retained earnings, and resets nominal accounts
     const { error } = await db.rpc('process_financial_year_end', {
         p_tenant_id: tenantId,
         p_closing_date: options.closingDate,
-        p_notes: options.notes
+        p_notes: options.notes,
+        p_approval_reference: options.approvalReference
     });
     if (error) throw new Error(error.message);
 }
@@ -155,17 +162,20 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
     const [reportFormat, setReportFormat] = useState("pdf");
     const [reportIncludeComparative, setReportIncludeComparative] = useState(true);
     const [reportDeliveryEmail, setReportDeliveryEmail] = useState("");
+    const [reportCcEmails, setReportCcEmails] = useState("");
 
     // --- Form state: Batch KYC ---
     const [kycScope, setKycScope] = useState("new");
     const [kycWatchlist, setKycWatchlist] = useState("all");
     const [kycRescreenCleared, setKycRescreenCleared] = useState(false);
+    const [kycNotifyOnComplete, setKycNotifyOnComplete] = useState(true);
 
     // --- Form state: Year-End Close ---
     const [closingDate, setClosingDate] = useState(todayStr);
     const [adjustmentsPosted, setAdjustmentsPosted] = useState(false);
     const [dividendsPosted, setDividendsPosted] = useState(false);
     const [reconciliationsComplete, setReconciliationsComplete] = useState(false);
+    const [approvalReference, setApprovalReference] = useState("");
     const [yearEndNotes, setYearEndNotes] = useState("");
     const [yearEndConfirmText, setYearEndConfirmText] = useState("");
 
@@ -205,7 +215,8 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
             standard: reportStandard,
             outputFormat: reportFormat,
             includeComparative: reportIncludeComparative,
-            deliveryEmail: reportDeliveryEmail
+            deliveryEmail: reportDeliveryEmail,
+            ccEmails: reportCcEmails
         }),
         onSuccess: () => {
             toast.success("Regulatory report generated and queued for email delivery.");
@@ -218,7 +229,8 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
         mutationFn: () => runBatchKYC(tenantId, {
             scope: kycScope,
             watchlist: kycWatchlist,
-            rescreenCleared: kycRescreenCleared
+            rescreenCleared: kycRescreenCleared,
+            notifyOnComplete: kycNotifyOnComplete
         }),
         onSuccess: (count) => {
             toast.success(`Batch screening complete. ${count} members reviewed against watchlists.`);
@@ -230,7 +242,8 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
     const yearEndMutation = useMutation({
         mutationFn: () => processYearEnd(tenantId, {
             closingDate,
-            notes: yearEndNotes
+            notes: yearEndNotes,
+            approvalReference
         }),
         onSuccess: () => {
             toast.success("Financial Year Closed Successfully.");
@@ -243,45 +256,51 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
 
     const yearEndChecklistComplete = adjustmentsPosted && dividendsPosted && reconciliationsComplete;
     const yearEndConfirmValid = yearEndConfirmText.trim().toUpperCase() === "CLOSE YEAR";
-    const canCloseYear = yearEndChecklistComplete && yearEndConfirmValid && !yearEndMutation.isPending;
+    const canCloseYear =
+        yearEndChecklistComplete &&
+        yearEndConfirmValid &&
+        approvalReference.trim().length > 0 &&
+        !yearEndMutation.isPending;
 
     return (
-        <Card className="border-t-4 border-t-slate-900 shadow-md h-full flex flex-col">
-            <CardHeader className="pb-4">
-                <CardTitle className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2 text-base">
-                        <Lock className="w-5 h-5 text-slate-900" /> Admin Controls
+        <Card className="flex h-full flex-col border-t-4 border-t-slate-900 shadow-sm">
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between gap-3 text-base">
+                    <span className="flex items-center gap-2">
+                        <Lock className="h-4.5 w-4.5 text-slate-900" /> Admin Controls
                     </span>
                     {status && (
-                        <span className={`shrink-0 text-[10px] px-2 py-1 rounded-full border font-medium uppercase leading-none ${
+                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase leading-none ${
                             status.financial_period_open
-                                ? 'bg-green-100 text-green-700 border-green-200'
-                                : 'bg-red-100 text-red-700 border-red-200'
+                                ? 'border-green-200 bg-green-100 text-green-700'
+                                : 'border-red-200 bg-red-100 text-red-700'
                         }`}>
-                            {status.financial_period_open ? `Period Open: ${status.current_period}` : 'Period Closed'}
+                            {status.financial_period_open ? `Period Open · ${status.current_period}` : 'Period Closed'}
                         </span>
                     )}
                 </CardTitle>
-                <CardDescription>Execute system-wide maintenance and compliance tasks.</CardDescription>
+                <CardDescription className="text-xs">
+                    Execute system-wide maintenance and compliance tasks.
+                </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-5 flex-1">
+            <CardContent className="flex-1 space-y-4 pt-0">
 
                 {/* System Health Status Widget */}
                 {statusLoading ? (
-                    <div className="flex items-center justify-center p-4 bg-slate-50 rounded-lg border border-dashed">
-                        <Loader2 className="w-4 h-4 animate-spin mr-2 text-slate-400" />
-                        <span className="text-xs text-slate-500">Checking system status...</span>
+                    <div className="flex items-center justify-center rounded-lg border border-dashed p-3 bg-slate-50">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin text-slate-400" />
+                        <span className="text-xs text-slate-500">Checking system status…</span>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground bg-slate-50 p-3 rounded-lg border">
+                    <div className="grid grid-cols-2 gap-3 rounded-lg border bg-slate-50 p-3 text-xs text-muted-foreground">
                         <div className="flex flex-col gap-0.5">
                             <span className="font-semibold text-slate-700">Last ERP Sync</span>
                             <span>{status?.last_sync_at ? format(new Date(status.last_sync_at), 'PP p') : 'Never'}</span>
                         </div>
                         <div className="flex flex-col gap-0.5">
                             <span className="font-semibold text-slate-700">Pending Approvals</span>
-                            <span className={status?.pending_approvals_count ? "text-amber-600 font-bold" : ""}>
+                            <span className={status?.pending_approvals_count ? "font-bold text-amber-600" : ""}>
                                 {status?.pending_approvals_count ?? 0}
                             </span>
                         </div>
@@ -290,7 +309,7 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
 
                 {/* Primary Operations List */}
                 <div className="space-y-2">
-                    <h4 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                         Operations
                     </h4>
 
@@ -299,10 +318,10 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
                         {/* 1. Sync Ledger */}
                         <AlertDialog open={isSyncDialogOpen} onOpenChange={setIsSyncDialogOpen}>
                             <AlertDialogTrigger asChild>
-                                <Button variant="outline" className="w-full justify-start h-12 hover:bg-slate-50" disabled={syncMutation.isPending}>
-                                    {syncMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin shrink-0" /> : <RefreshCw className="w-4 h-4 mr-2 text-blue-600 shrink-0" />}
-                                    <span className="flex flex-col items-start text-left min-w-0">
-                                        <span className="font-semibold text-sm text-slate-900">Sync General Ledger</span>
+                                <Button variant="outline" className="h-12 w-full justify-start hover:bg-slate-50" disabled={syncMutation.isPending}>
+                                    {syncMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4 shrink-0 text-blue-600" />}
+                                    <span className="flex min-w-0 flex-col items-start text-left">
+                                        <span className="text-sm font-semibold text-slate-900">Sync General Ledger</span>
                                         <span className="text-[10px] text-muted-foreground">Post sub-ledger txns to GL</span>
                                     </span>
                                 </Button>
@@ -317,7 +336,7 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
                                 </AlertDialogHeader>
 
                                 <div className="space-y-4 py-2">
-                                    <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 border rounded-lg p-3">
+                                    <div className="grid grid-cols-2 gap-3 rounded-lg border bg-slate-50 p-3 text-xs">
                                         <div className="flex flex-col gap-0.5">
                                             <span className="font-semibold text-slate-700">Last Sync</span>
                                             <span className="text-slate-600">
@@ -372,10 +391,10 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
                         {/* 2. Regulatory Report */}
                         <AlertDialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
                             <AlertDialogTrigger asChild>
-                                <Button variant="outline" className="w-full justify-start h-12 hover:bg-slate-50" disabled={reportMutation.isPending}>
-                                    {reportMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin shrink-0" /> : <FileText className="w-4 h-4 mr-2 text-indigo-600 shrink-0" />}
-                                    <span className="flex flex-col items-start text-left min-w-0">
-                                        <span className="font-semibold text-sm text-slate-900">Regulatory Reporting</span>
+                                <Button variant="outline" className="h-12 w-full justify-start hover:bg-slate-50" disabled={reportMutation.isPending}>
+                                    {reportMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" /> : <FileText className="mr-2 h-4 w-4 shrink-0 text-indigo-600" />}
+                                    <span className="flex min-w-0 flex-col items-start text-left">
+                                        <span className="text-sm font-semibold text-slate-900">Regulatory Reporting</span>
                                         <span className="text-[10px] text-muted-foreground">Generate SASRA/WOCCU compliance report</span>
                                     </span>
                                 </Button>
@@ -450,6 +469,18 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
                                         />
                                     </div>
 
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="report-cc">CC Recipients (optional)</Label>
+                                        <Input
+                                            id="report-cc"
+                                            type="text"
+                                            placeholder="board@yoursacco.co.ug, treasurer@yoursacco.co.ug"
+                                            value={reportCcEmails}
+                                            onChange={(e) => setReportCcEmails(e.target.value)}
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">Separate multiple addresses with commas.</p>
+                                    </div>
+
                                     <div className="flex items-start gap-2">
                                         <Checkbox
                                             id="report-comparative"
@@ -477,10 +508,10 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
                         {/* 3. Batch KYC */}
                         <AlertDialog open={isKycDialogOpen} onOpenChange={setIsKycDialogOpen}>
                             <AlertDialogTrigger asChild>
-                                <Button variant="outline" className="w-full justify-start h-12 hover:bg-slate-50" disabled={kycMutation.isPending}>
-                                    {kycMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin shrink-0" /> : <Users className="w-4 h-4 mr-2 text-slate-500 shrink-0" />}
-                                    <span className="flex flex-col items-start text-left min-w-0">
-                                        <span className="font-semibold text-sm text-slate-900">Run Batch KYC/AML Check</span>
+                                <Button variant="outline" className="h-12 w-full justify-start hover:bg-slate-50" disabled={kycMutation.isPending}>
+                                    {kycMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" /> : <Users className="mr-2 h-4 w-4 shrink-0 text-slate-500" />}
+                                    <span className="flex min-w-0 flex-col items-start text-left">
+                                        <span className="text-sm font-semibold text-slate-900">Run Batch KYC/AML Check</span>
                                         <span className="text-[10px] text-muted-foreground">Screen members against sanctions watchlists</span>
                                     </span>
                                 </Button>
@@ -533,6 +564,17 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
                                             Re-screen members already cleared in a previous run.
                                         </Label>
                                     </div>
+
+                                    <div className="flex items-start gap-2">
+                                        <Checkbox
+                                            id="kyc-notify"
+                                            checked={kycNotifyOnComplete}
+                                            onCheckedChange={(v) => setKycNotifyOnComplete(v === true)}
+                                        />
+                                        <Label htmlFor="kyc-notify" className="text-sm font-normal leading-snug">
+                                            Notify the Compliance Officer by email when screening completes.
+                                        </Label>
+                                    </div>
                                 </div>
 
                                 <AlertDialogFooter>
@@ -552,19 +594,19 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
                 {/* Critical Alerts Section */}
                 {status && status.flagged_transactions_count > 0 && (
                     <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold uppercase text-red-600 tracking-wider flex items-center gap-1">
-                            <ShieldAlert className="w-3 h-3" /> Compliance Alerts
+                        <h4 className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-600">
+                            <ShieldAlert className="h-3 w-3" /> Compliance Alerts
                         </h4>
 
                         <div
-                            className="flex items-center justify-between p-2.5 rounded bg-red-50 border border-red-100 cursor-pointer hover:bg-red-100 transition-colors"
+                            className="flex cursor-pointer items-center justify-between rounded border border-red-100 bg-red-50 p-2.5 transition-colors hover:bg-red-100"
                             onClick={() => router.push('/sacco/audit')}
                         >
-                            <span className="flex items-center text-sm text-red-900 font-medium">
-                                <Activity className="w-4 h-4 mr-2 text-red-500" />
+                            <span className="flex items-center text-sm font-medium text-red-900">
+                                <Activity className="mr-2 h-4 w-4 text-red-500" />
                                 Suspicious Transactions
                             </span>
-                            <span className="bg-red-200 text-red-800 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
+                            <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-bold text-red-800 shadow-sm">
                                 {status.flagged_transactions_count}
                             </span>
                         </div>
@@ -573,18 +615,18 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
             </CardContent>
 
             {/* Footer: Dangerous Actions */}
-            <CardFooter className="pt-4 border-t bg-red-50/20 rounded-b-xl">
+            <CardFooter className="rounded-b-xl border-t bg-red-50/20 pt-3">
                 <AlertDialog open={isCloseYearDialogOpen} onOpenChange={setIsCloseYearDialogOpen}>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive" className="w-full shadow-sm" disabled={yearEndMutation.isPending}>
-                            {yearEndMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CalendarClock className="w-4 h-4 mr-2" />}
+                            {yearEndMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarClock className="mr-2 h-4 w-4" />}
                             Process Year-End Close
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-                                <ShieldAlert className="w-5 h-5" /> Warning: Irreversible Action
+                            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                                <ShieldAlert className="h-5 w-5" /> Warning: Irreversible Action
                             </AlertDialogTitle>
                             <AlertDialogDescription asChild>
                                 <div className="space-y-3">
@@ -592,7 +634,7 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
                                         You are about to close the financial year{" "}
                                         <strong className="text-slate-900">{status?.current_period}</strong>.
                                     </p>
-                                    <ul className="list-disc pl-5 space-y-1 bg-red-50 p-3 rounded text-sm text-red-900 border border-red-100">
+                                    <ul className="list-disc space-y-1 rounded border border-red-100 bg-red-50 p-3 pl-5 text-sm text-red-900">
                                         <li>Journals will be locked.</li>
                                         <li>Net Profit/Loss will transfer to Retained Earnings.</li>
                                         <li>Income/Expense accounts will reset to zero.</li>
@@ -610,6 +652,23 @@ export default function AdminBoard({ tenantId }: { tenantId: string }) {
                                     value={closingDate}
                                     onChange={(e) => setClosingDate(e.target.value)}
                                 />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="approval-reference" className="flex items-center gap-1.5">
+                                    <ClipboardCheck className="h-3.5 w-3.5 text-slate-500" />
+                                    Board Approval / Resolution Reference
+                                </Label>
+                                <Input
+                                    id="approval-reference"
+                                    placeholder="e.g., BR-2026-014"
+                                    value={approvalReference}
+                                    onChange={(e) => setApprovalReference(e.target.value)}
+                                    required
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                    Required for the audit trail — enter the board resolution or minute reference authorizing this close.
+                                </p>
                             </div>
 
                             <Separator />
