@@ -13,6 +13,20 @@
  * too, and vice versa. Local setBoardroomData call removed from the
  * streamData effect — CopilotContext sets it directly now.
  *
+ * v5 CHANGE: voice. The director can speak to Aura and hear her reply.
+ * Both directions run in the browser — SpeechRecognition for listening,
+ * SpeechSynthesis for speaking — so there is no audio API cost and no extra
+ * backend. Two things worth knowing, both handled below:
+ *
+ *   1. In Chrome, SpeechRecognition streams audio to Google's servers for
+ *      transcription. It is not local. A director dictating "what is our
+ *      outstanding balance" is sending that sentence to a third party. The
+ *      composer says so, quietly, the first time the microphone is used.
+ *   2. Transcription is never sent automatically. It lands in the input box
+ *      for the director to read and send. "Show me profit" and "show me
+ *      profits for June" are one mis-heard word apart, and a wrong question
+ *      quietly answered is worse than one the user has to retype.
+ *
  * v4 CHANGE: documents can be attached. The paperclip uploads a receipt,
  * supplier invoice or bank statement to the private `receipts` bucket, then
  * calls aura-document-intake, which extracts the figures, recomputes every
@@ -36,6 +50,7 @@ import {
   Send, User, Loader2, Cpu,
   FileDown, Compass, X, ShieldCheck,
   Presentation, Paperclip, FileText, AlertTriangle, CheckCircle2,
+  Mic, Square, Volume2, VolumeX, Phone, PhoneOff, Settings2,
 } from 'lucide-react';
 
 import { AnimatePresence } from 'framer-motion';
@@ -59,6 +74,42 @@ const INTAKE_ENDPOINT =
 const INTAKE_BUCKET = 'receipts';
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ACCEPTED = '.pdf,.png,.jpg,.jpeg,.webp';
+
+// Voice settings. autoSend stays false for typed-then-sent dictation, but
+// conversation mode sends automatically — that is the whole point of it.
+const VOICE = { autoSend: false, maxSpokenChars: 1400 };
+
+// Chosen voice, speed and pitch persist per browser. Real voice cloning needs
+// a hosted model and cannot run here; this picks from the voices already
+// installed on the device, which costs nothing and sends no audio anywhere.
+const VOICE_KEYS = { uri: 'aura.voice.uri', rate: 'aura.voice.rate', pitch: 'aura.voice.pitch' };
+
+const readStored = (key: string, fallback: string): string => {
+  if (typeof window === 'undefined') return fallback;
+  try { return window.localStorage.getItem(key) ?? fallback; } catch (e) { return fallback; }
+};
+
+const writeStored = (key: string, value: string) => {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(key, value); } catch (e) { /* private mode */ }
+};
+
+/**
+ * Aura writes markdown and, at times, signed URLs several hundred characters
+ * long. Reading either aloud verbatim is unusable, so speech gets a cleaned
+ * version of the same text.
+ */
+const forSpeech = (raw: string): string => {
+  let t = String(raw ?? '');
+  t = t.replace(/```[\s\S]*?```/g, ' code block ');
+  t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ');
+  t = t.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');      // keep the label, drop the URL
+  t = t.replace(/https?:\/\/\S+/g, ' a link ');
+  t = t.replace(/[*_#>`|]/g, ' ');
+  t = t.replace(/^\s*[-–]\s*/gm, ', ');
+  t = t.replace(/\s+/g, ' ').trim();
+  return t.slice(0, VOICE.maxSpokenChars);
+};
 
 interface DocIntake {
   id: string;
@@ -297,6 +348,25 @@ export default function CopilotPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [intakes, setIntakes] = useState<DocIntake[]>([]);   // ✅ v4
 
+  // ✅ v5 voice
+  const [listening, setListening] = useState(false);
+  const [speakBack, setSpeakBack] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState({ listen: false, speak: false });
+  const [micNoticeShown, setMicNoticeShown] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const spokenIdRef = useRef<string | null>(null);
+
+  // ✅ v6 conversation mode + voice choice
+  const [callActive, setCallActive] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceUri, setVoiceUri] = useState('');
+  const [rate, setRate] = useState(1.02);
+  const [pitch, setPitch] = useState(1);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  const callRef = useRef(false);          // callbacks need the live value, not a stale closure
+  const listeningRef = useRef(false);
+
   const {
     messages = [],
     input = '',
@@ -379,6 +449,190 @@ export default function CopilotPanel() {
     setHasMounted(true);
   }, []);
 
+  // ✅ v5: feature detection. Firefox has no SpeechRecognition and iOS Safari
+  // is unreliable, so the microphone is hidden rather than shown broken.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setVoiceSupported({ listen: !!SR, speak: 'speechSynthesis' in window });
+    return () => {
+      try {
+        recognitionRef.current?.stop();
+        window.speechSynthesis?.cancel();
+      } catch (e) { /* nothing to stop */ }
+    };
+  }, []);
+
+  // ✅ v6: the device's installed voices. Chrome populates this list
+  // asynchronously, so the event listener matters — without it the picker is
+  // empty on first open and mysteriously fills later.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const load = () => {
+      const list = window.speechSynthesis.getVoices();
+      if (list.length > 0) setVoices(list);
+    };
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+    setVoiceUri(readStored(VOICE_KEYS.uri, ''));
+    setRate(Number(readStored(VOICE_KEYS.rate, '1.02')) || 1.02);
+    setPitch(Number(readStored(VOICE_KEYS.pitch, '1')) || 1);
+    return () => { window.speechSynthesis.onvoiceschanged = null; };
+  }, []);
+
+  useEffect(() => { listeningRef.current = listening; }, [listening]);
+
+  // ✅ v5: speak Aura's reply once it has finished streaming. Speaking mid-
+  // stream would stutter through half sentences as tokens arrive.
+  useEffect(() => {
+    if (!speakBack || isChatLoading || !voiceSupported.speak) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant' || !last.content) return;
+    if (spokenIdRef.current === last.id) return;
+
+    spokenIdRef.current = last.id;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(forSpeech(last.content));
+      const chosen = voices.find((v) => v.voiceURI === voiceUri);
+      if (chosen) utter.voice = chosen;
+      utter.lang = chosen?.lang || navigator.language || 'en-US';
+      utter.rate = rate;
+      utter.pitch = pitch;
+      utter.onstart = () => setSpeaking(true);
+      utter.onend = () => {
+        setSpeaking(false);
+        // ✅ v6: in conversation mode, hand the floor back to the director.
+        if (callRef.current) setTimeout(() => startListening(true), 350);
+      };
+      utter.onerror = () => {
+        setSpeaking(false);
+        if (callRef.current) setTimeout(() => startListening(true), 350);
+      };
+      window.speechSynthesis.speak(utter);
+    } catch (e) {
+      setSpeaking(false);
+    }
+  }, [messages, isChatLoading, speakBack, voiceSupported.speak, voices, voiceUri, rate, pitch]);
+
+  // ✅ v6: if a reply produced nothing to speak, the utterance callbacks never
+  // fire and a call would sit silent forever. Resume listening anyway.
+  useEffect(() => {
+    if (!callActive || isChatLoading || speaking || listening) return;
+    const t = setTimeout(() => {
+      if (callRef.current && !listeningRef.current) startListening(true);
+    }, 900);
+    return () => clearTimeout(t);
+  }, [callActive, isChatLoading, speaking, listening]);
+
+  const stopSpeaking = () => {
+    try { window.speechSynthesis.cancel(); } catch (e) { /* already stopped */ }
+    setSpeaking(false);
+  };
+
+  const stopListening = () => {
+    try { recognitionRef.current?.stop(); } catch (e) { /* already stopped */ }
+    setListening(false);
+  };
+
+  /**
+   * Listening. In conversation mode a finished sentence is sent immediately
+   * and the microphone closes, because leaving it open while Aura replies
+   * means she transcribes her own voice and answers herself.
+   */
+  const startListening = (inCall = false) => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error('This browser cannot listen. Chrome or Edge works best.');
+      return;
+    }
+    if (listeningRef.current) return;
+
+    if (!micNoticeShown) {
+      toast.info('Your voice is transcribed by the browser, which sends the audio to its speech service.', { duration: 6000 });
+      setMicNoticeShown(true);
+    }
+
+    stopSpeaking();
+
+    try {
+      const rec = new SR();
+      rec.lang = navigator.language || 'en-US';
+      rec.interimResults = true;
+      rec.continuous = false;
+      rec.maxAlternatives = 1;
+
+      let finalText = '';
+
+      rec.onresult = (event: any) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const chunk = event.results[i][0].transcript;
+          if (event.results[i].isFinal) finalText += chunk;
+          else interim += chunk;
+        }
+        setInput?.((finalText + interim).trim());
+      };
+
+      rec.onerror = (event: any) => {
+        setListening(false);
+        if (event.error === 'not-allowed') {
+          toast.error('Microphone access was blocked. Allow it in the address bar and try again.');
+          endCall();
+        } else if (event.error === 'no-speech') {
+          if (!callRef.current) toast.info('I did not catch anything. Try again.');
+        } else if (event.error !== 'aborted') {
+          toast.error('Listening stopped unexpectedly.');
+        }
+      };
+
+      rec.onend = () => {
+        setListening(false);
+        const text = finalText.trim();
+
+        if (text && (inCall || VOICE.autoSend)) {
+          setInput?.('');
+          handleSubmit(text);
+        } else if (!text && callRef.current) {
+          // Silence. Keep the line open rather than ending the call on a pause.
+          setTimeout(() => { if (callRef.current) startListening(true); }, 600);
+        }
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+      setListening(true);
+    } catch (e) {
+      setListening(false);
+    }
+  };
+
+  const toggleListening = () => {
+    if (listening) stopListening();
+    else startListening(false);
+  };
+
+  // ✅ v6: hands-free conversation. Aura speaks, then listens, then speaks.
+  const startCall = () => {
+    if (!voiceSupported.listen || !voiceSupported.speak) {
+      toast.error('This browser cannot hold a spoken conversation. Chrome or Edge on desktop works best.');
+      return;
+    }
+    callRef.current = true;
+    setCallActive(true);
+    setSpeakBack(true);
+    spokenIdRef.current = messages[messages.length - 1]?.id ?? null;
+    toast.success('Conversation started. Speak normally — pause when you are finished.');
+    startListening(true);
+  };
+
+  const endCall = () => {
+    callRef.current = false;
+    setCallActive(false);
+    stopListening();
+    stopSpeaking();
+  };
+
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
@@ -445,17 +699,133 @@ export default function CopilotPanel() {
         />
         <div className="min-w-0 flex-1">
           <h2 className="text-[13px] font-bold text-slate-900 truncate leading-tight">Aura</h2>
-          <p className="text-[11px] text-slate-400 truncate leading-tight">{isReady ? "Online" : "Connecting..."}</p>
+          <p className="text-[11px] text-slate-400 truncate leading-tight">
+            {listening ? 'Listening...' : speaking ? 'Speaking...' : isReady ? 'Online' : 'Connecting...'}
+          </p>
         </div>
+        {/* ✅ v6: choose the voice */}
+        {voiceSupported.speak && (
+          <button
+            type="button"
+            onClick={() => setShowVoiceSettings((v) => !v)}
+            aria-label="Voice settings"
+            title="Voice settings"
+            className={cn(
+              'h-9 w-9 shrink-0 flex items-center justify-center rounded-full transition-colors',
+              showVoiceSettings ? 'text-slate-900 bg-slate-100' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100',
+            )}
+          >
+            <Settings2 size={16} />
+          </button>
+        )}
+
+        {/* ✅ v5: speak replies aloud */}
+        {voiceSupported.speak && (
+          <button
+            type="button"
+            onClick={() => {
+              if (speakBack) { stopSpeaking(); setSpeakBack(false); }
+              else {
+                // Do not read out whatever happens to be on screen already.
+                spokenIdRef.current = messages[messages.length - 1]?.id ?? null;
+                setSpeakBack(true);
+              }
+            }}
+            aria-label={speakBack ? 'Turn off spoken replies' : 'Read replies aloud'}
+            title={speakBack ? 'Spoken replies on' : 'Read replies aloud'}
+            className={cn(
+              'h-9 w-9 shrink-0 flex items-center justify-center rounded-full transition-colors',
+              speakBack ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100',
+            )}
+          >
+            {speakBack ? <Volume2 size={17} /> : <VolumeX size={17} />}
+          </button>
+        )}
+
         <button
           type="button"
-          onClick={closeCopilot}
+          onClick={() => { endCall(); closeCopilot?.(); }}
           aria-label="Close chat"
           className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
         >
           <X size={18} />
         </button>
       </header>
+
+      {/* ✅ v6: VOICE SETTINGS */}
+      {showVoiceSettings && voiceSupported.speak && (
+        <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-4 py-3 space-y-2.5">
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">Voice</label>
+            <select
+              value={voiceUri}
+              onChange={(e) => { setVoiceUri(e.target.value); writeStored(VOICE_KEYS.uri, e.target.value); }}
+              className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[12px] text-slate-800 outline-none focus:border-blue-400"
+            >
+              <option value="">Browser default</option>
+              {voices.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>{v.name} — {v.lang}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Speed {rate.toFixed(2)}</label>
+              <input
+                type="range" min="0.6" max="1.6" step="0.02" value={rate}
+                onChange={(e) => { const v = Number(e.target.value); setRate(v); writeStored(VOICE_KEYS.rate, String(v)); }}
+                className="w-full accent-blue-600"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Pitch {pitch.toFixed(2)}</label>
+              <input
+                type="range" min="0.5" max="1.6" step="0.02" value={pitch}
+                onChange={(e) => { const v = Number(e.target.value); setPitch(v); writeStored(VOICE_KEYS.pitch, String(v)); }}
+                className="w-full accent-blue-600"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  window.speechSynthesis.cancel();
+                  const u = new SpeechSynthesisUtterance('Good morning. Your figures are ready whenever you are.');
+                  const chosen = voices.find((v) => v.voiceURI === voiceUri);
+                  if (chosen) u.voice = chosen;
+                  u.rate = rate; u.pitch = pitch;
+                  window.speechSynthesis.speak(u);
+                } catch (e) { /* nothing to preview */ }
+              }}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:border-slate-300"
+            >
+              Preview
+            </button>
+            <p className="text-[10px] text-slate-400">Saved on this device</p>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ v6: CALL BAR */}
+      {callActive && (
+        <div className="shrink-0 flex items-center gap-2.5 border-b border-blue-100 bg-blue-50 px-4 py-2.5">
+          <span className={cn('h-2 w-2 shrink-0 rounded-full', listening ? 'bg-red-500 animate-pulse' : speaking ? 'bg-blue-500 animate-pulse' : 'bg-slate-300')} />
+          <p className="flex-1 text-[12px] font-medium text-slate-700">
+            {listening ? 'Listening — pause when you finish' : speaking ? 'Aura is speaking' : 'Thinking...'}
+          </p>
+          <button
+            type="button"
+            onClick={endCall}
+            className="flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-red-600"
+          >
+            <PhoneOff className="h-3 w-3" /> End
+          </button>
+        </div>
+      )}
 
       {/* CONTENT AREA */}
       {/* min-h-0 is load-bearing here: a flex item's default min-height is
@@ -547,6 +917,20 @@ export default function CopilotPanel() {
                 </div>
             )}
 
+            {/* ✅ v5 */}
+            {speaking && (
+                <div className="flex justify-center">
+                    <button
+                        type="button"
+                        onClick={stopSpeaking}
+                        className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                    >
+                        <Square className="h-3 w-3 fill-current" />
+                        Stop speaking
+                    </button>
+                </div>
+            )}
+
             <div ref={scrollRef} className="h-1" />
         </div>
       </ScrollArea>
@@ -580,11 +964,47 @@ export default function CopilotPanel() {
             <Paperclip className="h-4 w-4" />
           </button>
 
+          {/* ✅ v6: hands-free conversation */}
+          {voiceSupported.listen && voiceSupported.speak && (
+            <button
+              type="button"
+              onClick={callActive ? endCall : startCall}
+              disabled={!isReady}
+              aria-label={callActive ? 'End conversation' : 'Start a spoken conversation'}
+              title={callActive ? 'End conversation' : 'Talk with Aura'}
+              className={cn(
+                'h-9 w-9 shrink-0 flex items-center justify-center rounded-full transition-colors disabled:opacity-40',
+                callActive ? 'bg-red-500 text-white' : 'text-slate-400 hover:text-slate-900 hover:bg-white/70',
+              )}
+            >
+              {callActive ? <PhoneOff className="h-4 w-4" /> : <Phone className="h-4 w-4" />}
+            </button>
+          )}
+
+          {/* ✅ v5: hold a conversation instead of typing one */}
+          {voiceSupported.listen && (
+            <button
+              type="button"
+              onClick={toggleListening}
+              disabled={isChatLoading || !isReady}
+              aria-label={listening ? 'Stop listening' : 'Speak to Aura'}
+              title={listening ? 'Stop listening' : 'Speak to Aura'}
+              className={cn(
+                'h-9 w-9 shrink-0 flex items-center justify-center rounded-full transition-colors disabled:opacity-40',
+                listening
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-white/70',
+              )}
+            >
+              {listening ? <Square className="h-3.5 w-3.5 fill-current" /> : <Mic className="h-4 w-4" />}
+            </button>
+          )}
+
           <input
             ref={inputRef}
             value={safeInput}
             onChange={handleInputChange}
-            placeholder={!isReady ? "Connecting..." : "Ask Aura anything..."}
+            placeholder={listening ? 'Listening...' : !isReady ? 'Connecting...' : 'Ask Aura anything...'}
             disabled={isChatLoading}
             className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] sm:text-sm text-slate-900 placeholder:text-slate-400 h-9"
           />

@@ -37,10 +37,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
  * TEXT AND IMAGES
  *
  * PDFs and text documents go through Jina reader, which you already pay for.
- * Photographs need a vision model: your SambaNova account lists gemma-4-31B-it
- * with a Vision tag. Set VISION.enabled once you have confirmed the exact model
- * string in the Playground — I have not verified it, and a wrong string fails
- * every image silently.
+ * Photographs go to gemma-4-31B-it, the vision model on your SambaNova account
+ * — model string confirmed in the Playground. Images are sent inline as base64
+ * rather than as a link, because the provider cannot be assumed to reach a
+ * private Supabase URL and a remote-fetch failure on their side surfaces as an
+ * unhelpful generic error on ours.
  *
  * CALLING IT
  *   { "action": "extract", "businessId": "...", "userId": "...",
@@ -60,7 +61,13 @@ const APPLY_ENABLED = false;
 // Your SambaNova dashboard lists gemma-4-31B-it as Text + Vision. Confirm the
 // exact model string in the Playground before enabling — an unrecognised model
 // id fails every image and the failure looks like a bad photo.
-const VISION = { enabled: false, model: 'gemma-4-31B-it' };
+// Vision is ON. The model string was confirmed in the SambaNova Playground
+// (cloud.sambanova.ai -> Playground -> model selector reads gemma-4-31B-it).
+// If SambaNova ever retires or renames it, images start failing while PDFs
+// carry on working — check the Playground first, and the error message from
+// readImageText below will point at the model string when that is the cause.
+// Set enabled back to false to switch images off without touching anything else.
+const VISION = { enabled: true, model: 'gemma-4-31B-it', maxImageBytes: 5 * 1024 * 1024 };
 
 const TEXT_MODEL = 'Meta-Llama-3.3-70B-Instruct';
 const MAX_DOC_CHARS = 24000;
@@ -142,14 +149,44 @@ async function readPdfText(signedUrl: string, jinaKey: string): Promise<{ text: 
   }
 }
 
-async function readImageText(signedUrl: string, apiKey: string): Promise<{ text: string; error: string | null }> {
+function mimeFor(path: string): string {
+  if (/\.png$/i.test(path)) return 'image/png';
+  if (/\.webp$/i.test(path)) return 'image/webp';
+  if (/\.heic$/i.test(path) || /\.heif$/i.test(path)) return 'image/heic';
+  return 'image/jpeg';
+}
+
+/** Base64 without blowing the stack on a multi-megabyte photo. */
+function toBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function readImageText(signedUrl: string, apiKey: string, path: string): Promise<{ text: string; error: string | null }> {
   if (!VISION.enabled) {
     return {
       text: '',
-      error: 'This is an image, and the vision path is switched off. Set VISION.enabled once the model string is confirmed in the SambaNova Playground.',
+      error: 'This is an image, and the vision path is switched off. Confirm the model string in the SambaNova Playground, then set VISION.enabled to true in aura-document-intake and redeploy.',
     };
   }
   try {
+    // The image is sent inline as base64 rather than as a link. The provider
+    // cannot be assumed to reach a private Supabase URL, and a remote-fetch
+    // failure on their side surfaces as an unhelpful generic error on ours.
+    const fileRes = await fetch(signedUrl);
+    if (!fileRes.ok) return { text: '', error: `Could not download the image from storage (${fileRes.status}).` };
+
+    const bytes = new Uint8Array(await fileRes.arrayBuffer());
+    if (bytes.length > VISION.maxImageBytes) {
+      return { text: '', error: `That image is ${(bytes.length / 1048576).toFixed(1)} MB. Photograph the receipt closer, or reduce it below ${(VISION.maxImageBytes / 1048576).toFixed(0)} MB.` };
+    }
+
+    const dataUrl = `data:${mimeFor(path)};base64,${toBase64(bytes)}`;
+
     const res = await fetch('https://api.sambanova.ai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -159,17 +196,27 @@ async function readImageText(signedUrl: string, apiKey: string): Promise<{ text:
           role: 'user',
           content: [
             { type: 'text', text: 'Transcribe every line of text visible in this document exactly as printed, including all numbers, dates and totals. Do not summarise, interpret or correct anything. Output the raw text only.' },
-            { type: 'image_url', image_url: { url: signedUrl } },
+            { type: 'image_url', image_url: { url: dataUrl } },
           ],
         }],
         max_tokens: 3000,
         temperature: 0,
       }),
     });
-    if (!res.ok) return { text: '', error: `Vision model returned ${res.status}: ${(await res.text()).slice(0, 200)}` };
+
+    if (!res.ok) {
+      const detail = (await res.text()).slice(0, 300);
+      // A wrong model id is by far the most likely cause, and the raw error
+      // does not say so.
+      const hint = /model/i.test(detail)
+        ? ` The model string "${VISION.model}" may be wrong — check the exact id in the SambaNova Playground.`
+        : '';
+      return { text: '', error: `Vision model returned ${res.status}.${hint} ${detail}` };
+    }
+
     const body = await res.json();
     const text = String(body?.choices?.[0]?.message?.content ?? '').slice(0, MAX_DOC_CHARS);
-    return text.trim() ? { text, error: null } : { text: '', error: 'The vision model returned nothing readable.' };
+    return text.trim() ? { text, error: null } : { text: '', error: 'The vision model returned nothing readable. If the photo is blurred or badly lit, take another.' };
   } catch (e) {
     return { text: '', error: (e as Error).message };
   }
@@ -343,6 +390,16 @@ function buildProposal(d: any, v: any, businessId: string, receiptUrl: string | 
     };
   }
 
+  // A failed validation means nothing readable came out of the file. Offering
+  // a zero-value expense anyway invites someone to approve a row built from
+  // nothing, so no proposal is made at all.
+  if (v.blocking) {
+    return {
+      targetTable: null,
+      note: 'Nothing usable could be read from this file, so there is nothing to propose. If it is a receipt, try a clearer photograph with the whole document in frame.',
+    };
+  }
+
   return {
     targetTable: 'expenses',
     // Column names verified against the live schema, not assumed.
@@ -403,7 +460,7 @@ serve(async (req) => {
     const isPdf = PDF_EXT.test(path);
 
     const read = isImage
-      ? await readImageText(signed.signedUrl, sambaKey)
+      ? await readImageText(signed.signedUrl, sambaKey, path)
       : await readPdfText(signed.signedUrl, jinaKey);
 
     if (read.error || !read.text) {
