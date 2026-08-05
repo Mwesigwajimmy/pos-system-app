@@ -13,6 +13,13 @@
  * too, and vice versa. Local setBoardroomData call removed from the
  * streamData effect — CopilotContext sets it directly now.
  *
+ * v4 CHANGE: documents can be attached. The paperclip uploads a receipt,
+ * supplier invoice or bank statement to the private `receipts` bucket, then
+ * calls aura-document-intake, which extracts the figures, recomputes every
+ * total in code and returns a proposal. Nothing is written to the accounting
+ * tables — the card shows what WOULD be recorded and the director enters it
+ * through the normal screen. See the note in that edge function for why.
+ *
  * v3 CHANGE: generated reports render as a download card (ReportFileCard)
  * inside the assistant bubble, fed by `m.reportFile` from CopilotContext
  * v29.3. Previously Aura streamed the signed URL as plain text, which put
@@ -28,7 +35,7 @@ import { toast } from 'sonner';
 import {
   Send, User, Loader2, Cpu,
   FileDown, Compass, X, ShieldCheck,
-  Presentation,
+  Presentation, Paperclip, FileText, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
 
 import { AnimatePresence } from 'framer-motion';
@@ -37,9 +44,29 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 
+import { createClient } from '@/lib/supabase/client';
 import { useCopilot } from '@/context/CopilotContext';
 import { AuraAvatar } from './AuraAvatar';
 import AuraBoardroom from './AuraBoardroom';
+
+const supabase = createClient();
+
+const INTAKE_ENDPOINT =
+  'https://oezlqscjymzoeizysljp.supabase.co/functions/v1/aura-document-intake';
+
+// Private bucket. Receipts and statements are financial records and should
+// never sit in a public bucket.
+const INTAKE_BUCKET = 'receipts';
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ACCEPTED = '.pdf,.png,.jpg,.jpeg,.webp';
+
+interface DocIntake {
+  id: string;
+  fileName: string;
+  status: 'uploading' | 'reading' | 'done' | 'failed';
+  error?: string;
+  result?: any;
+}
 
 const downloadFileFromBase64 = (fileName: string, mimeType: string, content: string): void => {
   try {
@@ -92,6 +119,117 @@ const ReportFileCard = ({ file }: { file: any }): React.ReactNode => {
       </span>
       <FileDown className="h-4 w-4 shrink-0 text-slate-400" />
     </a>
+  );
+};
+
+/**
+ * ✅ v4: what Aura read out of an uploaded document, and what she proposes
+ * recording. The checks come from the edge function, where every total is
+ * recomputed rather than taken from the model.
+ */
+const DocumentIntakeCard = ({ item }: { item: DocIntake }): React.ReactNode => {
+  if (item.status === 'uploading' || item.status === 'reading') {
+    return (
+      <div className="ml-[46px] my-2 flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
+        <div className="min-w-0">
+          <p className="truncate text-[12px] font-semibold text-slate-900">{item.fileName}</p>
+          <p className="text-[11px] text-slate-400">
+            {item.status === 'uploading' ? 'Uploading...' : 'Reading the document...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (item.status === 'failed') {
+    return (
+      <div className="ml-[46px] my-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 shadow-sm">
+        <div className="flex items-start gap-2.5">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-semibold text-amber-900">{item.fileName}</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-amber-700">{item.error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const r = item.result ?? {};
+  const d = r.extracted ?? {};
+  const checks: any[] = r.validation?.checks ?? [];
+  const computed = r.validation?.computed ?? {};
+  const proposal = r.proposal ?? {};
+  const lines: any[] = Array.isArray(d.lines) ? d.lines : [];
+  const txns: any[] = Array.isArray(proposal.lines) ? proposal.lines : [];
+  const cur = computed.currency ?? '';
+  const money = (v: any) => `${cur} ${Number(v ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  return (
+    <div className="ml-[46px] my-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-3 py-2.5">
+        <FileText className="h-4 w-4 shrink-0 text-slate-500" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[12px] font-semibold text-slate-900">{item.fileName}</p>
+          <p className="truncate text-[11px] text-slate-400">
+            {String(d.documentType ?? 'document').replace(/_/g, ' ')}
+            {d.vendor ? ` · ${d.vendor}` : ''}
+            {computed.documentDate ? ` · ${computed.documentDate}` : ''}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-1 px-3 py-2.5 text-[12px]">
+        {computed.statedTotal !== null && computed.statedTotal !== undefined && (
+          <div className="flex justify-between"><span className="text-slate-500">Total</span><span className="font-semibold text-slate-900">{money(computed.statedTotal)}</span></div>
+        )}
+        {computed.subtotal !== null && computed.subtotal !== undefined && (
+          <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span className="text-slate-700">{money(computed.subtotal)}</span></div>
+        )}
+        {computed.taxAmount !== null && computed.taxAmount !== undefined && (
+          <div className="flex justify-between"><span className="text-slate-500">Tax</span><span className="text-slate-700">{money(computed.taxAmount)}</span></div>
+        )}
+        {lines.length > 0 && (
+          <div className="flex justify-between"><span className="text-slate-500">Line items</span><span className="text-slate-700">{lines.length}</span></div>
+        )}
+        {txns.length > 0 && (
+          <div className="flex justify-between"><span className="text-slate-500">Statement lines</span><span className="text-slate-700">{txns.length}</span></div>
+        )}
+      </div>
+
+      {checks.length > 0 && (
+        <div className="space-y-1.5 border-t border-slate-100 px-3 py-2.5">
+          {checks.map((c: any, i: number) => (
+            <div key={i} className="flex items-start gap-2">
+              {c.level === 'ok'
+                ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                : <AlertTriangle className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', c.level === 'fail' ? 'text-red-500' : 'text-amber-500')} />}
+              <p className={cn('text-[11px] leading-relaxed', c.level === 'ok' ? 'text-slate-500' : 'text-slate-700')}>{c.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {proposal.targetTable && (
+        <div className="border-t border-slate-100 bg-slate-50 px-3 py-2.5">
+          <p className="text-[11px] font-semibold text-slate-600">Would be recorded as an expense</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+            {proposal.row?.description} &mdash; {money(proposal.row?.amount)}
+            {proposal.row?.date ? ` on ${proposal.row.date}` : ''}
+          </p>
+          <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">
+            Nothing has been saved. Enter these figures on the expenses screen, choosing the category yourself.
+          </p>
+        </div>
+      )}
+
+      {!proposal.targetTable && proposal.note && (
+        <div className="border-t border-slate-100 bg-slate-50 px-3 py-2.5">
+          <p className="text-[11px] leading-relaxed text-slate-500">{proposal.note}</p>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -156,6 +294,9 @@ export default function CopilotPanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [intakes, setIntakes] = useState<DocIntake[]>([]);   // ✅ v4
+
   const {
     messages = [],
     input = '',
@@ -168,7 +309,71 @@ export default function CopilotPanel() {
     closeCopilot,
     boardroomData,    // ✅ from CopilotContext, not local useState
     closeBoardroom,   // ✅ from CopilotContext
+    businessId,       // ✅ v4: needed to scope the upload path
+    userId,           // ✅ v4
   } = useCopilot();
+
+  /**
+   * ✅ v4: upload, then extract. The file goes to a private bucket under the
+   * business id, so one tenant's receipts can never sit in another's folder.
+   */
+  const handleFile = async (file: File) => {
+    const id = crypto.randomUUID();
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setIntakes((p) => [...p, { id, fileName: file.name, status: 'failed', error: 'That file is over 10 MB. Try a smaller scan or a single page.' }]);
+      return;
+    }
+    if (!businessId) {
+      setIntakes((p) => [...p, { id, fileName: file.name, status: 'failed', error: 'Still connecting to your business. Try again in a moment.' }]);
+      return;
+    }
+
+    setIntakes((p) => [...p, { id, fileName: file.name, status: 'uploading' }]);
+
+    try {
+      const safeName = file.name.replace(/[^\w.\-]/g, '_').slice(-80);
+      const path = `${businessId}/${Date.now()}_${safeName}`;
+
+      const { error: upErr } = await supabase.storage
+        .from(INTAKE_BUCKET)
+        .upload(path, file, { contentType: file.type || undefined, upsert: false });
+
+      if (upErr) {
+        throw new Error(
+          /policy|permission|unauthor/i.test(upErr.message)
+            ? `Upload was refused by storage. The '${INTAKE_BUCKET}' bucket needs a policy allowing signed-in users to upload.`
+            : upErr.message,
+        );
+      }
+
+      setIntakes((p) => p.map((x) => (x.id === id ? { ...x, status: 'reading' } : x)));
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(INTAKE_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'extract', businessId, userId, bucket: INTAKE_BUCKET, path, documentType: 'auto' }),
+      });
+
+      const result = await res.json();
+
+      if (!result?.success) {
+        throw new Error(result?.error || 'The document could not be read.');
+      }
+
+      setIntakes((p) => p.map((x) => (x.id === id ? { ...x, status: 'done', result } : x)));
+      toast.success(`Read ${file.name}`);
+
+    } catch (e) {
+      const msg = (e as Error).message || 'Something went wrong reading that file.';
+      console.error('[Aura document intake]', msg);
+      setIntakes((p) => p.map((x) => (x.id === id ? { ...x, status: 'failed', error: msg } : x)));
+    }
+  };
 
   useEffect(() => {
     setHasMounted(true);
@@ -315,6 +520,15 @@ export default function CopilotPanel() {
               </div>
             ))}
 
+            {/* ✅ v4: uploaded documents and what Aura read from them */}
+            {intakes.length > 0 && (
+                <div className="space-y-1">
+                    {intakes.map((item) => (
+                        <DocumentIntakeCard key={item.id} item={item} />
+                    ))}
+                </div>
+            )}
+
             {isChatLoading && streamData && streamData.length > 0 && (
                 <div className="space-y-1">
                     {streamData.map((chunk: any, i: number) => (
@@ -341,8 +555,31 @@ export default function CopilotPanel() {
       <footer className="p-3 sm:p-4 border-t border-slate-100 bg-white shrink-0">
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2 bg-blue-50/60 border border-blue-200 rounded-full p-1.5 pl-4 sm:pl-5 focus-within:border-blue-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100 transition-all"
+          className="flex items-center gap-2 bg-blue-50/60 border border-blue-200 rounded-full p-1.5 pl-2 focus-within:border-blue-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100 transition-all"
         >
+          {/* ✅ v4: attach a receipt, supplier invoice or bank statement */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ACCEPTED}
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+              e.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={isChatLoading || !isReady}
+            aria-label="Attach a receipt or document"
+            title="Attach a receipt, invoice or bank statement"
+            className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 hover:bg-white/70 transition-colors disabled:opacity-40"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
+
           <input
             ref={inputRef}
             value={safeInput}

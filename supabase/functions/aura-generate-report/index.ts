@@ -192,6 +192,7 @@ interface Ctx {
 
 const SINGLE_REPORTS = [
   'analysis',
+  'estimates', 'pos_sales', 'staff_performance', 'pipeline',
   'pnl', 'balance_sheet', 'trial_balance', 'general_ledger', 'cash_flow',
   'aging', 'receivables', 'payables',
   'invoices', 'payments', 'sales', 'customers',
@@ -203,13 +204,20 @@ const SINGLE_REPORTS = [
 ] as const;
 
 const PACKS: Record<string, string[]> = {
-  executive_pack: ['analysis', 'pnl', 'balance_sheet', 'cash_flow', 'aging', 'invoices', 'payments', 'expenses', 'inventory', 'purchase_orders', 'payroll', 'transactions'],
+  executive_pack: ['analysis', 'pnl', 'balance_sheet', 'cash_flow', 'aging', 'invoices', 'pos_sales', 'estimates', 'payments', 'expenses', 'inventory', 'purchase_orders', 'payroll', 'transactions'],
   financial_pack: ['analysis', 'pnl', 'balance_sheet', 'trial_balance', 'cash_flow', 'aging', 'invoices', 'payments', 'expenses'],
-  operations_pack: ['inventory', 'inventory_valuation', 'purchase_orders', 'suppliers', 'employees', 'payroll'],
+  operations_pack: ['inventory', 'inventory_valuation', 'purchase_orders', 'suppliers', 'employees', 'staff_performance', 'pos_sales', 'payroll'],
 };
 
 // Anything a human (or Aura) might say, mapped to a canonical key.
 const ALIASES: Record<string, string> = {
+  'quote': 'estimates', 'quotes': 'estimates', 'quotation': 'estimates', 'quotations': 'estimates',
+  'proforma': 'estimates', 'estimate': 'estimates',
+  'pos': 'pos_sales', 'till': 'pos_sales', 'counter_sales': 'pos_sales', 'till_sales': 'pos_sales',
+  'point_of_sale': 'pos_sales', 'shop_sales': 'pos_sales',
+  'staff_sales': 'staff_performance', 'who_sold': 'staff_performance', 'cashier': 'staff_performance',
+  'seller': 'staff_performance', 'sales_by_staff': 'staff_performance', 'performance': 'staff_performance',
+  'deals': 'pipeline', 'opportunities': 'pipeline', 'crm': 'pipeline', 'leads': 'pipeline',
   'insights': 'analysis', 'advice': 'analysis', 'recommendations': 'analysis',
   'health': 'analysis', 'health_check': 'analysis', 'diagnostics': 'analysis',
   'review': 'analysis', 'assessment': 'analysis', 'ratios': 'analysis',
@@ -227,7 +235,7 @@ const ALIASES: Record<string, string> = {
   'budgets': 'budget', 'budgeting': 'budget', 'variance': 'budget',
   'stock': 'inventory', 'products': 'inventory',
   'valuation': 'inventory_valuation', 'stock_value': 'inventory_valuation',
-  'po': 'purchase_orders', 'pos': 'purchase_orders', 'procurement': 'purchase_orders',
+  'po': 'purchase_orders', 'procurement': 'purchase_orders',
   'vendors': 'suppliers', 'supplier': 'suppliers',
   'salaries': 'payroll', 'wages': 'payroll',
   'staff': 'employees', 'hr': 'employees', 'team': 'employees',
@@ -679,6 +687,238 @@ async function buildSection(ctx: Ctx, key: string): Promise<Section> {
         rows: findings.map((f) => [f.severity, f.area, f.finding, f.action]),
         sheet: findings.map((f) => ({ Severity: f.severity, Area: f.area, Finding: f.finding, SuggestedAction: f.action })),
         landscape: true, totalRows: findings.length,
+      };
+    }
+
+    // ------------------------------------------------------------ ESTIMATES
+    // Quote-to-invoice conversion is traceable because invoices carry
+    // source_estimate_id. Which quotes convert, which stall, and what the
+    // unconverted pipeline is worth.
+    case 'estimates': {
+      const [est, conv] = await Promise.all([
+        pullAll(ctx, 'estimates', 'estimate_uid, title, client_name, status, total_amount, valid_until, currency_code, created_at',
+          (q) => applyRange(q.eq('business_id', ctx.businessId).order('created_at', { ascending: false }), 'created_at', ctx)),
+        pullAll(ctx, 'invoices', 'source_estimate_id, total_amount', (q) => q.eq('business_id', ctx.businessId).not('source_estimate_id', 'is', null)),
+      ]);
+      if (est.error) return emptySection(key, 'Estimates & Quotations', `Source estimates unavailable: ${est.error}`);
+
+      const convertedIds = new Set((conv.rows ?? []).map((r: any) => r.source_estimate_id));
+      const total = est.rows.reduce((s, r) => s + num(r.total_amount), 0);
+      const converted = est.rows.filter((r: any) => convertedIds.has(r.id));
+      const nowMs = Date.now();
+      const expired = est.rows.filter((r: any) => r.valid_until && new Date(r.valid_until).getTime() < nowMs && !convertedIds.has(r.id));
+      const openValue = est.rows.filter((r: any) => !convertedIds.has(r.id)).reduce((s, r) => s + num(r.total_amount), 0);
+
+      return {
+        key, title: 'Estimates & Quotations',
+        summary: [
+          `Estimates Issued: ${fmtInt(est.rows.length)}`,
+          `Total Quoted: ${cur} ${fmt(total)}`,
+          `Converted To Invoices: ${fmtInt(conv.rows?.length ?? 0)}`,
+          `Conversion Rate: ${est.rows.length ? (((conv.rows?.length ?? 0) / est.rows.length) * 100).toFixed(1) : '0.0'}%`,
+          `Open (not yet converted): ${cur} ${fmt(openValue)}`,
+          `Expired Without Converting: ${fmtInt(expired.length)} worth ${cur} ${fmt(expired.reduce((s, r) => s + num(r.total_amount), 0))}`,
+        ],
+        note: expired.length > 0
+          ? `${expired.length} quote(s) passed their valid-until date without becoming an invoice. Each one is work already done that earned nothing.`
+          : undefined,
+        columns: [
+          { header: 'Reference', width: 95 }, { header: 'Client', width: 130 },
+          { header: 'Title', width: 130 }, { header: `Amount (${cur})`, width: 95, numeric: true },
+          { header: 'Status', width: 75 }, { header: 'Valid Until', width: 75 },
+        ],
+        rows: est.rows.map((r: any) => [
+          sanitize(r.estimate_uid), customerLabel(r.client_name), sanitize(r.title),
+          fmt(r.total_amount), sanitize(r.status), day(r.valid_until),
+        ]),
+        sheet: est.rows.map((r: any) => ({
+          Reference: r.estimate_uid, Client: customerLabel(r.client_name), Title: r.title,
+          Amount: num(r.total_amount), Status: r.status, ValidUntil: day(r.valid_until),
+          Created: day(r.created_at), Currency: r.currency_code,
+        })),
+        landscape: true, totalRows: est.rows.length,
+      };
+    }
+
+    // ------------------------------------------------------------ POS SALES
+    case 'pos_sales': {
+      const [sales, items] = await Promise.all([
+        pullAll(ctx, 'sales', 'id, total_amount, amount_paid, payment_method, payment_status, status, discount_amount, tax_amount, currency_code, location_id, user_id, created_at',
+          (q) => applyRange(q.eq('business_id', ctx.businessId).order('created_at', { ascending: false }), 'created_at', ctx)),
+        pullAll(ctx, 'sale_items', 'sale_id, quantity, unit_price, cost_price, total_price',
+          (q) => q.eq('business_id', ctx.businessId)),
+      ]);
+      if (sales.error) return emptySection(key, 'Point of Sale', `Source sales unavailable: ${sales.error}`);
+
+      const total = sales.rows.reduce((s, r) => s + num(r.total_amount), 0);
+      const collected = sales.rows.reduce((s, r) => s + num(r.amount_paid), 0);
+      const discounts = sales.rows.reduce((s, r) => s + num(r.discount_amount), 0);
+      const cost = items.rows.reduce((s, r) => s + num(r.cost_price) * num(r.quantity), 0);
+      const itemRevenue = items.rows.reduce((s, r) => s + num(r.total_price), 0);
+      const margin = itemRevenue - cost;
+
+      const byMethod = new Map<string, { n: number; v: number }>();
+      sales.rows.forEach((r) => {
+        const m = sanitize(r.payment_method) || 'Unspecified';
+        const b = byMethod.get(m) ?? { n: 0, v: 0 };
+        b.n += 1; b.v += num(r.total_amount);
+        byMethod.set(m, b);
+      });
+
+      return {
+        key, title: 'Point of Sale',
+        summary: [
+          `Sales: ${fmtInt(sales.rows.length)}`,
+          `Total Rung Up: ${cur} ${fmt(total)}`,
+          `Collected At Till: ${cur} ${fmt(collected)}`,
+          `Discounts Given: ${cur} ${fmt(discounts)}`,
+          `Cost Of Items Sold: ${cur} ${fmt(cost)}`,
+          `Gross Margin On Items: ${cur} ${fmt(margin)}${itemRevenue ? ` (${((margin / itemRevenue) * 100).toFixed(1)}%)` : ''}`,
+          `Average Sale: ${cur} ${fmt(sales.rows.length ? total / sales.rows.length : 0)}`,
+          ...[...byMethod.entries()].sort((a, b) => b[1].v - a[1].v).slice(0, 5)
+            .map(([m, b]) => `${m}: ${fmtInt(b.n)} sale(s), ${cur} ${fmt(b.v)}`),
+        ],
+        note: cost === 0 && itemRevenue > 0
+          ? 'Cost price is not recorded on the sale lines, so margin cannot be computed from POS data. Until cost_price is captured at the till, gross margin here reads as the full sale value.'
+          : undefined,
+        columns: [
+          { header: 'Date', width: 80 }, { header: 'Method', width: 95 },
+          { header: `Total (${cur})`, width: 90, numeric: true },
+          { header: `Paid (${cur})`, width: 90, numeric: true },
+          { header: `Discount (${cur})`, width: 85, numeric: true },
+          { header: 'Status', width: 75 },
+        ],
+        rows: sales.rows.map((r) => [
+          day(r.created_at), sanitize(r.payment_method), fmt(r.total_amount),
+          fmt(r.amount_paid), fmt(r.discount_amount), sanitize(r.payment_status ?? r.status),
+        ]),
+        sheet: sales.rows.map((r) => ({
+          SaleId: r.id, Date: day(r.created_at), Method: r.payment_method,
+          Total: num(r.total_amount), Paid: num(r.amount_paid), Discount: num(r.discount_amount),
+          Tax: num(r.tax_amount), Status: r.payment_status ?? r.status, Currency: r.currency_code,
+        })),
+        landscape: true, totalRows: sales.rows.length,
+      };
+    }
+
+    // ---------------------------------------------------- STAFF PERFORMANCE
+    // sales.user_id is populated, so POS activity CAN be attributed to a
+    // person. invoices carries no user column at all, so anything raised as a
+    // direct invoice is unattributable — that limit is stated on the report
+    // rather than quietly ignored.
+    case 'staff_performance': {
+      const sales = await pullAll(ctx, 'sales', 'user_id, total_amount, amount_paid, discount_amount, created_at',
+        (q) => applyRange(q.eq('business_id', ctx.businessId), 'created_at', ctx));
+      if (sales.error) return emptySection(key, 'Staff Sales Performance', `Source sales unavailable: ${sales.error}`);
+      if (sales.rows.length === 0) return emptySection(key, 'Staff Sales Performance', 'No POS sales in this period.');
+
+      const ids = [...new Set(sales.rows.map((r) => r.user_id).filter(Boolean))];
+      const names = new Map<string, string>();
+      if (ids.length > 0) {
+        try {
+          const { data } = await ctx.sb.from('profiles').select('id, full_name').in('id', ids);
+          (data ?? []).forEach((p: any) => names.set(p.id, p.full_name || 'Unnamed'));
+        } catch (_e) { /* fall back to ids */ }
+      }
+
+      const byUser = new Map<string, { n: number; total: number; paid: number; disc: number; first: string; last: string }>();
+      sales.rows.forEach((r) => {
+        const k = r.user_id ?? 'unattributed';
+        const b = byUser.get(k) ?? { n: 0, total: 0, paid: 0, disc: 0, first: '9999', last: '0000' };
+        b.n += 1;
+        b.total += num(r.total_amount);
+        b.paid += num(r.amount_paid);
+        b.disc += num(r.discount_amount);
+        const d = day(r.created_at);
+        if (d && d < b.first) b.first = d;
+        if (d && d > b.last) b.last = d;
+        byUser.set(k, b);
+      });
+
+      const ranked = [...byUser.entries()].sort((a, b) => b[1].total - a[1].total);
+      const grand = ranked.reduce((s, [, b]) => s + b.total, 0);
+      const unattributed = byUser.get('unattributed');
+
+      return {
+        key, title: 'Staff Sales Performance',
+        summary: [
+          `People With Sales: ${fmtInt(ranked.filter(([k]) => k !== 'unattributed').length)}`,
+          `Total Attributed: ${cur} ${fmt(grand - (unattributed?.total ?? 0))}`,
+          ...ranked.slice(0, 5).map(([k, b], i) =>
+            `${i + 1}. ${k === 'unattributed' ? 'Unattributed' : (names.get(k) ?? k.slice(0, 8))}: ${fmtInt(b.n)} sale(s), ${cur} ${fmt(b.total)} (${grand ? ((b.total / grand) * 100).toFixed(1) : '0.0'}%)`),
+        ],
+        note: 'Covers POS sales only. The invoices table records no user, so anything raised as a direct invoice cannot be attributed to a person until a created_by column is added and populated.',
+        columns: [
+          { header: 'Person', width: 150 }, { header: 'Sales', width: 60, numeric: true },
+          { header: `Total (${cur})`, width: 105, numeric: true },
+          { header: `Collected (${cur})`, width: 105, numeric: true },
+          { header: `Discounts (${cur})`, width: 95, numeric: true },
+          { header: 'Share', width: 60 }, { header: 'Last Sale', width: 75 },
+        ],
+        rows: ranked.map(([k, b]) => [
+          k === 'unattributed' ? 'Unattributed' : (names.get(k) ?? k.slice(0, 8)),
+          fmtInt(b.n), fmt(b.total), fmt(b.paid), fmt(b.disc),
+          grand ? `${((b.total / grand) * 100).toFixed(1)}%` : '0.0%',
+          b.last === '0000' ? '' : b.last,
+        ]),
+        sheet: ranked.map(([k, b]) => ({
+          Person: k === 'unattributed' ? 'Unattributed' : (names.get(k) ?? k),
+          Sales: b.n, Total: b.total, Collected: b.paid, Discounts: b.disc,
+          FirstSale: b.first === '9999' ? '' : b.first, LastSale: b.last === '0000' ? '' : b.last,
+        })),
+        landscape: true, totalRows: ranked.length,
+      };
+    }
+
+    // ------------------------------------------------------------- PIPELINE
+    // deals is scoped by tenant_id, not business_id — the only table in this
+    // engine that is, so do not "correct" it to match the others.
+    case 'pipeline': {
+      const [deals, stages] = await Promise.all([
+        pullAll(ctx, 'deals', 'title, value, currency_code, stage_id, contact_name, expected_close_date, status, probability, created_at',
+          (q) => applyRange(q.eq('tenant_id', ctx.businessId).order('created_at', { ascending: false }), 'created_at', ctx)),
+        pullAll(ctx, 'pipeline_stages', 'id, name, probability, status', (q) => q.eq('tenant_id', ctx.businessId)),
+      ]);
+      if (deals.error) return emptySection(key, 'Sales Pipeline', `Source deals unavailable: ${deals.error}`);
+      if (deals.rows.length === 0) return emptySection(key, 'Sales Pipeline', 'No deals recorded for this business.');
+
+      const stageName = new Map((stages.rows ?? []).map((r: any) => [r.id, r.name]));
+      const total = deals.rows.reduce((s, r) => s + num(r.value), 0);
+      const weighted = deals.rows.reduce((s, r) => s + num(r.value) * (num(r.probability) / 100), 0);
+
+      const byStage = new Map<string, { n: number; v: number }>();
+      deals.rows.forEach((r) => {
+        const st = sanitize(stageName.get(r.stage_id) ?? 'Unassigned');
+        const b = byStage.get(st) ?? { n: 0, v: 0 };
+        b.n += 1; b.v += num(r.value);
+        byStage.set(st, b);
+      });
+
+      return {
+        key, title: 'Sales Pipeline',
+        summary: [
+          `Open Deals: ${fmtInt(deals.rows.length)}`,
+          `Pipeline Value: ${cur} ${fmt(total)}`,
+          `Weighted By Probability: ${cur} ${fmt(weighted)}`,
+          ...[...byStage.entries()].sort((a, b) => b[1].v - a[1].v).slice(0, 6)
+            .map(([st, b]) => `${st}: ${fmtInt(b.n)} deal(s), ${cur} ${fmt(b.v)}`),
+        ],
+        columns: [
+          { header: 'Deal', width: 165 }, { header: 'Contact', width: 120 },
+          { header: 'Stage', width: 105 }, { header: `Value (${cur})`, width: 95, numeric: true },
+          { header: 'Probability', width: 70 }, { header: 'Expected Close', width: 85 },
+        ],
+        rows: deals.rows.map((r) => [
+          sanitize(r.title), sanitize(r.contact_name), sanitize(stageName.get(r.stage_id) ?? 'Unassigned'),
+          fmt(r.value), `${fmtInt(r.probability)}%`, day(r.expected_close_date),
+        ]),
+        sheet: deals.rows.map((r) => ({
+          Deal: r.title, Contact: r.contact_name, Stage: stageName.get(r.stage_id) ?? 'Unassigned',
+          Value: num(r.value), Probability: num(r.probability),
+          WeightedValue: num(r.value) * (num(r.probability) / 100),
+          ExpectedClose: day(r.expected_close_date), Status: r.status, Created: day(r.created_at),
+        })),
+        landscape: true, totalRows: deals.rows.length,
       };
     }
 
