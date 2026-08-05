@@ -12,6 +12,14 @@
  * MissionControlPage or AuraForensicGuard will now correctly show here
  * too, and vice versa. Local setBoardroomData call removed from the
  * streamData effect — CopilotContext sets it directly now.
+ *
+ * v3 CHANGE: generated reports render as a download card (ReportFileCard)
+ * inside the assistant bubble, fed by `m.reportFile` from CopilotContext
+ * v29.3. Previously Aura streamed the signed URL as plain text, which put
+ * roughly 400 characters of JWT in front of the director where they
+ * expected a button. The card sits inside the message rather than in the
+ * transient streamData strip below, so it persists for the rest of the
+ * conversation instead of disappearing when the stream closes.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -45,6 +53,46 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
   } catch (error) {
     toast.error("Couldn't finish that download.");
   }
+};
+
+/**
+ * ✅ v3: the generated report, rendered as a download control rather than a URL.
+ * Signed Supabase links embed a JWT and run to several hundred characters,
+ * which is unreadable in a chat bubble. The link expires after an hour.
+ */
+const ReportFileCard = ({ file }: { file: any }): React.ReactNode => {
+  if (!file?.downloadUrl) return null;
+
+  const ext = String(file.format || 'file').toUpperCase().slice(0, 4);
+  const warnings: string[] = Array.isArray(file.warnings) ? file.warnings : [];
+
+  return (
+    <a
+      href={file.downloadUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-2.5 flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 no-underline shadow-sm transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-[10px] font-bold text-white">
+        {ext}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-semibold text-slate-900">
+          {file.title || 'Report'}
+        </span>
+        <span className="block truncate text-[11px] text-slate-400">
+          {file.scope}
+          {typeof file.rowCount === 'number' ? ` · ${file.rowCount.toLocaleString()} rows` : ''}
+        </span>
+        {warnings.length > 0 && (
+          <span className="mt-0.5 block truncate text-[11px] text-amber-600">
+            {warnings.length} section{warnings.length > 1 ? 's' : ''} incomplete
+          </span>
+        )}
+      </span>
+      <FileDown className="h-4 w-4 shrink-0 text-slate-400" />
+    </a>
+  );
 };
 
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
@@ -252,6 +300,11 @@ export default function CopilotPanel() {
                   >
                     {m.content}
                   </ReactMarkdown>
+
+                  {/* ✅ v3: download card for a generated report, if this
+                      message carried one. Lives inside the bubble so it
+                      persists with the message. */}
+                  {m.reportFile && <ReportFileCard file={m.reportFile} />}
                 </div>
 
                 {m.role === 'user' && (

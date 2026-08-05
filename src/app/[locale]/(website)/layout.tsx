@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AuraPublicWidget from "@/components/copilot/AuraPublicWidget";
 
 export const metadata: Metadata = {
   title: "BBU1 — Business Operating System",
@@ -16,5 +17,13 @@ export default function WebsiteLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {/* Public Aura. Mounted here so it appears on every marketing page.
+          It talks to aura-public-concierge, which has no access to any
+          tenant table — not the authenticated aura-quantum-audit endpoint. */}
+      <AuraPublicWidget />
+    </>
+  );
 }

@@ -2,7 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v29.2 OMEGA-ULTIMATUM (SHARED BOARDROOM STATE)
+ * VERSION: v29.3 OMEGA-ULTIMATUM (SHARED BOARDROOM STATE + REPORT FILE PARTS)
  * SDK_VERSION: @ai-sdk/react 3.0.192, built on ai@6.0.190
  * JURISDICTION: Global ERP / Multi-Tenant / Multi-Country
  *
@@ -17,6 +17,20 @@
  * `boardroomData`/`closeBoardroom` existing on the context; previously
  * these were undefined here, which meant the guard's boardroom overlay
  * could never render and its onClose would throw if ever wired up.
+ *
+ * v29.3: Generated reports now reach the UI. aura-quantum-audit v31.0 emits a
+ * `data-reportFile` part carrying the signed download URL and the file's key
+ * figures. Two things had to change for it to be usable:
+ *
+ *   1. The `data` memo below collects only `data-agentStep` parts, so a
+ *      reportFile part was discarded before any component saw it.
+ *   2. `data` is rendered in CopilotPanel only while isChatLoading is true, so
+ *      anything routed through it would disappear the moment the stream ended.
+ *
+ * Rather than widening `data`, the file is lifted onto its own message as
+ * `reportFile`. Parts persist for the life of the conversation, so the download
+ * card stays in the thread where the director left it instead of vanishing with
+ * the tool-activity strip.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -34,10 +48,24 @@ import { useBusiness } from '@/context/BusinessContext';
 import { createClient } from '@/lib/supabase/client';
 import { useSync } from '@/components/core/SyncProvider';
 
+/** ✅ v29.3: emitted by aura-quantum-audit when a report file has been generated. */
+export interface ReportFile {
+  title: string;
+  fileName: string;
+  format: string;
+  reportType: string;
+  scope: string;
+  rowCount: number;
+  downloadUrl: string;
+  expiresInMinutes: number;
+  warnings: string[];
+}
+
 export interface CopilotMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  reportFile?: ReportFile;   // ✅ v29.3
 }
 
 /** Shape of the payload AuraBoardroom expects — matches the `prepare_boardroom_presentation` tool output. */
@@ -131,6 +159,10 @@ function NeuralSanctuary({
       .filter((p: any) => p.type === 'text')
       .map((p: any) => p.text)
       .join(''),
+    // ✅ v29.3: the generated report file, if this message carried one.
+    // Read straight from parts rather than from the `data` array below, so it
+    // stays attached to its own message and survives after the stream closes.
+    reportFile: (m.parts || []).find((p: any) => p.type === 'data-reportFile')?.data,
   })), [rawMessages]);
 
   // ✅ v29.2: `data-agentStep` parts with action === 'prepare_boardroom_presentation'
@@ -211,6 +243,9 @@ function NeuralSanctuary({
     setTimeout(() => { if (sessionToken) handleSubmit(prompt); }, 850);
   }, [isLoading, sessionToken, handleSubmit, setIsOpen]);
 
+  // Note: this rebuilds parts from `content` alone, so a programmatic replace
+  // drops any attached reportFile. That is correct — these are synthetic
+  // messages with no file behind them.
   const setMessages = useCallback((next: CopilotMessage[] | ((prev: CopilotMessage[]) => CopilotMessage[])) => {
     const resolved = typeof next === 'function' ? (next as any)(messages) : next;
     setRawMessages((resolved || []).map((m: CopilotMessage) => ({
