@@ -7,6 +7,23 @@
  * Runs on the public Jitsi server. Everything below works there today; when
  * you move to your own server, one constant changes and nothing else.
  *
+ * v2.3 FIX — the real reason the meeting looked frozen.
+ *
+ *   POINTER EVENTS. Radix's Dialog (which Sheet is built on) sets
+ *   `pointer-events: none` on <body> while it is open, and re-enables it only
+ *   on its own content. This panel portals to body, so it inherited `none`:
+ *   perfectly visible, completely dead. No clicking, no scrolling, no typing.
+ *   Every symptom came from that one line of inherited CSS. Fixed with
+ *   `pointer-events-auto` on the root — and it is why the previous fix
+ *   appeared to change nothing.
+ *
+ *   NATIVE LISTENERS. The stopPropagation handlers were React synthetic
+ *   events. React delivers those through the React tree, but a portal outside
+ *   the React root container does not reliably receive them, while the NATIVE
+ *   event still bubbles to document where Radix is listening. The dismissal
+ *   guard is now attached with addEventListener on the node itself, which is
+ *   what actually stops the drawer closing.
+ *
  * v2.2 FIXES — the portal solved one problem and created two.
  *
  *   DISMISSAL. Portalling to document.body puts this outside the Radix Sheet's
@@ -158,11 +175,30 @@ export default function AuraMeetingRoom({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const meetingUrl = room ? `https://${JITSI_DOMAIN}/${room}` : '';
   const present = attendees.filter((a) => !a.leftAt);
 
   useEffect(() => { setMounted(true); }, []);
+
+  /**
+   * Stops the Radix Sheet dismissing itself when the director clicks in here.
+   *
+   * Radix listens on `document` for pointerdown and focusin. These listeners
+   * sit on this panel's own root in the bubble phase, so the event is halted
+   * before it ever reaches document. They are native listeners on purpose:
+   * React synthetic events do not reliably reach a portal rendered outside the
+   * React root container, but the native event bubbles regardless.
+   */
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node || !open) return;
+    const stop = (e: Event) => e.stopPropagation();
+    const events = ['pointerdown', 'mousedown', 'touchstart', 'focusin', 'click'];
+    events.forEach((n) => node.addEventListener(n, stop));
+    return () => events.forEach((n) => node.removeEventListener(n, stop));
+  }, [open, minimised]);
 
   useEffect(() => {
     if (!started || !startedAt) return;
@@ -416,10 +452,10 @@ IMPORTANT: state near the top that spoken contributions from participants other 
   if (minimised) {
     return createPortal(
       <div
-        className="fixed bottom-4 right-4 z-[9999] flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 shadow-2xl"
-        onPointerDown={(e) => e.stopPropagation()}
-        onPointerDownCapture={(e) => e.stopPropagation()}
-        onFocusCapture={(e) => e.stopPropagation()}
+        ref={rootRef}
+        // pointer-events-auto is not optional: Radix sets pointer-events:none
+        // on body while the Sheet is open, and this is a child of body.
+        className="pointer-events-auto fixed bottom-4 right-4 z-[9999] flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 shadow-2xl"
       >
         <span className={cn('h-2 w-2 shrink-0 rounded-full', live ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400')} />
         <div className="min-w-0">
@@ -441,18 +477,12 @@ IMPORTANT: state near the top that spoken contributions from participants other 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex flex-col bg-slate-950"
-      // This panel lives outside the Radix Sheet's DOM subtree. Radix listens
-      // on `document` for pointer-down and focus events to decide when the
-      // drawer has been dismissed and to hold focus inside it. Without these,
-      // every click here closed the drawer — unmounting the chat panel and
-      // this meeting with it — and no input could keep focus long enough to
-      // type into.
-      onPointerDown={(e) => e.stopPropagation()}
-      onPointerDownCapture={(e) => e.stopPropagation()}
-      onMouseDownCapture={(e) => e.stopPropagation()}
-      onTouchStartCapture={(e) => e.stopPropagation()}
-      onFocusCapture={(e) => e.stopPropagation()}
+      ref={rootRef}
+      // pointer-events-auto is the whole fix for "I can see it but nothing
+      // works": Radix sets pointer-events:none on body while the Sheet is
+      // open, and this panel is a child of body. Dismissal is handled by the
+      // native listeners in the effect above.
+      className="pointer-events-auto fixed inset-0 z-[9999] flex flex-col bg-slate-950"
       onKeyDownCapture={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
     >
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 px-3 sm:px-4">
