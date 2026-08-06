@@ -30,6 +30,11 @@
  * would act on it. Captions and text are honest accessibility; a signing
  * mannequin would not be.
  *
+ * v13 CHANGE: the camera. Scan a receipt straight into the document pipeline,
+ * transcribe any text in view, or have Aura describe what is in front of the
+ * lens aloud — the last of those being what makes this usable by a director
+ * who cannot see the screen.
+ *
  * v12 CHANGE: an uploaded document can be presented or exported. The intake
  * function returns boardroom slides and an .xlsx built from the SAME validated
  * extraction the card displays, so all three show one set of figures rather
@@ -90,7 +95,7 @@ import {
   FileDown, Compass, X, ShieldCheck,
   Presentation, Paperclip, FileText, AlertTriangle, CheckCircle2,
   Mic, Square, Volume2, VolumeX, Phone, PhoneOff, Settings2, Video,
-  Accessibility, Captions, Presentation as PresentIcon, Table2,
+  Accessibility, Captions, Presentation as PresentIcon, Table2, Camera,
 } from 'lucide-react';
 
 import ReactMarkdown from 'react-markdown';
@@ -100,6 +105,7 @@ import remarkGfm from 'remark-gfm';
 
 import { createClient } from '@/lib/supabase/client';
 import { useLocalWhisper } from '@/hooks/useLocalWhisper';
+import AuraVision from './AuraVision';
 import { useCopilot } from '@/context/CopilotContext';
 import { AuraAvatar } from './AuraAvatar';
 
@@ -435,6 +441,7 @@ export default function CopilotPanel() {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [intakes, setIntakes] = useState<DocIntake[]>([]);   // ✅ v4
+  const [visionOpen, setVisionOpen] = useState(false);       // ✅ v13
 
   // ✅ v5 voice
   const [listening, setListening] = useState(false);
@@ -830,6 +837,20 @@ export default function CopilotPanel() {
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden relative font-sans">
 
+      {/* ✅ v13 */}
+      <AuraVision
+        open={visionOpen}
+        onClose={() => setVisionOpen(false)}
+        businessId={businessId}
+        userId={userId}
+        onScanned={(result, fileName) => {
+          // Reuses the intake card the upload path already renders, so a
+          // scanned receipt and an uploaded one look and behave identically.
+          setIntakes((p) => [...p, { id: crypto.randomUUID(), fileName, status: 'done', result }]);
+          setVisionOpen(false);
+        }}
+      />
+
       {/* HEADER */}
       <header className="h-14 px-3 sm:px-4 border-b border-slate-100 bg-white flex items-center gap-2.5 shrink-0">
         <AuraAvatar
@@ -1208,6 +1229,19 @@ export default function CopilotPanel() {
             className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 hover:bg-white/70 transition-colors disabled:opacity-40"
           >
             <Paperclip className="h-4 w-4" />
+          </button>
+
+          {/* ✅ v13: capture instead of upload — the receipt gets scanned at the
+              till rather than photographed, found again and attached later */}
+          <button
+            type="button"
+            onClick={() => { endCall(); stopListening(); stopSpeaking(); setVisionOpen(true); }}
+            disabled={isChatLoading || !isReady}
+            aria-label="Use the camera"
+            title="Scan, read or describe with the camera"
+            className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 hover:bg-white/70 transition-colors disabled:opacity-40"
+          >
+            <Camera className="h-4 w-4" />
           </button>
 
           {/* ✅ v6: hands-free conversation */}

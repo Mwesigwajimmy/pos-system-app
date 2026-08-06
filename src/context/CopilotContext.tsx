@@ -18,6 +18,19 @@
  * these were undefined here, which meant the guard's boardroom overlay
  * could never render and its onClose would throw if ever wired up.
  *
+ * v29.7: Aura greets the director on arrival — time of day, their name, the
+ * business she is linked to, and "welcome back" only when they have actually
+ * been away for six hours or more. Composed locally rather than fetched,
+ * because a predictable sentence is not worth an API call or two seconds of
+ * waiting, and once per session because a greeting on every navigation stops
+ * being a welcome.
+ *
+ * v29.6: AuraPresentation replaces AuraBoardroom. The old surface centred its
+ * content with no scroll container, so any slide taller than the viewport was
+ * simply unreachable — a director cannot read half a figure. The new one
+ * scrolls, carries a laser pointer, and lets a question be asked about the
+ * slide on screen without leaving the briefing.
+ *
  * v29.5: AuraBoardroom moved here too, and for the same reason — it is
  * fixed inset-0, and inside the Sheet it would be trapped by the drawer's
  * transform and pointer-events lock exactly as the meeting was. A briefing
@@ -65,7 +78,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 // CORE UI COMPONENT
 import CopilotPanel from '@/components/copilot/CopilotPanel';
 import AuraMeetingRoom from '@/components/copilot/AuraMeetingRoom';
-import AuraBoardroom from '@/components/copilot/AuraBoardroom';
+import AuraPresentation from '@/components/copilot/AuraPresentation';
 
 // ✅ THE MASTER IDENTITY HOOKS
 import { useBusiness } from '@/context/BusinessContext';
@@ -247,6 +260,54 @@ function NeuralSanctuary({
     return items;
   }, [rawMessages, chatError]);
 
+  // ✅ v29.7: Aura greets the director when they arrive.
+  //
+  // Written here rather than fetched from the model: a greeting costs an API
+  // call and two seconds of latency for a sentence whose content is entirely
+  // predictable, and a director opening the app should not wait to be spoken
+  // to. Once per session per business — a greeting on every page navigation
+  // stops being a welcome and becomes noise.
+  useEffect(() => {
+    if (!businessId || !userId) return;
+    if ((rawMessages || []).length > 0) return;
+
+    const key = `aura.greeted.${businessId}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch (e) { return; }   // private mode: skip rather than greet endlessly
+
+    const hour = new Date().getHours();
+    const partOfDay = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+    const director = (tenantData?.full_name || '').split(' ')[0];
+    const business = tenantData?.business_name || tenantData?.name || '';
+
+    // "Welcome back" only when they have genuinely been away. Saying it to
+    // someone who refreshed the page a minute ago reads as a system that is
+    // not paying attention.
+    let returning = false;
+    try {
+      const lastKey = `aura.lastSeen.${businessId}`;
+      const last = Number(localStorage.getItem(lastKey) || 0);
+      returning = last > 0 && Date.now() - last > 6 * 60 * 60 * 1000;
+      localStorage.setItem(lastKey, String(Date.now()));
+    } catch (e) { /* storage unavailable */ }
+
+    const text = [
+      `${partOfDay}${director ? `, ${director}` : ''}.`,
+      returning ? 'Welcome back.' : '',
+      business ? `I am linked to ${business} and your figures are up to date.` : 'Your figures are up to date.',
+      'Ask me anything about your sales, ledger, stock or staff — or say the word and I will put a briefing on screen.',
+    ].filter(Boolean).join(' ');
+
+    setRawMessages([{
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      parts: [{ type: 'text', text }],
+    }] as any);
+  }, [businessId, userId, tenantData, rawMessages, setRawMessages]);
+
   const [inputValue, setInputValue] = useState('');
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -358,11 +419,15 @@ function NeuralSanctuary({
           the meeting — and because it had never been shown at all until the
           edge function started emitting prepare_boardroom_presentation. */}
       {boardroomData && (
-        <AuraBoardroom
-          presenter={boardroomData.presenter_role as any}
+        <AuraPresentation
+          open
+          presenter={boardroomData.presenter_role}
           title={boardroomData.meeting_title}
-          slides={boardroomData.slides}
+          slides={boardroomData.slides as any}
           onClose={closeBoardroom}
+          messages={messages}
+          onAsk={(text: string) => handleSubmit(text)}
+          thinking={isLoading}
         />
       )}
 

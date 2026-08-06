@@ -4,6 +4,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
 
 /**
  * --- AURA PUBLIC CONCIERGE ---
+ * v3.0 — unanswered questions are recorded.
+ *
+ * Until now a visitor could ask something the site does not explain, be told
+ * politely to check the contact page, and leave — and nobody would ever know
+ * the question had been asked. That is the most useful free signal a business
+ * gets: a real person, with real intent, saying exactly what your website
+ * fails to say.
+ *
+ * Detection is deterministic rather than model-decided. After the reply has
+ * finished streaming, the text is matched against the phrases the system
+ * prompt tells Aura to use when she does not know something. A model asked to
+ * self-report its own failures under-reports them, and a second API call to
+ * classify every answer would double the cost of the widget.
+ *
+ * Repeats increment a counter rather than adding rows. Ten people asking the
+ * same thing is one thing to fix, not ten.
+ *
  * v2.0 — general business knowledge + live web access
  *
  * The Aura that talks to strangers. Deliberately a SEPARATE function from
@@ -272,6 +289,88 @@ function needsLiveIntel(raw: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// UNANSWERED QUESTION DETECTION
+// ---------------------------------------------------------------------------
+
+// Set this to your own tenant id if you want website questions to appear in a
+// CRM screen. Left null they are still recorded, and readable with a direct
+// query — they are questions about BBU1, so they belong to you rather than to
+// any customer.
+const PLATFORM_BUSINESS_ID: string | null = null;
+
+// The phrases the system prompt instructs Aura to use when she cannot answer.
+// Matching her actual words is more reliable than asking her to flag herself.
+const UNANSWERED_MARKERS: RegExp[] = [
+  /\bi (?:am|'m) not certain\b/i,
+  /\bi (?:do not|don't) have (?:that|this|the) (?:information|detail)\b/i,
+  /\bi (?:cannot|can't|could not|couldn't) find\b/i,
+  /\bnot something i (?:know|can tell you)\b/i,
+  /\bcontact page\b.*\b(?:someone|team|help)\b/i,
+  /\b(?:reach|speak to) (?:the team|someone|sales)\b/i,
+  /\bi (?:do not|don't) know\b/i,
+];
+
+function looksUnanswered(reply: string): boolean {
+  if (!reply || reply.length < 20) return false;
+  return UNANSWERED_MARKERS.some((re) => re.test(reply));
+}
+
+/** Groups repeats: lowercase, strip punctuation and filler, collapse space. */
+function questionKey(q: string): string {
+  return q.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\b(the|a|an|is|are|do|does|can|could|would|you|your|i|my|me|please|hi|hello)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120);
+}
+
+/**
+ * Records a question Aura could not answer. Best effort throughout: a failure
+ * here must never affect the visitor, who has already had their reply.
+ */
+async function recordGap(question: string, reply: string) {
+  try {
+    const clean = question.trim().slice(0, 500);
+    if (clean.length < 8) return;      // "hi", "thanks" — not questions
+
+    const sb = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } },
+    );
+
+    const key = questionKey(clean);
+    const now = new Date().toISOString();
+
+    const { data: existing } = await sb.from('aura_knowledge_gaps')
+      .select('id, times_asked')
+      .eq('question_key', key)
+      .is('business_id', PLATFORM_BUSINESS_ID === null ? null : undefined)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      await sb.from('aura_knowledge_gaps').update({
+        times_asked: (existing[0].times_asked ?? 1) + 1,
+        last_asked_at: now,
+      }).eq('id', existing[0].id);
+      return;
+    }
+
+    await sb.from('aura_knowledge_gaps').insert({
+      business_id: PLATFORM_BUSINESS_ID,
+      raw_question: clean,
+      question_key: key,
+      context_at_time: 'public website',
+      source: 'website',
+      last_asked_at: now,
+    });
+  } catch (e) {
+    console.warn('[AURA PUBLIC] could not record the gap:', (e as Error).message);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // SSE HELPERS
 // ---------------------------------------------------------------------------
 
@@ -410,6 +509,11 @@ HOW TO USE IT:
         const textId = crypto.randomUUID();
         controller.enqueue(encoder.encode(sseFrame({ type: 'text-start', id: textId })));
 
+        // Accumulated so the finished reply can be checked once. Judging a
+        // half-streamed answer would flag every reply that had not yet
+        // reached its point.
+        let fullReply = '';
+
         try {
           const response = await fetch("https://api.sambanova.ai/v1/chat/completions", {
             method: "POST",
@@ -453,6 +557,7 @@ HOW TO USE IT:
                   const json = JSON.parse(trimmed.slice(6));
                   const content = json.choices?.[0]?.delta?.content || "";
                   if (content) {
+                    fullReply += content;
                     controller.enqueue(encoder.encode(sseFrame({ type: 'text-delta', id: textId, delta: content })));
                   }
                 } catch (e) {
@@ -467,6 +572,7 @@ HOW TO USE IT:
               const json = JSON.parse(sseBuffer.trim().slice(6));
               const content = json.choices?.[0]?.delta?.content || "";
               if (content) {
+                fullReply += content;
                 controller.enqueue(encoder.encode(sseFrame({ type: 'text-delta', id: textId, delta: content })));
               }
             } catch (e) { /* trailing fragment, nothing usable */ }
@@ -475,6 +581,12 @@ HOW TO USE IT:
           controller.enqueue(encoder.encode(sseFrame({ type: 'text-end', id: textId })));
           controller.enqueue(encoder.encode(sseFrame({ type: 'finish-step' })));
           controller.enqueue(encoder.encode(sseFrame({ type: 'finish' })));
+
+          // After the visitor has their answer, never before. Recording is a
+          // side effect and must not delay or risk the reply.
+          if (looksUnanswered(fullReply)) {
+            await recordGap(lastVisitorMessage, fullReply);
+          }
 
         } catch (err) {
           // Visitors get a plain sentence, never a stack trace or an internal
