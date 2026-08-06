@@ -129,6 +129,18 @@
  * Spoken words from other participants are not captured, and the generated
  * minutes say so plainly. A document that looks complete and is not is worse
  * than one that states its own limits.
+ *
+ * v3.4 FIX — TDZ crash on every render: "Cannot access 'addNote' before
+ * initialization" (minified as 'eJ').
+ *
+ *   `addNote` was declared with useCallback near the bottom of the component,
+ *   but two useEffect calls higher up referenced it inside their dependency
+ *   arrays. Dependency arrays are evaluated synchronously as the component
+ *   function runs — they don't wait for the effect to fire — so by the time
+ *   execution reached those useEffect(...) calls, `addNote` was still in the
+ *   temporal dead zone. Every render threw before the component could mount.
+ *   `addNote` is now declared immediately after `notes` state, before
+ *   anything that depends on it.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -229,6 +241,14 @@ export default function AuraMeetingRoom({
   const live = phase === 'live';
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [notes, setNotes] = useState<NoteEntry[]>([]);
+
+  // ✅ v3.4: moved up from further down in the file. Two useEffects below
+  // reference `addNote` in their dependency arrays, and those arrays are
+  // evaluated synchronously during render — not deferred until the effect
+  // runs — so `addNote` has to exist before those useEffect(...) calls are
+  // reached, or it throws "Cannot access before initialization" every render.
+  const addNote = useCallback((entry: NoteEntry) => setNotes((p) => [...p, entry]), []);
+
   const [noteDraft, setNoteDraft] = useState('');
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -353,8 +373,6 @@ export default function AuraMeetingRoom({
     const m = Math.floor(elapsed / 60), s = elapsed % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }, [elapsed]);
-
-  const addNote = useCallback((entry: NoteEntry) => setNotes((p) => [...p, entry]), []);
 
   /** JaaS serves its own build of the API script, per app id. */
   const loadJitsi = useCallback((src: string): Promise<any> => new Promise((resolve, reject) => {
