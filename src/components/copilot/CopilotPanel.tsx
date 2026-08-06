@@ -60,6 +60,7 @@ import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 
 import { createClient } from '@/lib/supabase/client';
+import { useLocalWhisper } from '@/hooks/useLocalWhisper';
 import { useCopilot } from '@/context/CopilotContext';
 import { AuraAvatar } from './AuraAvatar';
 import AuraBoardroom from './AuraBoardroom';
@@ -82,7 +83,7 @@ const VOICE = { autoSend: false, maxSpokenChars: 1400 };
 // Chosen voice, speed and pitch persist per browser. Real voice cloning needs
 // a hosted model and cannot run here; this picks from the voices already
 // installed on the device, which costs nothing and sends no audio anywhere.
-const VOICE_KEYS = { uri: 'aura.voice.uri', rate: 'aura.voice.rate', pitch: 'aura.voice.pitch' };
+const VOICE_KEYS = { uri: 'aura.voice.uri', rate: 'aura.voice.rate', pitch: 'aura.voice.pitch', private: 'aura.voice.private' };
 
 const readStored = (key: string, fallback: string): string => {
   if (typeof window === 'undefined') return fallback;
@@ -99,6 +100,20 @@ const writeStored = (key: string, value: string) => {
  * long. Reading either aloud verbatim is unusable, so speech gets a cleaned
  * version of the same text.
  */
+/**
+ * True when a transcript is really Aura's own voice picked up through the
+ * speakers. Headphones remove the problem entirely, but most directors will
+ * not be wearing any.
+ */
+const isEchoOfAura = (heard: string, spoken: string): boolean => {
+  if (!heard || !spoken) return false;
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+  const h = norm(heard);
+  const sp = norm(spoken);
+  if (h.length < 8) return false;
+  return sp.includes(h) || h.includes(sp.slice(0, Math.min(60, sp.length)));
+};
+
 const forSpeech = (raw: string): string => {
   let t = String(raw ?? '');
   t = t.replace(/```[\s\S]*?```/g, ' code block ');
@@ -339,6 +354,13 @@ const SUGGESTIONS = [
   'Draft a report for the board',
 ];
 
+/** Keeps the transcript handler stable without re-creating the worker hook. */
+function useCallbackTranscript(fn: (text: string) => void) {
+  const ref = useRef(fn);
+  ref.current = fn;
+  return React.useCallback((text: string) => ref.current(text), []);
+}
+
 export default function CopilotPanel() {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -356,6 +378,7 @@ export default function CopilotPanel() {
   const [micNoticeShown, setMicNoticeShown] = useState(false);
   const recognitionRef = useRef<any>(null);
   const spokenIdRef = useRef<string | null>(null);
+  const lastSpokenRef = useRef('');
 
   // ✅ v6 conversation mode + voice choice
   const [callActive, setCallActive] = useState(false);
@@ -366,6 +389,31 @@ export default function CopilotPanel() {
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const callRef = useRef(false);          // callbacks need the live value, not a stale closure
   const listeningRef = useRef(false);
+
+  // ✅ v7: on-device transcription. Chrome's own recogniser sends audio to
+  // Google; this keeps it on the machine at the cost of a one-time download.
+  const [privateVoice, setPrivateVoice] = useState(false);
+
+  const handleTranscript = useCallbackTranscript(
+    (text: string) => {
+      if (isEchoOfAura(text, lastSpokenRef.current)) {
+        if (callRef.current) setTimeout(() => { if (callRef.current) whisper.start(); }, 500);
+        return;
+      }
+      if (callRef.current) {
+        setInput?.('');
+        handleSubmit(text);
+      } else {
+        setInput?.(text);
+      }
+    },
+  );
+
+  const whisper = useLocalWhisper({
+    enabled: privateVoice,
+    onFinal: handleTranscript,
+    onError: (m) => toast.error(m),
+  });
 
   const {
     messages = [],
@@ -454,7 +502,7 @@ export default function CopilotPanel() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    setVoiceSupported({ listen: !!SR, speak: 'speechSynthesis' in window });
+    setVoiceSupported({ listen: !!SR || typeof Worker !== 'undefined', speak: 'speechSynthesis' in window });
     return () => {
       try {
         recognitionRef.current?.stop();
@@ -475,6 +523,7 @@ export default function CopilotPanel() {
     load();
     window.speechSynthesis.onvoiceschanged = load;
     setVoiceUri(readStored(VOICE_KEYS.uri, ''));
+    setPrivateVoice(readStored(VOICE_KEYS.private, 'false') === 'true');
     setRate(Number(readStored(VOICE_KEYS.rate, '1.02')) || 1.02);
     setPitch(Number(readStored(VOICE_KEYS.pitch, '1')) || 1);
     return () => { window.speechSynthesis.onvoiceschanged = null; };
@@ -493,7 +542,9 @@ export default function CopilotPanel() {
     spokenIdRef.current = last.id;
     try {
       window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(forSpeech(last.content));
+      const spokenText = forSpeech(last.content);
+      lastSpokenRef.current = spokenText;
+      const utter = new SpeechSynthesisUtterance(spokenText);
       const chosen = voices.find((v) => v.voiceURI === voiceUri);
       if (chosen) utter.voice = chosen;
       utter.lang = chosen?.lang || navigator.language || 'en-US';
@@ -520,8 +571,16 @@ export default function CopilotPanel() {
   useEffect(() => {
     if (!callActive || isChatLoading || speaking || listening) return;
     const t = setTimeout(() => {
+      // The `speaking` state is set by utter.onstart, which fires a beat AFTER
+      // speak() is called. Between those two moments the state says silent
+      // while the utterance is queued — and reopening the microphone there
+      // cancels Aura mid-sentence, then transcribes her own voice back as the
+      // next question. Ask the synthesiser directly rather than trusting React
+      // state that has not caught up yet.
+      const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+      if (synth && (synth.speaking || synth.pending)) return;
       if (callRef.current && !listeningRef.current) startListening(true);
-    }, 900);
+    }, 1200);
     return () => clearTimeout(t);
   }, [callActive, isChatLoading, speaking, listening]);
 
@@ -531,6 +590,7 @@ export default function CopilotPanel() {
   };
 
   const stopListening = () => {
+    if (privateVoice) { whisper.stop(); return; }
     try { recognitionRef.current?.stop(); } catch (e) { /* already stopped */ }
     setListening(false);
   };
@@ -541,6 +601,14 @@ export default function CopilotPanel() {
    * means she transcribes her own voice and answers herself.
    */
   const startListening = (inCall = false) => {
+    // ✅ v7: private mode routes through the on-device model instead.
+    if (privateVoice) {
+      if (!whisper.supported) { toast.error('This browser cannot run on-device speech.'); return; }
+      stopSpeaking();
+      whisper.start();
+      return;
+    }
+
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       toast.error('This browser cannot listen. Chrome or Edge works best.');
@@ -588,7 +656,14 @@ export default function CopilotPanel() {
 
       rec.onend = () => {
         setListening(false);
-        const text = finalText.trim();
+        let text = finalText.trim();
+
+        // Speakers feed the microphone. If what came back is a chunk of what
+        // Aura just said, it is her own voice, not the director's.
+        if (text && isEchoOfAura(text, lastSpokenRef.current)) {
+          if (callRef.current) setTimeout(() => { if (callRef.current) startListening(true); }, 500);
+          return;
+        }
 
         if (text && (inCall || VOICE.autoSend)) {
           setInput?.('');
@@ -700,7 +775,10 @@ export default function CopilotPanel() {
         <div className="min-w-0 flex-1">
           <h2 className="text-[13px] font-bold text-slate-900 truncate leading-tight">Aura</h2>
           <p className="text-[11px] text-slate-400 truncate leading-tight">
-            {listening ? 'Listening...' : speaking ? 'Speaking...' : isReady ? 'Online' : 'Connecting...'}
+            {(listening || whisper.listening) ? 'Listening...'
+              : whisper.thinking ? 'Transcribing...'
+              : speaking ? 'Speaking...'
+              : isReady ? 'Online' : 'Connecting...'}
           </p>
         </div>
         {/* ✅ v6: choose the voice */}
@@ -788,6 +866,22 @@ export default function CopilotPanel() {
             </div>
           </div>
 
+          <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-white px-2.5 py-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={privateVoice}
+              onChange={(e) => { setPrivateVoice(e.target.checked); writeStored(VOICE_KEYS.private, String(e.target.checked)); }}
+              className="mt-0.5 accent-blue-600"
+            />
+            <span className="min-w-0">
+              <span className="block text-[12px] font-semibold text-slate-800">Transcribe on this device</span>
+              <span className="block text-[11px] leading-relaxed text-slate-500">
+                Keeps your voice off Google's servers. Downloads about 40 MB the first time.
+                {whisper.modelLoading ? ` Loading ${whisper.loadingPercent}%...` : whisper.ready ? ' Ready.' : ''}
+              </span>
+            </span>
+          </label>
+
           <div className="flex items-center justify-between">
             <button
               type="button"
@@ -813,9 +907,12 @@ export default function CopilotPanel() {
       {/* ✅ v6: CALL BAR */}
       {callActive && (
         <div className="shrink-0 flex items-center gap-2.5 border-b border-blue-100 bg-blue-50 px-4 py-2.5">
-          <span className={cn('h-2 w-2 shrink-0 rounded-full', listening ? 'bg-red-500 animate-pulse' : speaking ? 'bg-blue-500 animate-pulse' : 'bg-slate-300')} />
+          <span className={cn('h-2 w-2 shrink-0 rounded-full', (listening || whisper.listening) ? 'bg-red-500 animate-pulse' : speaking ? 'bg-blue-500 animate-pulse' : 'bg-slate-300')} />
           <p className="flex-1 text-[12px] font-medium text-slate-700">
-            {listening ? 'Listening — pause when you finish' : speaking ? 'Aura is speaking' : 'Thinking...'}
+            {(listening || whisper.listening) ? 'Listening — pause when you finish'
+              : whisper.thinking ? 'Transcribing what you said...'
+              : speaking ? 'Aura is speaking'
+              : 'Thinking...'}
           </p>
           <button
             type="button"
@@ -991,12 +1088,12 @@ export default function CopilotPanel() {
               title={listening ? 'Stop listening' : 'Speak to Aura'}
               className={cn(
                 'h-9 w-9 shrink-0 flex items-center justify-center rounded-full transition-colors disabled:opacity-40',
-                listening
+                (listening || whisper.listening)
                   ? 'bg-red-500 text-white animate-pulse'
                   : 'text-slate-400 hover:text-slate-900 hover:bg-white/70',
               )}
             >
-              {listening ? <Square className="h-3.5 w-3.5 fill-current" /> : <Mic className="h-4 w-4" />}
+              {(listening || whisper.listening) ? <Square className="h-3.5 w-3.5 fill-current" /> : <Mic className="h-4 w-4" />}
             </button>
           )}
 

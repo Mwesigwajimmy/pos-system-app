@@ -21,7 +21,7 @@ import {
     MessageSquareText, DownloadCloud, Layers, BookOpen, HelpCircle, Home, LayoutGrid,
     Sparkles, Warehouse, Handshake, Landmark, Briefcase, Stethoscope, ShoppingCart,
     Building2, Receipt, Package, BarChart3, Search, Plus, Minus, Printer, FileText,
-    ArrowDown, Wallet, Boxes, Network, Lock, Server, FileCheck2, Building,
+    Wallet, Boxes, Network, Lock, Server, FileCheck2, Building,
     Smartphone, KeyRound, LifeBuoy, Pause, Play
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -54,6 +54,22 @@ const setCookie = (name: string, value: string, days: number) => {
 
 const siteConfig = {
     name: 'BBU1',
+
+    /* ==================================================================
+       LOGO  --  this is the only place the logo is configured.
+       Drop your file in /public/images/ and point `src` at it.
+       `wordmark: false` hides the "BBU1" text if your logo already
+       contains the name.  Rendered in <MegaMenuHeader />, look for
+       the block marked  ===== LOGO =====
+       ================================================================== */
+    logo: {
+        src: '/images/logo.png',
+        alt: 'BBU1',
+        width: 32,
+        height: 32,
+        wordmark: true,
+    },
+
     contactInfo: {
         email: 'info@bbu1.com',
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent('Hello BBU1, I would like to see a demo for my business.')}`,
@@ -149,9 +165,9 @@ function useAutoAdvance(count: number, delayMs: number, ref: React.RefObject<HTM
     return { index, setIndex, paused, setPaused, select, running };
 }
 
-function ProgressBar({ running, duration, accent = 'blue' }: { running: boolean; duration: number; accent?: string }) {
+function ProgressBar({ running, duration, accent = 'blue', dark = false }: { running: boolean; duration: number; accent?: string; dark?: boolean }) {
     return (
-        <div className="h-0.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+        <div className={cn('h-0.5 w-full overflow-hidden rounded-full', dark ? 'bg-white/15' : 'bg-slate-200 dark:bg-slate-800')}>
             <motion.div
                 key={running ? 'run' : 'stop'}
                 initial={{ width: '0%' }}
@@ -180,134 +196,327 @@ function CountUp({ to, duration = 1.4, className, replayKey }: { to: number; dur
 }
 
 
-function useMobileAutoScroll(ref: React.RefObject<HTMLDivElement>, count: number, delay = 3800) {
+/* ------------------------------------------------------------------ */
+/*  Card rails                                                         */
+/*  On phones every card grid turns into one horizontal, snapping,      */
+/*  self advancing row so a section is one screen tall instead of six.  */
+/*  Below it: back arrow, dots showing how many cards are left, and a   */
+/*  forward arrow. Touching the rail stops the auto advance so nobody   */
+/*  gets dragged away from the card they are reading.                   */
+/* ------------------------------------------------------------------ */
+
+const RAIL_CARD = 'w-[84vw] shrink-0 snap-center sm:w-[20rem] lg:w-auto';
+
+/* Phones centre one card at a time with its neighbours peeking either side,
+   so the gutter has to be half the leftover width or the first and last card
+   can never reach the middle. */
+const RAIL_SCROLLER = 'hide-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto scroll-smooth px-[8vw] pb-3 pt-2 sm:-mx-6 sm:px-6';
+
+/** index of the card sitting closest to the middle of the scrollport */
+function nearestCard(el: HTMLElement) {
+    const total = el.children.length;
+    if (total === 0) return 0;
+    if (el.scrollLeft <= 2) return 0;
+    // at the far right the last card may not be able to reach the middle
+    if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 2) return total - 1;
+
+    const middle = el.getBoundingClientRect().left + el.clientWidth / 2;
+    let best = 0;
+    let bestDistance = Infinity;
+    Array.from(el.children).forEach((node, i) => {
+        const box = (node as HTMLElement).getBoundingClientRect();
+        const distance = Math.abs(box.left + box.width / 2 - middle);
+        if (distance < bestDistance) { bestDistance = distance; best = i; }
+    });
+    return best;
+}
+
+/** scroll so card `i` sits in the middle, clamped to the ends */
+function centreCard(el: HTMLElement, i: number, smooth = true) {
+    const child = el.children[i] as HTMLElement | undefined;
+    if (!child) return;
+    const offset = child.getBoundingClientRect().left - el.getBoundingClientRect().left;
+    const target = el.scrollLeft + offset - (el.clientWidth - child.clientWidth) / 2;
+    const max = el.scrollWidth - el.clientWidth;
+    el.scrollTo({ left: Math.max(0, Math.min(target, max)), behavior: smooth ? 'smooth' : 'auto' });
+}
+
+function useRail(ref: React.RefObject<HTMLDivElement>, count: number, delay = 4200) {
+    const [index, setIndex] = useState(0);
+    const pausedRef = useRef(false);
+    const resumeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // true while WE are scrolling the rail, so our own movement is not
+    // mistaken for the reader taking over
+    const selfScrollRef = useRef(false);
+    const selfTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // hand control back to the reader, pick up again once they have stopped
+    const hold = useCallback(() => {
+        pausedRef.current = true;
+        if (resumeRef.current) clearTimeout(resumeRef.current);
+        resumeRef.current = setTimeout(() => { pausedRef.current = false; }, 6000);
+    }, []);
+
+    const goTo = useCallback((i: number, smooth = true) => {
+        const el = ref.current;
+        if (!el) return;
+        selfScrollRef.current = true;
+        if (selfTimerRef.current) clearTimeout(selfTimerRef.current);
+        selfTimerRef.current = setTimeout(() => { selfScrollRef.current = false; }, 1300);
+        centreCard(el, i, smooth);
+    }, [ref]);
+
+    useEffect(() => () => {
+        if (resumeRef.current) clearTimeout(resumeRef.current);
+        if (selfTimerRef.current) clearTimeout(selfTimerRef.current);
+    }, []);
+
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        let frame = 0;
+        const onScroll = () => {
+            // a scroll on the rail that we did not start means the reader is
+            // swiping. Scrolling the page vertically never lands here, which
+            // is why the auto advance no longer stops the moment you touch it.
+            if (!selfScrollRef.current) hold();
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => setIndex(nearestCard(el)));
+        };
+        el.addEventListener('scroll', onScroll, { passive: true });
+        setIndex(nearestCard(el));
+        return () => { el.removeEventListener('scroll', onScroll); cancelAnimationFrame(frame); };
+    }, [ref, count, hold]);
+
     useEffect(() => {
         const el = ref.current;
         if (!el || count < 2) return;
 
-        const mq = window.matchMedia('(min-width: 1024px)');
+        const wide = window.matchMedia('(min-width: 1024px)');
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
         let timer: ReturnType<typeof setInterval> | null = null;
-        let i = 0;
-        let paused = false;
         let visible = false;
 
         const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
         const step = () => {
-            if (paused || !visible || mq.matches) return;
-            i = (i + 1) % count;
-            const child = el.children[i] as HTMLElement | undefined;
-            if (child) el.scrollTo({ left: child.offsetLeft, behavior: 'smooth' });
+            if (pausedRef.current || !visible || wide.matches) return;
+            // reduced motion still advances, it just does not glide
+            goTo((nearestCard(el) + 1) % count, !reduced.matches);
         };
-        const start = () => { if (!timer && !paused) timer = setInterval(step, delay); };
+        const start = () => { if (!timer && !wide.matches) timer = setInterval(step, delay); };
 
-        // only run while the rail is actually on screen, otherwise it has
-        // already cycled past several cards by the time you scroll to it
+        // only run while the rail is on screen, otherwise it has already
+        // cycled past several cards by the time you scroll down to it
         const io = new IntersectionObserver(
             ([entry]) => { visible = entry.isIntersecting; if (visible) start(); else stop(); },
-            { threshold: 0.35 }
+            { threshold: 0.25 }
         );
         io.observe(el);
 
-        const hold = () => { paused = true; stop(); };
-        el.addEventListener('pointerdown', hold, { passive: true });
-        el.addEventListener('wheel', hold, { passive: true });
+        const onChange = () => { if (wide.matches) stop(); else start(); };
+        wide.addEventListener('change', onChange);
 
-        const onChange = () => { if (mq.matches) stop(); else start(); };
-        mq.addEventListener('change', onChange);
+        return () => { stop(); io.disconnect(); wide.removeEventListener('change', onChange); };
+    }, [ref, count, delay, goTo]);
 
-        return () => {
-            stop();
-            io.disconnect();
-            mq.removeEventListener('change', onChange);
-            el.removeEventListener('pointerdown', hold);
-            el.removeEventListener('wheel', hold);
-        };
-    }, [ref, count, delay]);
+    return { index, goTo, hold };
 }
 
-function MobileRail({ count, grid, className, children, delay }: { count: number; grid: string; className?: string; children: ReactNode; delay?: number }) {
-    const ref = useRef<HTMLDivElement>(null);
-    useMobileAutoScroll(ref, count, delay);
+function RailControls({ count, index, onSelect, dark = false, className }: { count: number; index: number; onSelect: (i: number) => void; dark?: boolean; className?: string }) {
+    if (count < 2) return null;
+
+    const arrow = dark
+        ? 'border-white/20 text-white/70 hover:bg-white/10 active:bg-white/15'
+        : 'border-slate-200 text-slate-500 hover:bg-slate-100 active:bg-slate-200 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800';
+
     return (
-        <div
-            ref={ref}
-            className={cn(
-                'relative flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-                'lg:grid lg:overflow-visible lg:pb-0',
-                grid, className
-            )}
-        >
-            {children}
+        <div className={cn('mt-5 flex items-center gap-3 lg:hidden', className)}>
+            <button
+                type="button"
+                onClick={() => onSelect((index - 1 + count) % count)}
+                aria-label="Previous card"
+                className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors', arrow)}
+            >
+                <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            <div className="flex flex-1 items-center justify-center gap-1.5">
+                {Array.from({ length: count }).map((_, i) => (
+                    <button
+                        key={i}
+                        type="button"
+                        onClick={() => onSelect(i)}
+                        aria-label={`Card ${i + 1} of ${count}`}
+                        aria-current={i === index}
+                        className={cn(
+                            'h-1.5 rounded-full transition-all duration-300',
+                            i === index
+                                ? cn('w-7', dark ? 'bg-white' : 'bg-slate-900 dark:bg-white')
+                                : cn('w-1.5', dark ? 'bg-white/25' : 'bg-slate-300 dark:bg-slate-700')
+                        )}
+                    />
+                ))}
+            </div>
+
+            <span className={cn('shrink-0 text-xs font-medium tabular-nums', dark ? 'text-white/50' : 'text-slate-400')}>
+                {index + 1}/{count}
+            </span>
+
+            <button
+                type="button"
+                onClick={() => onSelect((index + 1) % count)}
+                aria-label="Next card"
+                className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors', arrow)}
+            >
+                <ChevronRight className="h-4 w-4" />
+            </button>
         </div>
     );
 }
 
-const RAIL_CARD = 'w-[82vw] shrink-0 snap-center sm:w-[22rem] lg:w-auto';
+function MobileRail({ count, grid, className, children, delay, dark = false }: { count: number; grid: string; className?: string; children: ReactNode; delay?: number; dark?: boolean }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const { index, goTo, hold } = useRail(ref, count, delay);
+
+    return (
+        <div className={cn('relative min-w-0', className)}>
+            <div
+                ref={ref}
+                className={cn(
+                    RAIL_SCROLLER,
+                    'gap-4 lg:mx-0 lg:grid lg:gap-6 lg:overflow-visible lg:px-0 lg:pb-0',
+                    grid
+                )}
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+                {children}
+            </div>
+
+            <RailControls count={count} index={index} dark={dark} onSelect={(i) => { hold(); goTo(i); }} />
+        </div>
+    );
+}
+
+/* One card shape used by every icon grid on the page: tile top left,
+   optional number top right, title, copy. Fixed minimum height so the
+   cards in a row end level with each other instead of stepping. */
+function FeatureCard({ icon: Icon, accent = 'blue', title, desc, index }: { icon?: LucideIcon; accent?: string; title: string; desc: string; index?: number }) {
+    const a = ACCENTS[accent] || ACCENTS.blue;
+    return (
+        <div className={cn('group relative flex h-full w-full min-h-[12.5rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition-all hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-6', a.ring)}>
+            <div className={cn('absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-25', a.glow)} />
+
+            <div className="relative mb-4 flex items-start justify-between gap-3">
+                <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-110', a.tile)}>
+                    {Icon ? <Icon className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}
+                </span>
+                {typeof index === 'number' ? (
+                    <span className={cn('text-2xl font-semibold leading-none tabular-nums opacity-20', a.text)}>{String(index + 1).padStart(2, '0')}</span>
+                ) : null}
+            </div>
+
+            <h3 className="relative text-[0.95rem] font-semibold tracking-tight text-slate-900 dark:text-slate-50">{title}</h3>
+            <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{desc}</p>
+        </div>
+    );
+}
 
 function AutoRail({
-    items, delay = 5200, accent = 'blue', cardWidth = 320, renderItem, label,
+    items, delay = 5200, accent = 'blue', renderItem, label, dark = false,
 }: {
-    items: any[]; delay?: number; accent?: string; cardWidth?: number;
+    items: any[]; delay?: number; accent?: string; dark?: boolean;
     renderItem: (item: any, index: number, isActive: boolean) => ReactNode; label?: string;
 }) {
     const wrapRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const selfScrollRef = useRef(false);
+    const selfTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const { index, select, paused, setPaused, running } = useAutoAdvance(items.length, delay, wrapRef);
 
     useEffect(() => {
         const el = scrollRef.current;
         if (!el) return;
-        const child = el.children[index] as HTMLElement | undefined;
-        if (!child) return;
-        el.scrollTo({ left: child.offsetLeft - el.offsetLeft, behavior: 'smooth' });
+        selfScrollRef.current = true;
+        if (selfTimerRef.current) clearTimeout(selfTimerRef.current);
+        selfTimerRef.current = setTimeout(() => { selfScrollRef.current = false; }, 1300);
+        centreCard(el, index);
     }, [index]);
 
+    useEffect(() => () => { if (selfTimerRef.current) clearTimeout(selfTimerRef.current); }, []);
+
+    // a swipe on the rail itself hands control over, scrolling the page does not
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        const onScroll = () => { if (!selfScrollRef.current) setPaused(true); };
+        el.addEventListener('scroll', onScroll, { passive: true });
+        return () => el.removeEventListener('scroll', onScroll);
+    }, [setPaused]);
+
+    const control = dark
+        ? 'border-white/20 text-white/70 hover:bg-white/10 active:bg-white/15'
+        : 'border-slate-200 text-slate-500 hover:bg-slate-100 active:bg-slate-200 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800';
+
     return (
-        <div ref={wrapRef} className="relative">
+        <div ref={wrapRef} className="relative min-w-0">
             <div
                 ref={scrollRef}
-                className="hide-scrollbar flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2"
+                className={cn(RAIL_SCROLLER, 'gap-4 sm:gap-5 lg:mx-0 lg:px-0')}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                onPointerDown={() => setPaused(true)}
             >
                 {items.map((item, i) => (
-                    <div key={i} onClick={() => select(i)} className="shrink-0 snap-start cursor-pointer" style={{ width: cardWidth }}>
+                    <div
+                        key={i}
+                        onClick={() => select(i)}
+                        className="w-[84vw] shrink-0 cursor-pointer snap-center sm:w-[20rem]"
+                    >
                         {renderItem(item, i, i === index)}
                     </div>
                 ))}
             </div>
 
-            <div className="mt-5 flex items-center gap-4">
+            <div className="mt-5 flex items-center gap-3">
                 <button
-                    onClick={() => setPaused(p => !p)}
-                    aria-label={paused ? 'Play' : 'Pause'}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                    onClick={() => select((index - 1 + items.length) % items.length)}
+                    aria-label="Previous"
+                    className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors', control)}
                 >
-                    {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+                    <ChevronLeft className="h-4 w-4" />
                 </button>
 
-                <div className="flex flex-1 items-center gap-2">
+                <div className="flex flex-1 items-center gap-1.5">
                     {items.map((_, i) => (
                         <button
                             key={i}
                             onClick={() => select(i)}
                             aria-label={`${label || 'Item'} ${i + 1}`}
-                            className={cn('h-1.5 rounded-full transition-all', i === index ? cn('w-8', ACCENTS[accent].bar) : 'w-1.5 bg-slate-300 hover:bg-slate-400 dark:bg-slate-700')}
+                            aria-current={i === index}
+                            className={cn(
+                                'h-1.5 rounded-full transition-all duration-300',
+                                i === index ? cn('w-7', ACCENTS[accent].bar) : cn('w-1.5', dark ? 'bg-white/25' : 'bg-slate-300 dark:bg-slate-700')
+                            )}
                         />
                     ))}
                     <div className="ml-2 hidden flex-1 sm:block">
-                        <ProgressBar running={running} duration={delay} accent={accent} />
+                        <ProgressBar running={running} duration={delay} accent={accent} dark={dark} />
                     </div>
                 </div>
 
-                <div className="hidden shrink-0 gap-1.5 lg:flex">
-                    <button onClick={() => select((index - 1 + items.length) % items.length)} aria-label="Previous" className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
-                        <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => select((index + 1) % items.length)} aria-label="Next" className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
-                        <ChevronRight className="h-4 w-4" />
-                    </button>
-                </div>
+                <button
+                    onClick={() => setPaused(p => !p)}
+                    aria-label={paused ? 'Play' : 'Pause'}
+                    className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors', control)}
+                >
+                    {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                </button>
+
+                <button
+                    onClick={() => select((index + 1) % items.length)}
+                    aria-label="Next"
+                    className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors', control)}
+                >
+                    <ChevronRight className="h-4 w-4" />
+                </button>
             </div>
         </div>
     );
@@ -341,7 +550,7 @@ function Section({ children, surface = 'light', id, className }: { children: Rea
     return (
         <motion.section
             id={id}
-            className={cn('relative overflow-hidden border-t py-16 sm:py-24', surface === 'dark' ? 'border-white/10' : 'border-slate-200 dark:border-slate-800', SURFACE_CLASS[surface], className)}
+            className={cn('relative overflow-hidden border-t py-14 sm:py-20 lg:py-24', surface === 'dark' ? 'border-white/10' : 'border-slate-200 dark:border-slate-800', SURFACE_CLASS[surface], className)}
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
@@ -352,30 +561,16 @@ function Section({ children, surface = 'light', id, className }: { children: Rea
     );
 }
 
-function SectionHeading({ eyebrow, title, sub, dark = false, accent = 'blue' }: { eyebrow: string; title: string; sub?: string; dark?: boolean; accent?: string }) {
-    const a = ACCENTS[accent];
+/* The little eyebrow pills ("Pricing", "For larger organisations") are gone.
+   Heading and standfirst only. `accent` is kept on the signature so the call
+   sites do not have to change, it just no longer paints a label. */
+function SectionHeading({ title, sub, dark = false, accent = 'blue' }: { title: string; sub?: string; dark?: boolean; accent?: string }) {
     return (
         <div className="max-w-2xl">
-            <motion.div
-                whileHover={{ scaleX: 1.06 }}
-                transition={{ type: 'spring', stiffness: 320, damping: 22 }}
-                style={{ transformOrigin: 'left center' }}
-                className={cn(
-                    'inline-flex items-center gap-2 rounded-[5px] px-3 py-1.5 font-mono text-[11px] font-medium tracking-tight',
-                    dark ? 'bg-white text-slate-900' : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                )}
-            >
-                <motion.span
-                    animate={{ opacity: [1, 0.25, 1] }}
-                    transition={{ duration: 2.4, repeat: Infinity }}
-                    className={cn('h-[7px] w-[7px] rounded-[1px]', a.glow)}
-                />
-                {eyebrow}
-            </motion.div>
-            <h2 className={cn('mt-4 text-2xl font-semibold leading-tight tracking-tight sm:text-3xl lg:text-[2.1rem]', dark ? 'text-white' : 'text-slate-900 dark:text-slate-50')}>
+            <h2 className={cn('text-[1.6rem] font-semibold leading-[1.15] tracking-tight sm:text-3xl lg:text-[2.1rem]', dark ? 'text-white' : 'text-slate-900 dark:text-slate-50')}>
                 {title}
             </h2>
-            {sub ? <p className={cn('mt-4 text-base leading-relaxed md:text-lg', dark ? 'text-slate-400' : 'text-muted-foreground')}>{sub}</p> : null}
+            {sub ? <p className={cn('mt-3.5 text-[0.95rem] leading-relaxed sm:mt-4 sm:text-base md:text-lg', dark ? 'text-slate-400' : 'text-muted-foreground')}>{sub}</p> : null}
         </div>
     );
 }
@@ -951,7 +1146,7 @@ function RotatingLine({ lines, interval = 3000 }: { lines: string[]; interval?: 
                     animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                     exit={{ opacity: 0, y: -18, filter: 'blur(6px)' }}
                     transition={{ duration: 0.45, ease: EASE }}
-                    className="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-sky-400 via-blue-400 to-indigo-400 bg-clip-text text-center text-transparent"
+                    className="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-blue-400 via-sky-200 to-white bg-clip-text text-center text-transparent"
                 >
                     {lines[index]}
                 </motion.span>
@@ -1020,12 +1215,31 @@ const MegaMenuHeader = () => {
         <>
             <header className={cn('fixed top-0 z-40 h-16 w-full transition-colors duration-300', scrolled ? 'border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90' : 'border-b border-transparent bg-transparent')}>
                 <div className="mx-auto flex h-full max-w-7xl flex-nowrap items-center gap-2 px-4 sm:px-6">
-                    <Link href="/" className="group flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight">
-                        <motion.span whileHover={{ scale: 1.08, rotate: -3 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }} className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center">
-                            <Image src="/images/logo.png" alt="" width={28} height={28} priority className="h-7 w-7 object-contain" />
+                    {/* ============================ LOGO ============================
+                        Edit siteConfig.logo at the top of this file, not here.
+                        The mark sits in a fixed 32px box so any aspect ratio
+                        stays centred and never pushes the nav around.
+                        ============================================================= */}
+                    <Link href="/" className="group flex shrink-0 items-center gap-2.5 text-lg font-semibold tracking-tight" aria-label={siteConfig.logo.alt}>
+                        <motion.span
+                            whileHover={{ scale: 1.06, rotate: -3 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                            className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center"
+                        >
+                            <Image
+                                src={siteConfig.logo.src}
+                                alt=""
+                                width={siteConfig.logo.width}
+                                height={siteConfig.logo.height}
+                                priority
+                                className="h-8 w-8 object-contain"
+                            />
                         </motion.span>
-                        <span className={cn('transition-colors', scrolled ? 'text-slate-900 dark:text-white' : 'text-white')}>{siteConfig.name}</span>
+                        {siteConfig.logo.wordmark ? (
+                            <span className={cn('transition-colors', scrolled ? 'text-slate-900 dark:text-white' : 'text-white')}>{siteConfig.name}</span>
+                        ) : null}
                     </Link>
+                    {/* ========================== END LOGO ========================== */}
 
                     <nav ref={navRef} className="relative hidden flex-1 items-center gap-0.5 lg:flex">
                         <Link href="/" className={navLinkClass} aria-label="Home"><Home className="h-4 w-4" /></Link>
@@ -1199,6 +1413,59 @@ const DynamicPricingSection = () => {
     const activeMod = ALL_INCLUDED_MODULES[activeModule];
     const ActiveModIcon = activeMod.icon;
 
+    // cheapest plan, used for the mobile teaser line
+    const fromPrice = formatPrice(Math.min(...PLANS.map(p => p.basePrice)));
+
+    const billingToggle = (
+        <div className="inline-flex items-center gap-3 rounded-full border border-white/60 bg-white/80 px-4 py-2 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70">
+            <span className={cn('text-sm transition-colors', billingCycle === 'monthly' ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-500')}>Monthly</span>
+            <button onClick={() => setBillingCycle(prev => (prev === 'monthly' ? 'yearly' : 'monthly'))} className={cn('relative h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors', billingCycle === 'yearly' ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700')} aria-label="Toggle billing period">
+                <motion.span layout transition={{ type: 'spring', stiffness: 500, damping: 32 }} className={cn('block h-5 w-5 rounded-full bg-white shadow', billingCycle === 'yearly' ? 'translate-x-5' : 'translate-x-0')} />
+            </button>
+            <span className={cn('flex items-center gap-2 text-sm transition-colors', billingCycle === 'yearly' ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-500')}>
+                Yearly<span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Save 20%</span>
+            </span>
+        </div>
+    );
+
+    const planCard = (plan: typeof PLANS[number]) => (
+        <Card className={cn('flex h-full flex-col rounded-2xl bg-white transition-shadow dark:bg-slate-950', plan.highlight ? 'border-2 border-slate-900 shadow-2xl dark:border-white' : 'border border-slate-200 shadow-md hover:shadow-xl dark:border-slate-800')}>
+            <CardHeader className="pb-4">
+                {plan.highlight ? (
+                    <span className="mb-2 w-fit rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white dark:bg-white dark:text-slate-900">Most popular</span>
+                ) : null}
+                <CardTitle className="text-lg font-semibold tracking-tight">{plan.name}</CardTitle>
+                <CardDescription className="text-sm">{plan.idealFor}</CardDescription>
+                <div className="mt-5">
+                    <div className="flex flex-wrap items-baseline gap-x-1.5">
+                        <span className="text-3xl font-semibold tracking-tight tabular-nums">{currency.symbol} {formatPrice(plan.basePrice)}</span>
+                        <span className="text-sm text-muted-foreground">/mo</span>
+                    </div>
+                    <p className="mt-1 h-4 text-xs text-muted-foreground">{billingCycle === 'yearly' ? 'Billed yearly' : ''}</p>
+                </div>
+            </CardHeader>
+
+            <CardContent className="flex-grow space-y-5">
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800">
+                    <Users className="h-4 w-4 shrink-0 text-slate-400" />{plan.userLimit}
+                </div>
+                <ul className="space-y-2.5">
+                    {plan.features.map((f, i) => (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />{f}
+                        </li>
+                    ))}
+                </ul>
+            </CardContent>
+
+            <CardFooter>
+                <Button className={cn('h-11 w-full rounded-xl text-sm font-medium', plan.highlight ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900' : 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-transparent dark:text-white dark:hover:bg-slate-800')} asChild>
+                    <Link href={plan.btnText === 'Talk to sales' ? '/contact' : '/signup'}>{plan.btnText}</Link>
+                </Button>
+            </CardFooter>
+        </Card>
+    );
+
     return (
         <section id="pricing" className="relative overflow-hidden border-t border-slate-200 bg-gradient-to-b from-blue-50/70 via-white to-white py-16 dark:border-slate-800 dark:from-blue-950/30 dark:via-slate-950 dark:to-slate-950 sm:py-24">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_45%_at_50%_0%,rgba(37,99,235,0.14)_0%,rgba(37,99,235,0)_70%)]" />
@@ -1209,7 +1476,7 @@ const DynamicPricingSection = () => {
 
             <div className="container relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                    <SectionHeading eyebrow="Pricing" title="One price, every module" sub="You are not charged per module. What changes between plans is how many people can use it and how deep the features go." accent="indigo" />
+                    <SectionHeading title="One price, every module" sub="You are not charged per module. What changes between plans is how many people can use it and how deep the features go." accent="indigo" />
 
                     <div className="shrink-0">
                         <label className="mb-2 block text-xs font-medium text-slate-500">Show prices in</label>
@@ -1226,71 +1493,65 @@ const DynamicPricingSection = () => {
                     </div>
                 </div>
 
-                <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-white/60 bg-white/80 px-4 py-2 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70">
-                    <span className={cn('text-sm transition-colors', billingCycle === 'monthly' ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-500')}>Monthly</span>
-                    <button onClick={() => setBillingCycle(prev => (prev === 'monthly' ? 'yearly' : 'monthly'))} className={cn('relative h-6 w-11 rounded-full p-0.5 transition-colors', billingCycle === 'yearly' ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700')} aria-label="Toggle billing period">
-                        <motion.span layout transition={{ type: 'spring', stiffness: 500, damping: 32 }} className={cn('block h-5 w-5 rounded-full bg-white shadow', billingCycle === 'yearly' ? 'translate-x-5' : 'translate-x-0')} />
-                    </button>
-                    <span className={cn('flex items-center gap-2 text-sm transition-colors', billingCycle === 'yearly' ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-500')}>
-                        Yearly<span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Save 20%</span>
-                    </span>
+                {/* ---- phones: plans live in a sheet, so the section stays short ---- */}
+                <div className="mt-8 lg:hidden">
+                    <div className="rounded-2xl border border-white/60 bg-white/85 p-5 shadow-lg backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-sm text-muted-foreground">From</span>
+                            <span className="text-2xl font-semibold tracking-tight tabular-nums text-slate-900 dark:text-white">{currency.symbol} {fromPrice}</span>
+                            <span className="text-sm text-muted-foreground">/mo</span>
+                        </div>
+                        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                            {PLANS.length} plans, every module included on all of them.
+                        </p>
+
+                        <Dialog>
+                            <DialogTrigger className={cn(buttonVariants(), 'mt-4 h-12 w-full rounded-xl bg-blue-600 text-sm font-medium text-white hover:bg-blue-700')}>
+                                Explore plans <ArrowRight className="ml-2 h-4 w-4" />
+                            </DialogTrigger>
+                            <DialogContent className="flex max-h-[88vh] w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-md">
+                                <DialogHeader className="shrink-0 space-y-3 border-b border-slate-200 px-5 py-4 text-left dark:border-slate-800">
+                                    <div>
+                                        <DialogTitle className="text-base font-semibold">Plans</DialogTitle>
+                                        <DialogDescription className="text-sm">Prices in {currency.code}. Every module is on every plan.</DialogDescription>
+                                    </div>
+                                    {billingToggle}
+                                </DialogHeader>
+
+                                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
+                                    {PLANS.map((plan, index) => (
+                                        <div key={index}>{planCard(plan)}</div>
+                                    ))}
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                 </div>
 
-                <MobileRail count={PLANS.length} grid="lg:grid-cols-4" className="mt-10">
+                {/* ---- desktop: the usual four across ---- */}
+                <div className="hidden lg:mt-8 lg:block">{billingToggle}</div>
+
+                <div className="mt-10 hidden gap-6 lg:grid lg:grid-cols-4">
                     {PLANS.map((plan, index) => (
-                        <motion.div key={index} className={RAIL_CARD} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.09, duration: 0.5, ease: EASE }} whileHover={{ y: -8 }}>
-                            <Card className={cn('flex h-full flex-col rounded-2xl bg-white transition-shadow dark:bg-slate-950', plan.highlight ? 'border-2 border-slate-900 shadow-2xl dark:border-white' : 'border border-slate-200 shadow-md hover:shadow-xl dark:border-slate-800')}>
-                                <CardHeader className="pb-4">
-                                    {plan.highlight ? (
-                                        <span className="mb-2 w-fit rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white dark:bg-white dark:text-slate-900">Most popular</span>
-                                    ) : null}
-                                    <CardTitle className="text-lg font-semibold tracking-tight">{plan.name}</CardTitle>
-                                    <CardDescription className="text-sm">{plan.idealFor}</CardDescription>
-                                    <div className="mt-5">
-                                        <div className="flex items-baseline gap-1.5">
-                                            <span className="text-3xl font-semibold tracking-tight">{currency.symbol} {formatPrice(plan.basePrice)}</span>
-                                            <span className="text-sm text-muted-foreground">/mo</span>
-                                        </div>
-                                        <p className="mt-1 h-4 text-xs text-muted-foreground">{billingCycle === 'yearly' ? 'Billed yearly' : ''}</p>
-                                    </div>
-                                </CardHeader>
-
-                                <CardContent className="flex-grow space-y-5">
-                                    <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800">
-                                        <Users className="h-4 w-4 text-slate-400" />{plan.userLimit}
-                                    </div>
-                                    <ul className="space-y-2.5">
-                                        {plan.features.map((f, i) => (
-                                            <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />{f}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </CardContent>
-
-                                <CardFooter>
-                                    <Button className={cn('h-11 w-full rounded-xl text-sm font-medium', plan.highlight ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900' : 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-transparent dark:text-white dark:hover:bg-slate-800')} asChild>
-                                        <Link href={plan.btnText === 'Talk to sales' ? '/contact' : '/signup'}>{plan.btnText}</Link>
-                                    </Button>
-                                </CardFooter>
-                            </Card>
+                        <motion.div key={index} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.09, duration: 0.5, ease: EASE }} whileHover={{ y: -8 }}>
+                            {planCard(plan)}
                         </motion.div>
                     ))}
-                </MobileRail>
+                </div>
 
-                <div ref={modRef} className="mt-14 overflow-hidden rounded-2xl border border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-                    <div className="border-b border-slate-200 px-6 py-6 dark:border-slate-800 sm:px-8">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">What is included on every plan</h3>
-                                <p className="mt-2 text-sm text-muted-foreground">No add on fees. These rotate on their own. Tap one to hold it while you read.</p>
+                <div ref={modRef} className="mt-12 overflow-hidden rounded-2xl border border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 lg:mt-14">
+                    <div className="border-b border-slate-200 px-5 py-5 dark:border-slate-800 sm:px-8 sm:py-6">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-lg">What is included on every plan</h3>
+                                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">No add on fees. These rotate on their own. Tap one to hold it while you read.</p>
                             </div>
-                            <button onClick={() => setModPaused(p => !p)} aria-label={modPaused ? 'Play' : 'Pause'} className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700">
+                            <button onClick={() => setModPaused(p => !p)} aria-label={modPaused ? 'Play' : 'Pause'} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700">
                                 {modPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
                             </button>
                         </div>
 
-                        <div className="hide-scrollbar mt-6 flex snap-x gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                        <div className="hide-scrollbar -mx-5 mt-5 flex snap-x gap-2.5 overflow-x-auto px-5 pb-1 sm:-mx-8 sm:mt-6 sm:px-8" style={{ scrollbarWidth: 'none' }}>
                             {ALL_INCLUDED_MODULES.map((module, i) => {
                                 const Icon = module.icon;
                                 const a = ACCENTS[module.accent];
@@ -1319,23 +1580,23 @@ const DynamicPricingSection = () => {
                         </div>
                     </div>
 
-                    <div className="px-6 py-7 sm:px-8">
+                    <div className="px-5 py-6 sm:px-8 sm:py-7">
                         <AnimatePresence mode="wait">
                             <motion.div key={activeMod.title} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.3, ease: EASE }}>
                                 <div className="flex items-center gap-3">
-                                    <span className={cn('flex h-11 w-11 items-center justify-center rounded-xl', ACCENTS[activeMod.accent].tile)}>
+                                    <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', ACCENTS[activeMod.accent].tile)}>
                                         <ActiveModIcon className="h-5 w-5" />
                                     </span>
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{activeMod.title}</p>
                                         <p className="text-xs text-slate-400">{activeMod.features.length} capabilities included</p>
                                     </div>
                                 </div>
 
-                                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="mt-6 grid gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+                                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="mt-5 grid gap-x-6 gap-y-1 sm:mt-6 sm:grid-cols-2 lg:grid-cols-3">
                                     {activeMod.features.map((feature, idx) => (
-                                        <motion.div key={idx} variants={fadeUp} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <Check className={cn('h-4 w-4 shrink-0', ACCENTS[activeMod.accent].text)} />
+                                        <motion.div key={idx} variants={fadeUp} className="flex items-start gap-2.5 rounded-lg px-3 py-2 text-sm leading-snug text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <Check className={cn('mt-0.5 h-4 w-4 shrink-0', ACCENTS[activeMod.accent].text)} />
                                             {feature}
                                         </motion.div>
                                     ))}
@@ -1387,10 +1648,10 @@ const PartnerWithUsSection = () => {
 
     return (
         <Section id="partner" surface="light">
-            <SectionHeading eyebrow="Partners" title="Work with us" sub="Two ways to earn from BBU1 without being on the payroll." accent="amber" />
+            <SectionHeading title="Work with us" sub="Two ways to earn from BBU1 without being on the payroll." accent="amber" />
 
             <MobileRail count={2} grid="lg:grid-cols-2" className="mt-10">
-                <motion.div initial={{ opacity: 0, x: -24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} whileHover={{ y: -6, scaleX: 1.02 }} className="w-[82vw] shrink-0 snap-center sm:w-[22rem] lg:w-auto group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                <motion.div initial={{ opacity: 0, x: -24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} whileHover={{ y: -6, scaleX: 1.02 }} className={cn(RAIL_CARD, 'group flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-6')}>
                     <div className={cn('mb-5 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', ACCENTS.amber.tile)}>
                         <Megaphone className="h-5 w-5" />
                     </div>
@@ -1428,7 +1689,7 @@ const PartnerWithUsSection = () => {
                     </Dialog>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, x: 24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} whileHover={{ y: -6 }} className="w-[82vw] shrink-0 snap-center sm:w-[22rem] lg:w-auto group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                <motion.div initial={{ opacity: 0, x: 24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} whileHover={{ y: -6 }} className={cn(RAIL_CARD, 'group flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-6')}>
                     <div className={cn('mb-5 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', ACCENTS.violet.tile)}>
                         <GitBranch className="h-5 w-5" />
                     </div>
@@ -1487,122 +1748,15 @@ const PartnerWithUsSection = () => {
 };
 
 
-type AuraState = 'idle' | 'thinking' | 'happy';
-
-const AURA_MOUTH: Record<AuraState, string> = {
-    idle: 'M 42 56 Q 50 61 58 56',
-    thinking: 'M 43 57 Q 50 59 57 57',
-    happy: 'M 40 54 Q 50 66 60 54 Q 50 60 40 54',
-};
-
-function AuraAvatar({ state = 'idle', className, interactive = true }: { state?: AuraState; className?: string; interactive?: boolean }) {
-    const [blink, setBlink] = useState(false);
-    const [wink, setWink] = useState(false);
-    const [hover, setHover] = useState(false);
-    const active: AuraState = hover && interactive && state !== 'thinking' ? 'happy' : state;
-    const uid = React.useId().replace(/:/g, '');
-
-    useEffect(() => {
-        let t: ReturnType<typeof setTimeout>;
-        const loop = () => {
-            t = setTimeout(() => { setBlink(true); setTimeout(() => setBlink(false), 130); loop(); }, 2600 + Math.random() * 3200);
-        };
-        loop();
-        return () => clearTimeout(t);
-    }, []);
-
-    useEffect(() => {
-        let t: ReturnType<typeof setTimeout>;
-        const loop = () => {
-            t = setTimeout(() => { setWink(true); setTimeout(() => setWink(false), 480); loop(); }, 9000 + Math.random() * 9000);
-        };
-        loop();
-        return () => clearTimeout(t);
-    }, []);
-
-    const drift = active === 'happy' ? 1.6 : 2.8;
-    const Eye = ({ cx, closed }: { cx: number; closed: boolean }) => closed
-        ? <path d={`M ${cx - 10} 38 Q ${cx} 46 ${cx + 10} 38`} stroke="#0b2a63" strokeWidth="4" strokeLinecap="round" fill="none" />
-        : <><ellipse cx={cx} cy="38" rx="10" ry="11" fill="#fff" fillOpacity="0.96" /><circle cx={cx} cy={active === 'thinking' ? 34.5 : 38} r="5" fill="#0b2a63" /><circle cx={cx + 2} cy={active === 'thinking' ? 32.3 : 35.8} r="1.6" fill="#fff" fillOpacity="0.92" /></>;
-
-    return (
-        <span
-            className={cn('inline-flex shrink-0 items-center justify-center', className)}
-            onMouseEnter={() => interactive && setHover(true)}
-            onMouseLeave={() => interactive && setHover(false)}
-        >
-            <svg viewBox="0 0 100 100" className="h-full w-full overflow-visible">
-                <defs>
-                    <linearGradient id={`af-${uid}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#1d4ed8" />
-                    </linearGradient>
-                    <radialGradient id={`ash-${uid}`} cx="0.5" cy="0.5" r="0.5">
-                        <stop offset="0%" stopColor="#0b2a63" stopOpacity="0.5" /><stop offset="100%" stopColor="#0b2a63" stopOpacity="0" />
-                    </radialGradient>
-                </defs>
-                <motion.ellipse cx="50" cy="96" rx="25" ry="4.5" fill={`url(#ash-${uid})`} animate={{ rx: [25, 20, 25], opacity: [0.9, 0.55, 0.9] }} transition={{ duration: drift, repeat: Infinity, ease: 'easeInOut' }} />
-                <motion.g style={{ transformOrigin: '50px 45px' }} animate={{ rotate: active === 'thinking' ? -6 : 0, y: [0, -3.5, 0] }} transition={{ rotate: { type: 'spring', stiffness: 200, damping: 18 }, y: { duration: drift, repeat: Infinity, ease: 'easeInOut' } }}>
-                    <path d="M 26 92 Q 26 74 50 74 Q 74 74 74 92 Z" fill="#1e3a8a" />
-                    <path d="M 40 74 L 50 84 L 60 74 Z" fill="#fff" fillOpacity="0.92" />
-                    <line x1="50" y1="6" x2="50" y2="-1" stroke="#93c5fd" strokeOpacity="0.8" strokeWidth="2.5" strokeLinecap="round" />
-                    <motion.circle cx="50" cy="-2" r="3.2" fill="#93c5fd" animate={{ opacity: [0.45, 1, 0.45] }} transition={{ duration: active === 'thinking' ? 0.8 : 2.2, repeat: Infinity }} />
-                    <rect x="14" y="6" width="72" height="68" rx="26" fill={`url(#af-${uid})`} />
-                    <rect x="14" y="6" width="72" height="68" rx="26" fill="none" stroke="#fff" strokeOpacity="0.22" strokeWidth="1.5" />
-                    <Eye cx={36} closed={blink} />
-                    <Eye cx={64} closed={blink || wink} />
-                    <motion.path animate={{ d: AURA_MOUTH[active] }} transition={{ type: 'spring', stiffness: 200, damping: 18 }} stroke="#fff" strokeOpacity="0.8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill={active === 'happy' ? '#fff' : 'none'} fillOpacity={active === 'happy' ? 0.28 : 0} />
-                    <circle cx="78" cy="66" r="9" fill="#fff" />
-                    <circle cx="78" cy="66" r="6.2" fill="#22c55e" />
-                </motion.g>
-            </svg>
-        </span>
-    );
-}
-
-function AuraFloating() {
-    const [open, setOpen] = useState(false);
-    return (
-        <>
-            <AnimatePresence>
-                {open ? (
-                    <motion.div
-                        initial={{ opacity: 0, y: 16, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 16, scale: 0.96 }}
-                        transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-                        className="fixed bottom-28 right-5 z-50 w-[min(20rem,calc(100vw-2.5rem))] rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
-                    >
-                        <div className="flex items-start gap-3">
-                            <AuraAvatar className="h-11 w-11" interactive={false} />
-                            <div className="min-w-0">
-                                <p className="text-sm font-semibold text-slate-900 dark:text-white">Aura</p>
-                                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-                                    Ask about your sales, stock or ledger in plain language and get an answer drawn from your own data.
-                                </p>
-                            </div>
-                        </div>
-                        <Button asChild className="mt-4 h-10 w-full rounded-xl bg-blue-600 text-sm font-medium text-white hover:bg-blue-700">
-                            <Link href="/signup">Try Aura free</Link>
-                        </Button>
-                    </motion.div>
-                ) : null}
-            </AnimatePresence>
-
-            <motion.button
-                type="button"
-                onClick={() => setOpen(v => !v)}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.94 }}
-                aria-label={open ? 'Close Aura' : 'Open Aura'}
-                className="fixed bottom-6 right-5 z-50 flex h-16 w-16 items-center justify-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-blue-300/50"
-            >
-                {open
-                    ? <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-xl"><X className="h-6 w-6" /></span>
-                    : <AuraAvatar className="h-16 w-16" />}
-            </motion.button>
-        </>
-    );
-}
+/* ------------------------------------------------------------------ */
+/*  Aura, the floating AI assistant, has been removed from this page.  */
+/*  The avatar button now lives in the layout file, so rendering it    */
+/*  here as well produced two of them stacked in the bottom corner.    */
+/*  Nothing else references it: the <AuraFloating /> call that used to */
+/*  sit at the very bottom of HomePage, just above the closing </div>, */
+/*  is gone too. Aura is still linked in the nav and still described   */
+/*  in the platform copy, only the duplicate widget is gone.           */
+/* ------------------------------------------------------------------ */
 
 export default function HomePage() {
     const supabase = createClient();
@@ -1681,7 +1835,7 @@ export default function HomePage() {
     const screen = PRODUCT_SCREENS[activeScreen];
 
     return (
-        <div className="flex min-h-screen flex-col">
+        <div className="flex min-h-screen flex-col overflow-x-clip">
             <style jsx global>{`
                 .hide-scrollbar::-webkit-scrollbar { display: none; }
             `}</style>
@@ -1692,10 +1846,26 @@ export default function HomePage() {
             <main className="flex-grow">
 
                 {/* HERO */}
-                <section id="hero" className="relative overflow-hidden bg-[#070C18] pt-16">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_50%_-5%,rgba(37,99,235,0.42)_0%,rgba(37,99,235,0)_65%)]" />
-                    <motion.div animate={{ opacity: [0.22, 0.42, 0.22], scale: [1, 1.1, 1] }} transition={{ duration: 10, repeat: Infinity }} className="absolute -left-40 top-40 h-[30rem] w-[30rem] rounded-full bg-violet-500 blur-3xl" />
-                    <motion.div animate={{ opacity: [0.24, 0.45, 0.24], scale: [1, 1.12, 1] }} transition={{ duration: 12, repeat: Infinity, delay: 3 }} className="absolute -right-40 top-20 h-[30rem] w-[30rem] rounded-full bg-sky-400 blur-3xl" />
+                <section id="hero" className="relative overflow-hidden bg-[#060A14] pt-16">
+                    {/* Brand blue on the left, plain white on the right, the two
+                        bleeding into each other over the black. No purple. */}
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_72%_45%_at_50%_-8%,rgba(37,99,235,0.40)_0%,rgba(37,99,235,0)_62%)]" />
+                    <motion.div
+                        animate={{ opacity: [0.30, 0.52, 0.30], scale: [1, 1.09, 1] }}
+                        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute -left-44 top-28 h-[26rem] w-[26rem] rounded-full bg-blue-600 blur-3xl sm:h-[34rem] sm:w-[34rem]"
+                    />
+                    <motion.div
+                        animate={{ opacity: [0.10, 0.20, 0.10], scale: [1, 1.1, 1] }}
+                        transition={{ duration: 13, repeat: Infinity, delay: 2.5, ease: 'easeInOut' }}
+                        className="absolute -right-44 top-10 h-[26rem] w-[26rem] rounded-full bg-white blur-3xl sm:h-[34rem] sm:w-[34rem]"
+                    />
+                    {/* where the two sides meet */}
+                    <motion.div
+                        animate={{ opacity: [0.12, 0.24, 0.12] }}
+                        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute left-1/2 top-0 h-[20rem] w-[38rem] -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-500 via-sky-200 to-white blur-3xl"
+                    />
                     <div
                         className="absolute inset-0 opacity-[0.4]"
                         style={{
@@ -1706,9 +1876,9 @@ export default function HomePage() {
                         }}
                     />
 
-                    <div className="container relative z-10 mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 sm:pb-20 sm:pt-20">
+                    <div className="container relative z-10 mx-auto max-w-7xl px-4 pb-14 pt-12 sm:px-6 sm:pb-20 sm:pt-20">
                         <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="mx-auto max-w-3xl text-center">
-                            <motion.h1 variants={fadeUp} className="text-[2rem] font-semibold leading-[1.12] tracking-tight text-white sm:text-5xl lg:text-[3.4rem]">
+                            <motion.h1 variants={fadeUp} className="text-[1.9rem] font-semibold leading-[1.14] tracking-tight text-white sm:text-5xl lg:text-[3.4rem]">
                                 Sell at the counter.
                                 <RotatingLine
                                     lines={[
@@ -1721,12 +1891,12 @@ export default function HomePage() {
                                 />
                             </motion.h1>
 
-                            <motion.p variants={fadeUp} className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
+                            <motion.p variants={fadeUp} className="mx-auto mt-5 max-w-xl text-[0.95rem] leading-relaxed text-slate-400 sm:mt-6 sm:text-lg">
                                 One system where a sale moves your stock, your ledger and your reports at the same
                                 moment. From a single market stall to a group with fourteen branches.
                             </motion.p>
 
-                            <motion.div variants={fadeUp} className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+                            <motion.div variants={fadeUp} className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:mt-9 sm:flex-row sm:items-center">
                                 <Button asChild size="lg" className="h-12 w-full rounded-xl bg-blue-600 px-8 text-base font-medium text-white shadow-xl shadow-blue-600/30 hover:bg-blue-500 sm:w-auto">
                                     <Link href="/signup">Start free trial</Link>
                                 </Button>
@@ -1738,31 +1908,40 @@ export default function HomePage() {
                             <motion.p variants={fadeUp} className="mt-6 text-sm text-slate-500">No card needed. Set up in a day.</motion.p>
                         </motion.div>
 
-                        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE, delay: 0.2 }} className="relative mx-auto mt-14 max-w-5xl">
+                        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE, delay: 0.2 }} className="relative mx-auto mt-10 max-w-5xl sm:mt-14">
                             <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-2 shadow-2xl sm:p-3">
                                 <PosScreen />
                             </div>
 
-                            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                                {[
-                                    { icon: Wallet, label: 'Cash and mobile money', value: 'Taken at the till', accent: 'emerald' },
-                                    { icon: Boxes, label: 'Stock', value: 'Drops in every branch', accent: 'violet' },
-                                    { icon: Receipt, label: 'Ledger', value: '5 lines posted, balanced', accent: 'sky' },
-                                ].map((item, i) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <motion.div key={item.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.12 }} whileHover={{ y: -3 }} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 transition-colors hover:border-white/25 hover:bg-white/[0.08]">
-                                            <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', ACCENTS[item.accent].tile)}>
-                                                <Icon className="h-4 w-4" />
-                                            </span>
-                                            <div className="min-w-0">
-                                                <p className="truncate text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
-                                                <p className="truncate text-sm text-slate-200">{item.value}</p>
+                            {/* One connected strip rather than three floating cards,
+                                so on a phone it reads as a single object under the till. */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5, duration: 0.5, ease: EASE }}
+                                className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]"
+                            >
+                                <div className="grid divide-y divide-white/10 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                                    {[
+                                        { icon: Wallet, label: 'Cash and mobile money', value: 'Taken at the till' },
+                                        { icon: Boxes, label: 'Stock', value: 'Drops in every branch' },
+                                        { icon: Receipt, label: 'Ledger', value: '5 lines posted, balanced' },
+                                    ].map((item) => {
+                                        const Icon = item.icon;
+                                        return (
+                                            <div key={item.label} className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.05]">
+                                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-white/10">
+                                                    <Icon className="h-4 w-4" />
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">{item.label}</p>
+                                                    <p className="mt-0.5 truncate text-sm font-medium text-slate-100">{item.value}</p>
+                                                </div>
                                             </div>
-                                        </motion.div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
                         </motion.div>
                     </div>
                 </section>
@@ -1771,31 +1950,32 @@ export default function HomePage() {
                 <Section id="flow" surface="bright">
                     <motion.div animate={{ opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 8, repeat: Infinity }} className="absolute right-0 top-0 h-72 w-72 rounded-full bg-sky-300 blur-3xl" />
 
-                    <SectionHeading eyebrow="How it fits together" title="What happens when you sell one bottle of oil" sub="This is the whole idea. Four things move at once, and nobody types anything twice." accent="sky" />
+                    <SectionHeading title="What happens when you sell one bottle of oil" sub="This is the whole idea. Four things move at once, and nobody types anything twice." accent="sky" />
 
                     <MobileRail count={SALE_FLOW.length} grid="lg:grid-cols-4" className="mt-12" delay={4000}>
                         {SALE_FLOW.map((item, i) => {
                             const Icon = item.icon;
                             const a = ACCENTS[item.accent];
                             return (
-                                <motion.div key={i} initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.14, duration: 0.55, ease: EASE }} className={cn(RAIL_CARD, 'relative')}>
-                                    <motion.div whileHover={{ y: -6 }} className={cn('group h-full rounded-2xl border border-white bg-white p-6 shadow-md transition-all hover:shadow-xl', a.ring)}>
-                                        <div className="mb-5 flex items-center justify-between">
-                                            <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 3, repeat: Infinity, delay: i * 0.4 }} className={cn('flex h-12 w-12 items-center justify-center rounded-xl', a.tile)}>
+                                <motion.div key={i} initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.14, duration: 0.55, ease: EASE }} className={cn(RAIL_CARD, 'relative flex')}>
+                                    <motion.div whileHover={{ y: -6 }} className={cn('group flex h-full w-full min-h-[13.5rem] flex-col rounded-2xl border border-white bg-white p-5 shadow-md transition-all hover:shadow-xl sm:p-6', a.ring)}>
+                                        <div className="mb-5 flex items-start justify-between gap-3">
+                                            <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 3, repeat: Infinity, delay: i * 0.4 }} className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', a.tile)}>
                                                 <Icon className="h-5 w-5" />
                                             </motion.span>
-                                            <span className={cn('text-3xl font-semibold tabular-nums opacity-20', a.text)}>{i + 1}</span>
+                                            <span className={cn('text-2xl font-semibold leading-none tabular-nums opacity-20', a.text)}>{String(i + 1).padStart(2, '0')}</span>
                                         </div>
-                                        <h3 className="text-sm font-semibold leading-snug tracking-tight text-slate-900">{item.title}</h3>
+                                        <h3 className="text-[0.95rem] font-semibold leading-snug tracking-tight text-slate-900">{item.title}</h3>
                                         <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.desc}</p>
-                                        <div className={cn('mt-5 h-1 w-0 rounded-full transition-all duration-500 group-hover:w-full', a.glow)} />
+                                        <div className={cn('mt-auto h-1 w-0 rounded-full transition-all duration-500 group-hover:w-full', a.glow)} />
                                     </motion.div>
 
+                                    {/* connector only on the desktop grid; in the phone rail the
+                                        numbers already carry the order and an arrow just adds height */}
                                     {i < SALE_FLOW.length - 1 ? (
-                                        <div className="flex justify-center py-2 lg:absolute lg:-right-3 lg:top-1/2 lg:z-10 lg:-translate-y-1/2 lg:py-0">
+                                        <div className="pointer-events-none absolute -right-3 top-1/2 z-10 hidden -translate-y-1/2 lg:block">
                                             <motion.span animate={{ x: [0, 4, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.3 }} className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-blue-600 shadow-sm">
-                                                <ArrowDown className="h-3.5 w-3.5 lg:hidden" />
-                                                <ArrowRight className="hidden h-3.5 w-3.5 lg:block" />
+                                                <ArrowRight className="h-3.5 w-3.5" />
                                             </motion.span>
                                         </div>
                                     ) : null}
@@ -1815,9 +1995,9 @@ export default function HomePage() {
                 {/* PRODUCT, auto advancing */}
                 <Section id="product" surface="light">
                     <div ref={productRef}>
-                        <SectionHeading eyebrow="Inside the system" title="Six screens, one set of numbers" sub="These move on their own. Tap one to hold it while you read." accent="blue" />
+                        <SectionHeading title="Six screens, one set of numbers" sub="These move on their own. Tap one to hold it while you read." accent="blue" />
 
-                        <div className="mt-8 flex flex-wrap items-center gap-2">
+                        <div className="hide-scrollbar -mx-4 mt-8 flex snap-x items-center gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0" style={{ scrollbarWidth: 'none' }}>
                             {PRODUCT_SCREENS.map((item, i) => {
                                 const a = ACCENTS[item.accent];
                                 const isActive = activeScreen === i;
@@ -1826,7 +2006,7 @@ export default function HomePage() {
                                         key={item.id}
                                         onClick={() => selectScreen(i)}
                                         className={cn(
-                                            'relative overflow-hidden rounded-full border px-5 py-2.5 text-sm font-medium transition-all',
+                                            'relative shrink-0 snap-start overflow-hidden rounded-full border px-4 py-2.5 text-sm font-medium transition-all sm:px-5',
                                             isActive
                                                 ? 'border-transparent bg-slate-900 text-white shadow-lg dark:bg-white dark:text-slate-900'
                                                 : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -1843,13 +2023,13 @@ export default function HomePage() {
                                 );
                             })}
 
-                            <button onClick={() => setScreenPaused(p => !p)} aria-label={screenPaused ? 'Play' : 'Pause'} className="ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                            <button onClick={() => setScreenPaused(p => !p)} aria-label={screenPaused ? 'Play' : 'Pause'} className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
                                 {screenPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
                             </button>
                         </div>
 
                         <div className="mt-8 grid items-start gap-8 lg:grid-cols-12 lg:gap-12">
-                            <div className="lg:col-span-7">
+                            <div className="min-w-0 lg:col-span-7">
                                 <AnimatePresence mode="wait">
                                     <motion.div key={screen.id} initial={{ opacity: 0, x: 40, scale: 0.98 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, x: -40, scale: 0.98 }} transition={{ duration: 0.4, ease: EASE }}>
                                         {screen.render()}
@@ -1857,7 +2037,7 @@ export default function HomePage() {
                                 </AnimatePresence>
                             </div>
 
-                            <div className="lg:col-span-5 lg:pt-6">
+                            <div className="min-w-0 lg:col-span-5 lg:pt-6">
                                 <AnimatePresence mode="wait">
                                     <motion.div key={screen.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.35, ease: EASE }}>
                                         <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', ACCENTS[screen.accent].tile)}>{screen.label}</span>
@@ -1883,7 +2063,7 @@ export default function HomePage() {
 
                 {/* REPLACES */}
                 <Section surface="tint">
-                    <SectionHeading eyebrow="Why bother" title="What BBU1 replaces" sub="Most businesses we meet are running four systems that do not know about each other." accent="rose" />
+                    <SectionHeading title="What BBU1 replaces" sub="Most businesses we meet are running four systems that do not know about each other." accent="rose" />
 
                     <div className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md dark:border-slate-800 dark:bg-slate-950">
                         {REPLACES.map((row, i) => (
@@ -1899,27 +2079,26 @@ export default function HomePage() {
 
                 {/* HOW IT WORKS */}
                 <Section surface="light">
-                    <SectionHeading eyebrow="Getting started" title="How it works" sub="Four steps. A single shop is usually trading the same day, and a group rollout runs branch by branch." accent="emerald" />
+                    <SectionHeading title="How it works" sub="Four steps. A single shop is usually trading the same day, and a group rollout runs branch by branch." accent="emerald" />
 
                     <div className="mt-12">
                         <AutoRail
                             items={HOW_IT_WORKS}
                             delay={4800}
                             accent="emerald"
-                            cardWidth={320}
                             label="Step"
                             renderItem={(item, i, isActive) => {
                                 const a = ACCENTS[item.accent];
                                 return (
-                                    <motion.div animate={{ scale: isActive ? 1 : 0.97, opacity: isActive ? 1 : 0.7 }} transition={{ duration: 0.4, ease: EASE }}>
-                                        <div className={cn('h-full rounded-2xl border bg-white p-7 shadow-md transition-all dark:bg-slate-900', isActive ? 'border-slate-900 shadow-xl dark:border-white' : 'border-slate-200 dark:border-slate-800')}>
-                                            <div className="flex items-center justify-between">
-                                                <span className={cn('flex h-12 w-12 items-center justify-center rounded-xl text-lg font-semibold', a.tile)}>{item.step}</span>
-                                                <span className={cn('rounded-full px-3 py-1 text-[11px] font-semibold', a.tile)}>{item.meta}</span>
+                                    <motion.div animate={{ scale: isActive ? 1 : 0.97, opacity: isActive ? 1 : 0.7 }} transition={{ duration: 0.4, ease: EASE }} className="h-full">
+                                        <div className={cn('flex h-full min-h-[16rem] flex-col rounded-2xl border bg-white p-6 shadow-md transition-all dark:bg-slate-900 sm:p-7', isActive ? 'border-slate-900 shadow-xl dark:border-white' : 'border-slate-200 dark:border-slate-800')}>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-semibold tabular-nums', a.tile)}>{item.step}</span>
+                                                <span className={cn('shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold', a.tile)}>{item.meta}</span>
                                             </div>
                                             <h3 className="mt-6 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{item.title}</h3>
                                             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
-                                            <div className={cn('mt-6 h-1 rounded-full transition-all duration-500', isActive ? cn('w-full', a.glow) : 'w-0')} />
+                                            <div className={cn('mt-auto h-1 rounded-full transition-all duration-500', isActive ? cn('w-full', a.glow) : 'w-0')} />
                                         </div>
                                     </motion.div>
                                 );
@@ -1930,36 +2109,39 @@ export default function HomePage() {
 
                 {/* ENTERPRISE */}
                 <Section id="enterprise" surface="dark">
+                    {/* min-w-0 on both columns matters: without it the grid track
+                        sizes to the rail's full content width, which stretched the
+                        heading and buttons off screen and left nothing to scroll. */}
                     <div className="grid gap-10 lg:grid-cols-12 lg:gap-14">
-                        <div className="lg:col-span-5">
-                            <SectionHeading eyebrow="For larger organisations" title="Small enough for a stall. Built for a group." sub="The same platform runs a single till and a holding company with several subsidiaries. You do not change product when you grow." dark />
+                        <div className="min-w-0 lg:col-span-5">
+                            <SectionHeading title="Small enough for a stall. Built for a group." sub="The same platform runs a single till and a holding company with several subsidiaries. You do not change product when you grow." dark />
 
                             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                                <Button asChild className="h-12 rounded-xl bg-white px-7 text-sm font-medium text-slate-900 shadow-xl hover:bg-slate-100">
+                                <Button asChild className="h-12 w-full rounded-xl bg-white px-7 text-sm font-medium text-slate-900 shadow-xl hover:bg-slate-100 sm:w-auto">
                                     <a href={siteConfig.contactInfo.enterpriseLink} target="_blank" rel="noopener noreferrer">Talk to our enterprise team</a>
                                 </Button>
-                                <Button asChild variant="outline" className="h-12 rounded-xl border-white/20 bg-white/[0.06] px-7 text-sm font-medium text-white hover:bg-white/[0.12] hover:text-white">
+                                <Button asChild variant="outline" className="h-12 w-full rounded-xl border-white/20 bg-white/[0.06] px-7 text-sm font-medium text-white hover:bg-white/[0.12] hover:text-white sm:w-auto">
                                     <Link href="/contact">Request a scoping call</Link>
                                 </Button>
                             </div>
                         </div>
 
-                        <div className="lg:col-span-7">
+                        <div className="min-w-0 lg:col-span-7">
                             <AutoRail
                                 items={ENTERPRISE_POINTS}
                                 delay={5200}
                                 accent="blue"
-                                cardWidth={320}
+                                dark
                                 label="Capability"
                                 renderItem={(item, i, isActive) => {
                                     const Icon = item.icon;
                                     return (
-                                        <motion.div animate={{ scale: isActive ? 1 : 0.97, opacity: isActive ? 1 : 0.6 }} transition={{ duration: 0.4, ease: EASE }}>
-                                            <div className={cn('h-full rounded-2xl border p-6 transition-colors', isActive ? 'border-blue-400/50 bg-white/[0.08]' : 'border-white/10 bg-white/[0.03]')}>
-                                                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/30 to-violet-500/30 text-blue-300">
+                                        <motion.div animate={{ scale: isActive ? 1 : 0.97, opacity: isActive ? 1 : 0.6 }} transition={{ duration: 0.4, ease: EASE }} className="h-full">
+                                            <div className={cn('flex h-full min-h-[15rem] flex-col rounded-2xl border p-6 transition-colors', isActive ? 'border-blue-400/50 bg-white/[0.08]' : 'border-white/10 bg-white/[0.03]')}>
+                                                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/30 to-sky-300/20 text-blue-300 ring-1 ring-inset ring-white/10">
                                                     {Icon ? <Icon className="h-5 w-5" /> : <Building className="h-5 w-5" />}
                                                 </div>
-                                                <h3 className="text-sm font-semibold tracking-tight text-white">{item.title}</h3>
+                                                <h3 className="text-[0.95rem] font-semibold tracking-tight text-white">{item.title}</h3>
                                                 <p className="mt-2 text-sm leading-relaxed text-slate-400">{item.desc}</p>
                                             </div>
                                         </motion.div>
@@ -1967,43 +2149,29 @@ export default function HomePage() {
                                 }}
                             />
                         </div>
-
-                        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.6 }} className="lg:col-span-12 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-2 shadow-2xl sm:p-3">
-                            <GroupScreen />
-                        </motion.div>
+                        {/* the group mockup that used to sit under this heading has been removed */}
                     </div>
                 </Section>
 
                 {/* WHO USES IT */}
                 <Section surface="tint">
-                    <SectionHeading eyebrow="Who uses it" title="Built around how your trade works" sub="The core is the same. What sits on top changes with the business." accent="violet" />
+                    <SectionHeading title="Built around how your trade works" sub="The core is the same. What sits on top changes with the business." accent="violet" />
 
-                    <div className="mt-6 flex items-center gap-2.5 text-slate-400 lg:hidden">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">Swipe</span>
-                        <motion.span animate={{ x: [0, 6, 0] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
-                            <ArrowRight className="h-3.5 w-3.5" />
-                        </motion.span>
-                    </div>
-
-                    <div className="relative mt-4">
-                        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-24 bg-gradient-to-l from-slate-50 via-slate-50/70 to-slate-50/0 dark:from-slate-900 dark:via-slate-900/70 dark:to-slate-900/0 lg:block" />
-                        <MobileRail count={BUILT_FOR.length} grid="lg:grid-cols-3" delay={4200}>
-                        {BUILT_FOR.map((item, i) => {
-                            const Icon = item.icon;
-                            const a = ACCENTS[item.accent];
-                            return (
-                                <motion.div key={item.title} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.45, ease: EASE }} whileHover={{ y: -6, scaleX: 1.03 }} style={{ transformOrigin: 'center' }} className={cn('group relative w-[78vw] shrink-0 snap-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow hover:shadow-xl dark:border-slate-800 dark:bg-slate-950 sm:w-[20rem]', a.ring)}>
-                                    <div className={cn('absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-25', a.glow)} />
-                                    <div className={cn('relative mb-4 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', a.tile)}>
-                                        {Icon ? <Icon className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}
-                                    </div>
-                                    <h3 className="relative text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{item.title}</h3>
-                                    <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
-                                </motion.div>
-                            );
-                        })}
-                        </MobileRail>
-                    </div>
+                    <MobileRail count={BUILT_FOR.length} grid="lg:grid-cols-3" className="mt-10" delay={4200}>
+                        {BUILT_FOR.map((item, i) => (
+                            <motion.div
+                                key={item.title}
+                                initial={{ opacity: 0, y: 22 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: (i % 3) * 0.08, duration: 0.45, ease: EASE }}
+                                whileHover={{ y: -6 }}
+                                className={cn(RAIL_CARD, 'flex')}
+                            >
+                                <FeatureCard icon={item.icon} accent={item.accent} title={item.title} desc={item.desc} />
+                            </motion.div>
+                        ))}
+                    </MobileRail>
 
                     <Link href="/industries" className="group mt-8 inline-flex items-center gap-2 text-sm font-medium text-violet-700 dark:text-violet-400">
                         See all industries <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -2012,23 +2180,22 @@ export default function HomePage() {
 
                 {/* PLATFORM */}
                 <Section surface="light">
-                    <SectionHeading eyebrow="The platform" title="What holds it together" sub="The parts you do not see, and the reason the rest of it can be this simple." accent="sky" />
+                    <SectionHeading title="What holds it together" sub="The parts you do not see, and the reason the rest of it can be this simple." accent="sky" />
 
                     <MobileRail count={PLATFORM_POINTS.length} grid="lg:grid-cols-3" className="mt-10">
-                        {PLATFORM_POINTS.map((item, i) => {
-                            const Icon = item.icon;
-                            const a = ACCENTS[item.accent];
-                            return (
-                                <motion.div key={item.title} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.1, duration: 0.45, ease: EASE }} whileHover={{ y: -6 }} className={cn(RAIL_CARD, 'group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-all hover:shadow-xl dark:border-slate-800 dark:bg-slate-900', a.ring)}>
-                                    <div className={cn('absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-25', a.glow)} />
-                                    <div className={cn('relative mb-4 flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-110', a.tile)}>
-                                        {Icon ? <Icon className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}
-                                    </div>
-                                    <h3 className="relative text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{item.title}</h3>
-                                    <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
-                                </motion.div>
-                            );
-                        })}
+                        {PLATFORM_POINTS.map((item, i) => (
+                            <motion.div
+                                key={item.title}
+                                initial={{ opacity: 0, y: 22 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: (i % 3) * 0.1, duration: 0.45, ease: EASE }}
+                                whileHover={{ y: -6 }}
+                                className={cn(RAIL_CARD, 'flex')}
+                            >
+                                <FeatureCard icon={item.icon} accent={item.accent} title={item.title} desc={item.desc} />
+                            </motion.div>
+                        ))}
                     </MobileRail>
                 </Section>
 
@@ -2037,15 +2204,15 @@ export default function HomePage() {
                 {/* FAQ */}
                 <Section surface="light">
                     <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
-                        <div className="lg:col-span-4">
-                            <SectionHeading eyebrow="Questions" title="Things people ask" accent="teal" />
+                        <div className="min-w-0 lg:col-span-4">
+                            <SectionHeading title="Things people ask" accent="teal" />
                             <p className="mt-6 text-sm text-muted-foreground">
                                 Not answered here?{' '}
                                 <Link href="/contact" className="font-medium text-teal-700 underline underline-offset-4 dark:text-teal-400">Ask us directly</Link>.
                             </p>
                         </div>
 
-                        <div className="lg:col-span-8">
+                        <div className="min-w-0 lg:col-span-8">
                             <Accordion type="single" collapsible className="w-full">
                                 {siteConfig.faqItems.map((faq, i) => (
                                     <AccordionItem key={i} value={`faq-${i}`} className="border-slate-200 dark:border-slate-800">
@@ -2063,10 +2230,10 @@ export default function HomePage() {
                 <PartnerWithUsSection />
 
                 {/* FINAL CTA */}
-                <section className="relative overflow-hidden border-t border-white/10 bg-[#070C18] py-20 sm:py-28">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_100%,rgba(37,99,235,0.20)_0%,transparent_70%)]" />
-                    <motion.div animate={{ opacity: [0.08, 0.18, 0.08] }} transition={{ duration: 9, repeat: Infinity }} className="absolute -left-32 bottom-0 h-80 w-80 rounded-full bg-violet-600 blur-3xl" />
-                    <motion.div animate={{ opacity: [0.08, 0.18, 0.08] }} transition={{ duration: 11, repeat: Infinity, delay: 2 }} className="absolute -right-32 top-0 h-80 w-80 rounded-full bg-sky-500 blur-3xl" />
+                <section className="relative overflow-hidden border-t border-white/10 bg-[#060A14] py-20 sm:py-28">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_100%,rgba(37,99,235,0.22)_0%,transparent_70%)]" />
+                    <motion.div animate={{ opacity: [0.16, 0.34, 0.16] }} transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }} className="absolute -left-32 bottom-0 h-80 w-80 rounded-full bg-blue-600 blur-3xl" />
+                    <motion.div animate={{ opacity: [0.06, 0.14, 0.06] }} transition={{ duration: 11, repeat: Infinity, delay: 2, ease: 'easeInOut' }} className="absolute -right-32 top-0 h-80 w-80 rounded-full bg-white blur-3xl" />
 
                     <div className="container relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
                         <div className="mx-auto max-w-2xl text-center">
@@ -2140,7 +2307,8 @@ export default function HomePage() {
                     ) : null}
                 </AnimatePresence>
             ) : null}
-            <AuraFloating />
+            {/* <AuraFloating /> used to render here. Removed, the assistant
+                button is provided by the layout file now. */}
         </div>
     );
 }
