@@ -13,6 +13,29 @@
  * too, and vice versa. Local setBoardroomData call removed from the
  * streamData effect — CopilotContext sets it directly now.
  *
+ * v9 CHANGE: accessibility. Everything Aura says can be shown as large live
+ * captions, and the whole panel scales up on request.
+ *
+ * This exists because a deaf or hard-of-hearing director should not be a
+ * second-class user of a system that talks. Captions are not a nicety here —
+ * they are the difference between the voice features being usable and being
+ * decoration. The same bar also serves anyone in a noisy shop, or working
+ * with the sound off.
+ *
+ * What is NOT here, deliberately: sign language. Generating accurate signing
+ * needs a rigged 3D avatar and a text-to-gloss model trained on the specific
+ * language — Ugandan Sign Language is not ASL — and both are research
+ * problems. An avatar making handshapes that look like signing but mean
+ * nothing would be worse than useless in front of financial figures: someone
+ * would act on it. Captions and text are honest accessibility; a signing
+ * mannequin would not be.
+ *
+ * v8 CHANGE: meetings. The camera icon opens AuraMeetingRoom — a Jitsi call
+ * with attendance, invitations by WhatsApp or email, a written record, and
+ * minutes written by Aura at the end. The transcript handed to it is this
+ * conversation's own turns, so anything Aura answered during the meeting is
+ * part of the record.
+ *
  * v5 CHANGE: voice. The director can speak to Aura and hear her reply.
  * Both directions run in the browser — SpeechRecognition for listening,
  * SpeechSynthesis for speaking — so there is no audio API cost and no extra
@@ -43,14 +66,15 @@
  * conversation instead of disappearing when the stream closes.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   Send, User, Loader2, Cpu,
   FileDown, Compass, X, ShieldCheck,
   Presentation, Paperclip, FileText, AlertTriangle, CheckCircle2,
-  Mic, Square, Volume2, VolumeX, Phone, PhoneOff, Settings2,
+  Mic, Square, Volume2, VolumeX, Phone, PhoneOff, Settings2, Video,
+  Accessibility, Captions,
 } from 'lucide-react';
 
 import { AnimatePresence } from 'framer-motion';
@@ -64,6 +88,7 @@ import { useLocalWhisper } from '@/hooks/useLocalWhisper';
 import { useCopilot } from '@/context/CopilotContext';
 import { AuraAvatar } from './AuraAvatar';
 import AuraBoardroom from './AuraBoardroom';
+import AuraMeetingRoom from './AuraMeetingRoom';
 
 const supabase = createClient();
 
@@ -84,6 +109,7 @@ const VOICE = { autoSend: false, maxSpokenChars: 1400 };
 // a hosted model and cannot run here; this picks from the voices already
 // installed on the device, which costs nothing and sends no audio anywhere.
 const VOICE_KEYS = { uri: 'aura.voice.uri', rate: 'aura.voice.rate', pitch: 'aura.voice.pitch', private: 'aura.voice.private' };
+const A11Y_KEYS = { captions: 'aura.a11y.captions', large: 'aura.a11y.large' };
 
 const readStored = (key: string, fallback: string): string => {
   if (typeof window === 'undefined') return fallback;
@@ -380,6 +406,14 @@ export default function CopilotPanel() {
   const spokenIdRef = useRef<string | null>(null);
   const lastSpokenRef = useRef('');
 
+  // ✅ v8 meeting room
+  const [meetingOpen, setMeetingOpen] = useState(false);
+
+  // ✅ v9 accessibility
+  const [captionsOn, setCaptionsOn] = useState(false);
+  const [largeText, setLargeText] = useState(false);
+  const [caption, setCaption] = useState('');
+
   // ✅ v6 conversation mode + voice choice
   const [callActive, setCallActive] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -429,6 +463,7 @@ export default function CopilotPanel() {
     closeBoardroom,   // ✅ from CopilotContext
     businessId,       // ✅ v4: needed to scope the upload path
     userId,           // ✅ v4
+    tenantData,       // ✅ v8: business and director names for the minutes
   } = useCopilot();
 
   /**
@@ -524,6 +559,8 @@ export default function CopilotPanel() {
     window.speechSynthesis.onvoiceschanged = load;
     setVoiceUri(readStored(VOICE_KEYS.uri, ''));
     setPrivateVoice(readStored(VOICE_KEYS.private, 'false') === 'true');
+    setCaptionsOn(readStored(A11Y_KEYS.captions, 'false') === 'true');
+    setLargeText(readStored(A11Y_KEYS.large, 'false') === 'true');
     setRate(Number(readStored(VOICE_KEYS.rate, '1.02')) || 1.02);
     setPitch(Number(readStored(VOICE_KEYS.pitch, '1')) || 1);
     return () => { window.speechSynthesis.onvoiceschanged = null; };
@@ -550,14 +587,16 @@ export default function CopilotPanel() {
       utter.lang = chosen?.lang || navigator.language || 'en-US';
       utter.rate = rate;
       utter.pitch = pitch;
-      utter.onstart = () => setSpeaking(true);
+      utter.onstart = () => { setSpeaking(true); setCaption(spokenText); };
       utter.onend = () => {
         setSpeaking(false);
+        setCaption('');
         // ✅ v6: in conversation mode, hand the floor back to the director.
         if (callRef.current) setTimeout(() => startListening(true), 350);
       };
       utter.onerror = () => {
         setSpeaking(false);
+        setCaption('');
         if (callRef.current) setTimeout(() => startListening(true), 350);
       };
       window.speechSynthesis.speak(utter);
@@ -587,6 +626,7 @@ export default function CopilotPanel() {
   const stopSpeaking = () => {
     try { window.speechSynthesis.cancel(); } catch (e) { /* already stopped */ }
     setSpeaking(false);
+    setCaption('');
   };
 
   const stopListening = () => {
@@ -744,6 +784,18 @@ export default function CopilotPanel() {
     }
   }, [isReady]);
 
+  // ✅ v8: this conversation, shaped for the minutes.
+  const meetingTranscript = useMemo(
+    () => (messages || [])
+      .filter((m: any) => m.content)
+      .map((m: any) => ({
+        role: (m.role === 'assistant' ? 'aura' : 'director') as 'aura' | 'director',
+        text: String(m.content),
+        at: Date.now(),
+      })),
+    [messages],
+  );
+
   if (!hasMounted) return null;
 
   const safeInput = (input || '').toString();
@@ -752,6 +804,20 @@ export default function CopilotPanel() {
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden relative font-sans">
+
+      {/* ✅ v8 */}
+      <AuraMeetingRoom
+        open={meetingOpen}
+        onClose={() => setMeetingOpen(false)}
+        businessId={businessId}
+        businessName={tenantData?.business_name || tenantData?.name || 'the business'}
+        directorName={tenantData?.full_name || 'Director'}
+        transcript={meetingTranscript}
+        onRequestMinutes={(prompt) => { setMeetingOpen(false); handleSubmit(prompt); }}
+        speaking={speaking}
+        listening={listening || whisper.listening}
+        thinking={isChatLoading}
+      />
 
       <AnimatePresence mode="wait">
         {boardroomData && (
@@ -781,6 +847,18 @@ export default function CopilotPanel() {
               : isReady ? 'Online' : 'Connecting...'}
           </p>
         </div>
+        {/* ✅ v8: start a meeting */}
+        <button
+          type="button"
+          onClick={() => setMeetingOpen(true)}
+          disabled={!isReady}
+          aria-label="Start a meeting"
+          title="Start a meeting"
+          className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors disabled:opacity-40"
+        >
+          <Video size={17} />
+        </button>
+
         {/* ✅ v6: choose the voice */}
         {voiceSupported.speak && (
           <button
@@ -882,6 +960,41 @@ export default function CopilotPanel() {
             </span>
           </label>
 
+          {/* ✅ v9 */}
+          <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 space-y-2">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+              <Accessibility className="h-3.5 w-3.5" /> Accessibility
+            </p>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={captionsOn}
+                onChange={(e) => { setCaptionsOn(e.target.checked); writeStored(A11Y_KEYS.captions, String(e.target.checked)); }}
+                className="mt-0.5 accent-blue-600"
+              />
+              <span className="min-w-0">
+                <span className="block text-[12px] font-medium text-slate-800">Live captions</span>
+                <span className="block text-[11px] leading-relaxed text-slate-500">
+                  Shows what Aura is saying, and what she hears you say, in a bar above the composer.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={largeText}
+                onChange={(e) => { setLargeText(e.target.checked); writeStored(A11Y_KEYS.large, String(e.target.checked)); }}
+                className="mt-0.5 accent-blue-600"
+              />
+              <span className="min-w-0">
+                <span className="block text-[12px] font-medium text-slate-800">Larger text</span>
+                <span className="block text-[11px] leading-relaxed text-slate-500">
+                  Increases the size of messages and captions.
+                </span>
+              </span>
+            </label>
+          </div>
+
           <div className="flex items-center justify-between">
             <button
               type="button"
@@ -930,7 +1043,7 @@ export default function CopilotPanel() {
           chat content instead of scrolling, pushing the composer footer
           below the visible viewport (only reachable by zooming out). */}
       <ScrollArea className="flex-1 min-h-0 bg-slate-50/60">
-        <div className="space-y-4 w-full p-3 sm:p-5">
+        <div className={cn('space-y-4 w-full p-3 sm:p-5', largeText && 'text-[15px] [&_p]:leading-relaxed')}>
 
             {isReady && messages.length === 0 && (
                 <div className="py-10 sm:py-14 text-center">
@@ -961,7 +1074,8 @@ export default function CopilotPanel() {
                   <AuraAvatar agent="aura" className="h-9 w-9" interactive={false} />
                 )}
                 <div className={cn(
-                    'rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 max-w-[85%] sm:max-w-[80%] text-[13px] sm:text-[14px] shadow-sm leading-relaxed break-words',
+                    'rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 max-w-[85%] sm:max-w-[80%] shadow-sm leading-relaxed break-words',
+                    largeText ? 'text-[16px] sm:text-[17px]' : 'text-[13px] sm:text-[14px]',
                     m.role === 'user'
                         ? 'bg-slate-900 text-white rounded-br-md'
                         : 'bg-white text-slate-800 border border-slate-100 rounded-bl-md'
@@ -1031,6 +1145,29 @@ export default function CopilotPanel() {
             <div ref={scrollRef} className="h-1" />
         </div>
       </ScrollArea>
+
+      {/* ✅ v9: LIVE CAPTIONS
+          Shown whenever captions are switched on, and always during a call —
+          in a spoken conversation there is otherwise no visual record of what
+          was just said, which makes the feature unusable without hearing. */}
+      {(captionsOn || callActive) && (caption || listening || whisper.listening || whisper.thinking) && (
+        <div className="shrink-0 border-t border-slate-200 bg-slate-900 px-4 py-3">
+          <div className="mb-1 flex items-center gap-2">
+            <Captions className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              {caption ? 'Aura' : whisper.thinking ? 'Transcribing' : 'Listening'}
+            </span>
+          </div>
+          <p className={cn(
+            'leading-relaxed text-white',
+            largeText ? 'text-[18px]' : 'text-[14px]',
+          )}>
+            {caption
+              || (safeInput && (listening || whisper.listening) ? safeInput : '')
+              || (whisper.thinking ? 'Working out what you said...' : 'Speak now...')}
+          </p>
+        </div>
+      )}
 
       {/* COMPOSER */}
       <footer className="p-3 sm:p-4 border-t border-slate-100 bg-white shrink-0">
