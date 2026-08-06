@@ -7,6 +7,23 @@
  * Runs on the public Jitsi server. Everything below works there today; when
  * you move to your own server, one constant changes and nothing else.
  *
+ * v2.1 FIXES — both were mine, and both had the same symptom: a meeting that
+ * appeared to do nothing.
+ *
+ *   PORTAL. This panel renders inside a Radix Sheet, which animates using a
+ *   CSS transform. A transform on an ancestor makes `position: fixed` resolve
+ *   against that ancestor instead of the viewport, so the "full screen"
+ *   meeting was being drawn inside a 440px drawer. It now portals to
+ *   document.body, which is outside the transformed subtree.
+ *
+ *   JOIN DEADLOCK. The video container was hidden until `started` turned true,
+ *   but `started` only turned true when Jitsi reported it had joined — and
+ *   Jitsi cannot finish joining into a display:none element. Camera on,
+ *   nothing on screen, header stuck on "Not started", and the invite rail
+ *   never appeared because it was gated on the same flag. The container is now
+ *   mounted and visible from the moment Connect is pressed, with the setup
+ *   screen layered over it and removed once the room is live.
+ *
  * WHAT WAS SOLVED WITHOUT SELF-HOSTING
  *
  * 1. SECURITY. I said earlier that locking a room needed moderator rights. On
@@ -36,6 +53,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import {
   X, Copy, Mail, MessageCircle, Users, FileText, Loader2, Video,
@@ -104,8 +122,15 @@ export default function AuraMeetingRoom({
   const [room, setRoom] = useState('');
   const [password] = useState(makePassword);
   const [locked, setLocked] = useState(false);
-  const [started, setStarted] = useState(false);
+  // 'setup' -> 'connecting' -> 'live'. Split from a single boolean because the
+  // container must be visible during 'connecting' for Jitsi to join at all.
+  const [phase, setPhase] = useState<'setup' | 'connecting' | 'live'>('setup');
   const [loadingApi, setLoadingApi] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const joinTimeoutRef = useRef<any>(null);
+
+  const started = phase !== 'setup';
+  const live = phase === 'live';
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [notes, setNotes] = useState<NoteEntry[]>([]);
   const [noteDraft, setNoteDraft] = useState('');
@@ -119,6 +144,8 @@ export default function AuraMeetingRoom({
 
   const meetingUrl = room ? `https://${JITSI_DOMAIN}/${room}` : '';
   const present = attendees.filter((a) => !a.leftAt);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!started || !startedAt) return;
@@ -151,9 +178,10 @@ export default function AuraMeetingRoom({
   }), []);
 
   const endMeeting = useCallback(() => {
+    clearTimeout(joinTimeoutRef.current);
     try { apiRef.current?.dispose(); } catch (err) { /* already disposed */ }
     apiRef.current = null;
-    setStarted(false);
+    setPhase('setup');
   }, []);
 
   const startMeeting = async () => {
@@ -163,6 +191,12 @@ export default function AuraMeetingRoom({
       const Jitsi = await loadJitsi();
       const name = roomFor(businessId, title);
       setRoom(name);
+
+      // Container must be on screen BEFORE the API is constructed. Jitsi
+      // measures its parent and will not complete a join into a hidden node.
+      setPhase('connecting');
+      setStartedAt(Date.now());
+      await new Promise((r) => setTimeout(r, 60));   // let React paint it
 
       const api = new Jitsi(JITSI_DOMAIN, {
         roomName: name,
@@ -189,9 +223,16 @@ export default function AuraMeetingRoom({
         },
       });
 
+      // Some browsers and slow links never deliver videoConferenceJoined even
+      // though the call is up. Without this the controls and the invite rail
+      // would stay hidden behind an event that is not coming.
+      joinTimeoutRef.current = setTimeout(() => {
+        setPhase((p) => (p === 'connecting' ? 'live' : p));
+      }, 9000);
+
       api.addEventListener('videoConferenceJoined', (e: any) => {
-        setStarted(true);
-        setStartedAt(Date.now());
+        clearTimeout(joinTimeoutRef.current);
+        setPhase('live');
         setAttendees((p) => [...p, { id: e.id ?? 'host', name: e.displayName || directorName, joinedAt: Date.now() }]);
 
         api.executeCommand('subject', title);
@@ -346,10 +387,14 @@ IMPORTANT: state near the top that spoken contributions from participants other 
     }
   };
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950">
+  // Portalled to body. Inside the Radix Sheet this panel is a child of a
+  // transformed element, and a transform makes `fixed` resolve against that
+  // ancestor rather than the viewport — which drew the whole meeting inside a
+  // 440px drawer.
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex flex-col bg-slate-950">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 px-3 sm:px-4">
         <Video className="h-4 w-4 shrink-0 text-blue-400" />
         <div className="min-w-0 flex-1">
@@ -401,7 +446,17 @@ IMPORTANT: state near the top that spoken contributions from participants other 
 
       <div className="relative flex flex-1 min-h-0">
         <div className="relative flex-1 min-w-0">
-          <div ref={containerRef} className={cn('h-full w-full', !started && 'hidden')} />
+          {/* Mounted and sized from 'connecting' onward. Never display:none
+              while Jitsi is joining — that is what stalled it. */}
+          <div ref={containerRef} className={cn('h-full w-full', phase === 'setup' && 'invisible')} />
+
+          {phase === 'connecting' && (
+            <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
+              <div className="flex items-center gap-2 rounded-full bg-slate-900/90 px-4 py-2 text-[12px] font-medium text-slate-200 shadow-lg">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Connecting to the room...
+              </div>
+            </div>
+          )}
 
           {started && (
             <div className="pointer-events-none absolute bottom-4 left-4 rounded-2xl border border-white/10 bg-slate-900/80 p-3 backdrop-blur">
@@ -409,8 +464,8 @@ IMPORTANT: state near the top that spoken contributions from participants other 
             </div>
           )}
 
-          {!started && (
-            <div className="flex h-full items-center justify-center overflow-y-auto px-6 py-8">
+          {phase === 'setup' && (
+            <div className="absolute inset-0 z-10 flex h-full items-center justify-center overflow-y-auto bg-slate-950 px-6 py-8">
               <div className="w-full max-w-md space-y-5">
                 <AuraStage speaking={speaking} listening={listening} thinking={thinking} size="md" caption="Ready to join" />
 
@@ -440,11 +495,17 @@ IMPORTANT: state near the top that spoken contributions from participants other 
                     </div>
                   </div>
 
-                  <button type="button" onClick={startMeeting} disabled={loadingApi}
+                          <button type="button" onClick={startMeeting} disabled={loadingApi}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-[13px] font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
                     {loadingApi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
                     {loadingApi ? 'Preparing the room...' : 'Start meeting'}
                   </button>
+
+                  <p className="text-center text-[11px] leading-relaxed text-slate-500">
+                    If Aura is listening or in a spoken conversation, end that first —
+                    two things cannot hold the microphone at once, and the meeting will
+                    report no audio.
+                  </p>
 
                   <p className="text-center text-[11px] leading-relaxed text-slate-500">
                     Aura hears only this device. Ask participants to type key points into the meeting chat —
@@ -550,6 +611,7 @@ IMPORTANT: state near the top that spoken contributions from participants other 
           </aside>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -850,7 +850,15 @@ export default function CopilotPanel() {
         {/* ✅ v8: start a meeting */}
         <button
           type="button"
-          onClick={() => setMeetingOpen(true)}
+          onClick={() => {
+            // Release the microphone. Speech recognition and Jitsi cannot both
+            // hold it, and the meeting reports "no audio signal" if Aura is
+            // still listening when it opens.
+            endCall();
+            stopListening();
+            stopSpeaking();
+            setMeetingOpen(true);
+          }}
           disabled={!isReady}
           aria-label="Start a meeting"
           title="Start a meeting"
