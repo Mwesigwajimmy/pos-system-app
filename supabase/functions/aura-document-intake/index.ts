@@ -1,6 +1,7 @@
 // supabase/functions/aura-document-intake/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
+import * as XLSX from "https://esm.sh/xlsx@0.18.5"
 
 /**
  * --- AURA DOCUMENT INTAKE ---
@@ -42,6 +43,24 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
  * rather than as a link, because the provider cannot be assumed to reach a
  * private Supabase URL and a remote-fetch failure on their side surfaces as an
  * unhelpful generic error on ours.
+ *
+ * v2.0 — what was read can now be PRESENTED and EXPORTED.
+ *
+ * Extraction alone leaves the director staring at a card. Two things follow
+ * naturally from the same data and cost nothing extra:
+ *
+ *   SLIDES. Built here in the schema AuraBoardroom expects, so a supplier
+ *   invoice or a bank statement can be put on screen and narrated. The figures
+ *   are the validated ones — the same numbers the card shows, not a second
+ *   reading of the document.
+ *
+ *   SPREADSHEET. Line items or statement rows as a real .xlsx, with the
+ *   arithmetic checks on their own sheet so whoever opens it can see what did
+ *   and did not reconcile. A statement retyped by hand is where errors enter;
+ *   this removes the retyping.
+ *
+ * Both are derived from the validated extraction, never from a second pass at
+ * the model. One reading, one set of numbers, three ways to look at them.
  *
  * CALLING IT
  *   { "action": "extract", "businessId": "...", "userId": "...",
@@ -420,6 +439,155 @@ function buildProposal(d: any, v: any, businessId: string, receiptUrl: string | 
 }
 
 // ---------------------------------------------------------------------------
+// PRESENTING AND EXPORTING WHAT WAS READ
+// ---------------------------------------------------------------------------
+
+/**
+ * Slides in the exact shape AuraBoardroom.tsx expects:
+ *   visual_type: 'stats_grid' | 'bar_chart' | 'pie_chart' | 'area_chart'
+ *   data_payload: [{ name, value }]  — value is a string for stats_grid,
+ *                                      a number for every chart
+ * The component reads each slide's `content` aloud, so the document narrates
+ * itself.
+ */
+function buildSlides(d: any, v: any, fileName: string): any[] {
+  const cur = v.computed.currency ?? '';
+  const money = (n: number) => `${cur} ${Math.round(num(n)).toLocaleString('en-US')}`;
+  const slides: any[] = [];
+  const lines = Array.isArray(d.lines) ? d.lines : [];
+  const txns = Array.isArray(d.transactions) ? d.transactions : [];
+  const kind = String(d.documentType ?? 'document').replace(/_/g, ' ');
+
+  slides.push({
+    title: d.vendor ? String(d.vendor).slice(0, 60) : 'Document read',
+    content: `A ${kind}${v.computed.documentDate ? ` dated ${v.computed.documentDate}` : ''}${d.documentNumber ? `, reference ${d.documentNumber}` : ''}. ${
+      v.computed.statedTotal !== null ? `The total is ${money(v.computed.statedTotal)}.` : 'No total could be read from it.'
+    }`,
+    visual_type: 'stats_grid',
+    data_payload: [
+      { name: 'Total', value: v.computed.statedTotal !== null ? money(v.computed.statedTotal) : 'not read' },
+      { name: 'Subtotal', value: v.computed.subtotal !== null ? money(v.computed.subtotal) : '—' },
+      { name: 'Tax', value: v.computed.taxAmount !== null ? money(v.computed.taxAmount) : '—' },
+      { name: 'Date', value: v.computed.documentDate ?? 'not read' },
+    ],
+  });
+
+  if (lines.length > 0) {
+    const top = [...lines].sort((a: any, b: any) => num(b.amount) - num(a.amount)).slice(0, 6);
+    slides.push({
+      title: 'What it is made of',
+      content: `${lines.length} line${lines.length > 1 ? 's' : ''}, summing to ${money(v.computed.lineSum)}. The largest is ${String(top[0]?.description ?? 'unnamed').slice(0, 50)} at ${money(top[0]?.amount)}.`,
+      visual_type: 'bar_chart',
+      data_payload: top.map((l: any) => ({
+        name: String(l.description ?? 'Item').slice(0, 20),
+        value: Math.round(num(l.amount)),
+      })),
+    });
+  }
+
+  if (txns.length > 0) {
+    slides.push({
+      title: 'Money in and out',
+      content: `${txns.length} statement line${txns.length > 1 ? 's' : ''}: ${money(v.computed.transactionsIn)} in against ${money(v.computed.transactionsOut)} out, a net movement of ${money(v.computed.transactionsIn - v.computed.transactionsOut)}.`,
+      visual_type: 'bar_chart',
+      data_payload: [
+        { name: 'In', value: Math.round(v.computed.transactionsIn) },
+        { name: 'Out', value: Math.round(v.computed.transactionsOut) },
+        { name: 'Net', value: Math.round(v.computed.transactionsIn - v.computed.transactionsOut) },
+      ],
+    });
+  }
+
+  // Only worth a slide when something actually failed — a slide saying
+  // "everything checks out" wastes the director's attention.
+  const problems = (v.checks ?? []).filter((c: any) => c.level !== 'ok');
+  if (problems.length > 0) {
+    slides.push({
+      title: 'Check these before you record it',
+      content: `${problems.length} thing${problems.length > 1 ? 's did' : ' did'} not add up on this document. Worth resolving before the figures go anywhere.`,
+      visual_type: 'stats_grid',
+      data_payload: problems.slice(0, 4).map((c: any, i: number) => ({
+        name: `Check ${i + 1}`,
+        value: String(c.message).slice(0, 70),
+      })),
+    });
+  }
+
+  slides.push({
+    title: 'Nothing has been recorded',
+    content: `This was read from ${fileName}. No entry has been made in the accounts — the figures are here for you to review and enter yourself.`,
+    visual_type: 'stats_grid',
+    data_payload: [
+      { name: 'Source', value: fileName.slice(0, 40) },
+      { name: 'Status', value: 'Read only' },
+    ],
+  });
+
+  return slides;
+}
+
+/** The document as a workbook: the figures, and what did or did not reconcile. */
+function buildWorkbook(d: any, v: any, fileName: string): Uint8Array {
+  const wb = XLSX.utils.book_new();
+  const cur = v.computed.currency ?? '';
+
+  const summary: Record<string, unknown>[] = [
+    { Field: 'Source file', Value: fileName },
+    { Field: 'Document type', Value: String(d.documentType ?? 'unknown') },
+    { Field: 'Vendor', Value: d.vendor ?? '' },
+    { Field: 'Reference', Value: d.documentNumber ?? '' },
+    { Field: 'Date', Value: v.computed.documentDate ?? '' },
+    { Field: 'Currency', Value: cur },
+    { Field: 'Subtotal', Value: v.computed.subtotal ?? '' },
+    { Field: 'Tax', Value: v.computed.taxAmount ?? '' },
+    { Field: 'Total', Value: v.computed.statedTotal ?? '' },
+    { Field: 'Line items sum', Value: v.computed.lineSum },
+    { Field: 'Read at', Value: new Date().toISOString().slice(0, 19).replace('T', ' ') + ' UTC' },
+    { Field: '', Value: '' },
+    { Field: 'NOTE', Value: 'Read from a document by Aura. Nothing was recorded in the accounts.' },
+  ];
+  const sumWs = XLSX.utils.json_to_sheet(summary);
+  sumWs['!cols'] = [{ wch: 22 }, { wch: 52 }];
+  XLSX.utils.book_append_sheet(wb, sumWs, 'Summary');
+
+  const lines = Array.isArray(d.lines) ? d.lines : [];
+  if (lines.length > 0) {
+    const ws = XLSX.utils.json_to_sheet(lines.map((l: any) => ({
+      Description: l.description ?? '',
+      Quantity: l.quantity ?? null,
+      UnitPrice: l.unitPrice ?? null,
+      Amount: num(l.amount),
+    })));
+    ws['!cols'] = [{ wch: 46 }, { wch: 10 }, { wch: 14 }, { wch: 16 }];
+    ws['!autofilter'] = { ref: ws['!ref'] };
+    XLSX.utils.book_append_sheet(wb, ws, 'Line items');
+  }
+
+  const txns = Array.isArray(d.transactions) ? d.transactions : [];
+  if (txns.length > 0) {
+    const ws = XLSX.utils.json_to_sheet(txns.map((t: any) => ({
+      Date: normaliseDate(t.date) ?? t.date ?? '',
+      Description: t.description ?? '',
+      MoneyIn: t.moneyIn === null || t.moneyIn === undefined ? null : num(t.moneyIn),
+      MoneyOut: t.moneyOut === null || t.moneyOut === undefined ? null : num(t.moneyOut),
+      Balance: t.balance === null || t.balance === undefined ? null : num(t.balance),
+    })));
+    ws['!cols'] = [{ wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
+    ws['!autofilter'] = { ref: ws['!ref'] };
+    XLSX.utils.book_append_sheet(wb, ws, 'Statement');
+  }
+
+  // The checks travel with the figures. A spreadsheet that hides the fact
+  // that its own numbers did not add up is worse than no spreadsheet.
+  const checks = (v.checks ?? []).map((c: any) => ({ Result: c.level.toUpperCase(), Detail: c.message }));
+  const checkWs = XLSX.utils.json_to_sheet(checks.length > 0 ? checks : [{ Result: 'OK', Detail: 'No checks were run.' }]);
+  checkWs['!cols'] = [{ wch: 10 }, { wch: 90 }];
+  XLSX.utils.book_append_sheet(wb, checkWs, 'Checks');
+
+  return new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }));
+}
+
+// ---------------------------------------------------------------------------
 // HANDLER
 // ---------------------------------------------------------------------------
 
@@ -501,9 +669,43 @@ serve(async (req) => {
       return json({ success: true, stage: 'applied', insertedId: inserted?.id, proposal, validation });
     }
 
+    // --- v2.0: the same reading, presented and exported ---
+    const slides = validation.blocking ? [] : buildSlides(extracted.data, validation, path.split('/').pop() ?? 'document');
+
+    let spreadsheet: { downloadUrl: string; fileName: string } | null = null;
+    if (body.spreadsheet !== false && !validation.blocking) {
+      try {
+        const bytes = buildWorkbook(extracted.data, validation, path.split('/').pop() ?? 'document');
+        const outName = `document_${Date.now()}.xlsx`;
+        const outPath = `${businessId}/documents/${outName}`;
+
+        const { error: upErr } = await sb.storage.from('aura-reports').upload(outPath, bytes, {
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          upsert: true,
+        });
+        if (!upErr) {
+          const { data: signed } = await sb.storage.from('aura-reports').createSignedUrl(outPath, 3600);
+          if (signed) spreadsheet = { downloadUrl: signed.signedUrl, fileName: outName };
+        } else {
+          console.warn('[AURA DOC INTAKE] workbook upload failed:', upErr.message);
+        }
+      } catch (e) {
+        // A failed export must not lose the extraction — the figures on the
+        // card are the point; the spreadsheet is a convenience.
+        console.warn('[AURA DOC INTAKE] workbook build failed:', (e as Error).message);
+      }
+    }
+
     return json({
       success: true,
       stage: 'proposed',
+      slides,
+      boardroom: slides.length > 0 ? {
+        presenter_role: 'Auditor',
+        meeting_title: `${tenant?.name ?? 'Document'} — ${String(extracted.data.documentType ?? 'document').replace(/_/g, ' ')}`,
+        slides,
+      } : null,
+      spreadsheet,
       businessName: tenant?.name ?? 'Business',
       file: { bucket, path, kind: isImage ? 'image' : isPdf ? 'pdf' : 'other' },
       documentType: extracted.data.documentType,

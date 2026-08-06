@@ -7,6 +7,12 @@
  * Runs on the public Jitsi server. Everything below works there today; when
  * you move to your own server, one constant changes and nothing else.
  *
+ * v3.1 — Aura greets each person as they join, by name, aloud and in the
+ * meeting chat. Both, deliberately: the spoken welcome is lost on anyone who
+ * joined muted or cannot hear, and the written line is what tells participants
+ * their typed points reach the minutes — which is the only route their
+ * contributions have until transcription is switched on.
+ *
  * v3.0 — JaaS. Every participant is authenticated with a short-lived JWT
  * signed by aura-meeting-token, and the RSA key never reaches the browser.
  *
@@ -205,6 +211,7 @@ export default function AuraMeetingRoom({
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const meetingTitleRef = useRef(title);
 
   // Guests open the JaaS URL with their own token embedded. Without it JaaS
   // would show them a sign-in wall, and "no account needed" would be a lie.
@@ -214,6 +221,7 @@ export default function AuraMeetingRoom({
   const present = attendees.filter((a) => !a.leftAt);
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { meetingTitleRef.current = title; }, [title]);
 
   /**
    * REMOVED in v2.4: a native listener that stopped pointerdown, mousedown,
@@ -375,9 +383,25 @@ export default function AuraMeetingRoom({
       });
 
       api.addEventListener('participantJoined', (e: any) => {
-        setAttendees((p) => [...p, { id: e.id, name: e.displayName || 'Guest', joinedAt: Date.now() }]);
-        addNote({ at: Date.now(), who: 'Room', text: `${e.displayName || 'A guest'} joined`, kind: 'note' });
-        toast.info(`${e.displayName || 'Someone'} joined`);
+        const who = e.displayName || 'Guest';
+        setAttendees((p) => [...p, { id: e.id, name: who, joinedAt: Date.now() }]);
+        addNote({ at: Date.now(), who: 'Room', text: `${who} joined`, kind: 'note' });
+        toast.info(`${who} joined`);
+
+        // ✅ v3.1: Aura greets people in, by name, and tells them how to get
+        // into the record. Said aloud AND written into the chat, because a
+        // spoken welcome is lost on anyone who joined muted or deaf — and the
+        // written line is what makes participants aware their typed points
+        // reach the minutes at all.
+        try {
+          const greeting = `Welcome ${who}. This is ${meetingTitleRef.current} for ${businessName}. Anything you type in the meeting chat goes into the minutes.`;
+          if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            const u = new SpeechSynthesisUtterance(greeting);
+            u.rate = 1.02;
+            window.speechSynthesis.speak(u);
+          }
+          api.executeCommand('sendChatMessage', greeting);
+        } catch (err) { /* greeting is a courtesy, never a failure path */ }
       });
 
       api.addEventListener('participantLeft', (e: any) => {

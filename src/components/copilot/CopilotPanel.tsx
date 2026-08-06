@@ -30,6 +30,11 @@
  * would act on it. Captions and text are honest accessibility; a signing
  * mannequin would not be.
  *
+ * v12 CHANGE: an uploaded document can be presented or exported. The intake
+ * function returns boardroom slides and an .xlsx built from the SAME validated
+ * extraction the card displays, so all three show one set of figures rather
+ * than three readings of the same page.
+ *
  * v11 CHANGE: the boardroom is no longer rendered here either — same reason
  * as the meeting. Both are full-screen overlays and both are now rendered by
  * CopilotContext, outside the Sheet.
@@ -85,7 +90,7 @@ import {
   FileDown, Compass, X, ShieldCheck,
   Presentation, Paperclip, FileText, AlertTriangle, CheckCircle2,
   Mic, Square, Volume2, VolumeX, Phone, PhoneOff, Settings2, Video,
-  Accessibility, Captions,
+  Accessibility, Captions, Presentation as PresentIcon, Table2,
 } from 'lucide-react';
 
 import ReactMarkdown from 'react-markdown';
@@ -227,7 +232,7 @@ const ReportFileCard = ({ file }: { file: any }): React.ReactNode => {
  * recording. The checks come from the edge function, where every total is
  * recomputed rather than taken from the model.
  */
-const DocumentIntakeCard = ({ item }: { item: DocIntake }): React.ReactNode => {
+const DocumentIntakeCard = ({ item, onPresent }: { item: DocIntake; onPresent?: (payload: any) => void }): React.ReactNode => {
   if (item.status === 'uploading' || item.status === 'reading') {
     return (
       <div className="ml-[46px] my-2 flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -327,6 +332,33 @@ const DocumentIntakeCard = ({ item }: { item: DocIntake }): React.ReactNode => {
       {!proposal.targetTable && proposal.note && (
         <div className="border-t border-slate-100 bg-slate-50 px-3 py-2.5">
           <p className="text-[11px] leading-relaxed text-slate-500">{proposal.note}</p>
+        </div>
+      )}
+
+      {/* ✅ v12: the same reading, three ways to look at it. Both come from
+          the validated extraction, so the presentation and the spreadsheet
+          carry the figures the card shows — not a second reading. */}
+      {(r.boardroom || r.spreadsheet) && (
+        <div className="flex gap-2 border-t border-slate-100 px-3 py-2.5">
+          {r.boardroom && onPresent && (
+            <button
+              type="button"
+              onClick={() => onPresent(r.boardroom)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-1.5 text-[11px] font-medium text-slate-700 transition hover:border-blue-300 hover:bg-blue-50/40"
+            >
+              <PresentIcon className="h-3.5 w-3.5" /> Present
+            </button>
+          )}
+          {r.spreadsheet && (
+            <a
+              href={r.spreadsheet.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-1.5 text-[11px] font-medium text-slate-700 no-underline transition hover:border-emerald-300 hover:bg-emerald-50/40"
+            >
+              <Table2 className="h-3.5 w-3.5" /> Excel
+            </a>
+          )}
         </div>
       )}
     </div>
@@ -468,6 +500,7 @@ export default function CopilotPanel() {
     userId,           // ✅ v4
     tenantData,       // ✅ v8: business and director names for the minutes
     openMeeting,      // ✅ v10: the meeting is rendered by CopilotContext now
+    setBoardroomData, // ✅ v12: put a read document on screen as a briefing
   } = useCopilot();
 
   /**
@@ -1080,7 +1113,11 @@ export default function CopilotPanel() {
             {intakes.length > 0 && (
                 <div className="space-y-1">
                     {intakes.map((item) => (
-                        <DocumentIntakeCard key={item.id} item={item} />
+                        <DocumentIntakeCard
+                          key={item.id}
+                          item={item}
+                          onPresent={(payload) => setBoardroomData?.(payload)}
+                        />
                     ))}
                 </div>
             )}
