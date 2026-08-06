@@ -7,6 +7,21 @@
  * Runs on the public Jitsi server. Everything below works there today; when
  * you move to your own server, one constant changes and nothing else.
  *
+ * v2.2 FIXES — the portal solved one problem and created two.
+ *
+ *   DISMISSAL. Portalling to document.body puts this outside the Radix Sheet's
+ *   DOM subtree, so Radix's dismissable layer treated every click in the
+ *   meeting as a click OUTSIDE the drawer and closed it — taking CopilotPanel,
+ *   and therefore this component, down with it. Its focus trap was separately
+ *   pulling focus back into the drawer, which is why typing did nothing. Both
+ *   listen on `document`, so the root below stops pointer, focus and key
+ *   events from bubbling that far.
+ *
+ *   SCROLLING. `items-center` and `overflow-y-auto` on the same element clips
+ *   content taller than the viewport and refuses to scroll to it — the top of
+ *   the form was simply unreachable. Split into a scrolling parent and a
+ *   centring child with min-h-full.
+ *
  * v2.1 FIXES — both were mine, and both had the same symptom: a meeting that
  * appeared to do nothing.
  *
@@ -58,6 +73,7 @@ import { toast } from 'sonner';
 import {
   X, Copy, Mail, MessageCircle, Users, FileText, Loader2, Video,
   Lock, ShieldCheck, ListChecks, Plus, Trash2, Clock, MicOff, LayoutGrid, Save,
+  Minus, Maximize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
@@ -127,6 +143,7 @@ export default function AuraMeetingRoom({
   const [phase, setPhase] = useState<'setup' | 'connecting' | 'live'>('setup');
   const [loadingApi, setLoadingApi] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [minimised, setMinimised] = useState(false);
   const joinTimeoutRef = useRef<any>(null);
 
   const started = phase !== 'setup';
@@ -393,8 +410,51 @@ IMPORTANT: state near the top that spoken contributions from participants other 
   // transformed element, and a transform makes `fixed` resolve against that
   // ancestor rather than the viewport — which drew the whole meeting inside a
   // 440px drawer.
+  // Minimised: a small bar so the meeting keeps running while the director
+  // works. Disposing the Jitsi instance to "minimise" would drop the call and
+  // everyone in it, so the full view is hidden rather than unmounted.
+  if (minimised) {
+    return createPortal(
+      <div
+        className="fixed bottom-4 right-4 z-[9999] flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 shadow-2xl"
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDownCapture={(e) => e.stopPropagation()}
+        onFocusCapture={(e) => e.stopPropagation()}
+      >
+        <span className={cn('h-2 w-2 shrink-0 rounded-full', live ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400')} />
+        <div className="min-w-0">
+          <p className="truncate text-[12px] font-semibold text-white">{title}</p>
+          <p className="text-[10px] text-slate-400">{live ? `${clock} · ${present.length} present` : 'Connecting...'}</p>
+        </div>
+        <button type="button" onClick={() => setMinimised(false)} title="Back to the meeting"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 hover:bg-white/10">
+          <Maximize2 className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" onClick={() => { endMeeting(); setMinimised(false); onClose(); }} title="Leave"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>,
+      document.body,
+    );
+  }
+
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-slate-950">
+    <div
+      className="fixed inset-0 z-[9999] flex flex-col bg-slate-950"
+      // This panel lives outside the Radix Sheet's DOM subtree. Radix listens
+      // on `document` for pointer-down and focus events to decide when the
+      // drawer has been dismissed and to hold focus inside it. Without these,
+      // every click here closed the drawer — unmounting the chat panel and
+      // this meeting with it — and no input could keep focus long enough to
+      // type into.
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDownCapture={(e) => e.stopPropagation()}
+      onMouseDownCapture={(e) => e.stopPropagation()}
+      onTouchStartCapture={(e) => e.stopPropagation()}
+      onFocusCapture={(e) => e.stopPropagation()}
+      onKeyDownCapture={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
+    >
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 px-3 sm:px-4">
         <Video className="h-4 w-4 shrink-0 text-blue-400" />
         <div className="min-w-0 flex-1">
@@ -438,6 +498,13 @@ IMPORTANT: state near the top that spoken contributions from participants other 
           </>
         )}
 
+        {started && (
+          <button type="button" onClick={() => setMinimised(true)} aria-label="Minimise" title="Minimise — the meeting keeps running"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white">
+            <Minus size={18} />
+          </button>
+        )}
+
         <button type="button" onClick={() => { endMeeting(); onClose(); }} aria-label="Close"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white">
           <X size={18} />
@@ -465,8 +532,9 @@ IMPORTANT: state near the top that spoken contributions from participants other 
           )}
 
           {phase === 'setup' && (
-            <div className="absolute inset-0 z-10 flex h-full items-center justify-center overflow-y-auto bg-slate-950 px-6 py-8">
-              <div className="w-full max-w-md space-y-5">
+            <div className="absolute inset-0 z-10 overflow-y-auto bg-slate-950">
+              <div className="flex min-h-full items-center justify-center px-6 py-10">
+                <div className="w-full max-w-md space-y-5">
                 <AuraStage speaking={speaking} listening={listening} thinking={thinking} size="md" caption="Ready to join" />
 
                 <div className="space-y-3">
@@ -511,6 +579,7 @@ IMPORTANT: state near the top that spoken contributions from participants other 
                     Aura hears only this device. Ask participants to type key points into the meeting chat —
                     those are captured with their names and reach the minutes.
                   </p>
+                  </div>
                 </div>
               </div>
             </div>
