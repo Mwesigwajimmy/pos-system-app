@@ -30,6 +30,13 @@
  * would act on it. Captions and text are honest accessibility; a signing
  * mannequin would not be.
  *
+ * v10 CHANGE: the meeting is no longer rendered here. It lives in
+ * CopilotContext, as a sibling of the Sheet rather than a child of it, because
+ * a Radix dialog locks pointer events, focus and scrolling on everything
+ * outside its own content — which made a full-screen meeting inside it
+ * visible but inert. The camera button calls openMeeting() from the context,
+ * which closes this drawer and opens the room.
+ *
  * v8 CHANGE: meetings. The camera icon opens AuraMeetingRoom — a Jitsi call
  * with attendance, invitations by WhatsApp or email, a written record, and
  * minutes written by Aura at the end. The transcript handed to it is this
@@ -66,7 +73,7 @@
  * conversation instead of disappearing when the stream closes.
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -88,7 +95,6 @@ import { useLocalWhisper } from '@/hooks/useLocalWhisper';
 import { useCopilot } from '@/context/CopilotContext';
 import { AuraAvatar } from './AuraAvatar';
 import AuraBoardroom from './AuraBoardroom';
-import AuraMeetingRoom from './AuraMeetingRoom';
 
 const supabase = createClient();
 
@@ -406,9 +412,6 @@ export default function CopilotPanel() {
   const spokenIdRef = useRef<string | null>(null);
   const lastSpokenRef = useRef('');
 
-  // ✅ v8 meeting room
-  const [meetingOpen, setMeetingOpen] = useState(false);
-
   // ✅ v9 accessibility
   const [captionsOn, setCaptionsOn] = useState(false);
   const [largeText, setLargeText] = useState(false);
@@ -464,6 +467,7 @@ export default function CopilotPanel() {
     businessId,       // ✅ v4: needed to scope the upload path
     userId,           // ✅ v4
     tenantData,       // ✅ v8: business and director names for the minutes
+    openMeeting,      // ✅ v10: the meeting is rendered by CopilotContext now
   } = useCopilot();
 
   /**
@@ -784,18 +788,6 @@ export default function CopilotPanel() {
     }
   }, [isReady]);
 
-  // ✅ v8: this conversation, shaped for the minutes.
-  const meetingTranscript = useMemo(
-    () => (messages || [])
-      .filter((m: any) => m.content)
-      .map((m: any) => ({
-        role: (m.role === 'assistant' ? 'aura' : 'director') as 'aura' | 'director',
-        text: String(m.content),
-        at: Date.now(),
-      })),
-    [messages],
-  );
-
   if (!hasMounted) return null;
 
   const safeInput = (input || '').toString();
@@ -804,20 +796,6 @@ export default function CopilotPanel() {
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden relative font-sans">
-
-      {/* ✅ v8 */}
-      <AuraMeetingRoom
-        open={meetingOpen}
-        onClose={() => setMeetingOpen(false)}
-        businessId={businessId}
-        businessName={tenantData?.business_name || tenantData?.name || 'the business'}
-        directorName={tenantData?.full_name || 'Director'}
-        transcript={meetingTranscript}
-        onRequestMinutes={(prompt) => { setMeetingOpen(false); handleSubmit(prompt); }}
-        speaking={speaking}
-        listening={listening || whisper.listening}
-        thinking={isChatLoading}
-      />
 
       <AnimatePresence mode="wait">
         {boardroomData && (
@@ -857,7 +835,7 @@ export default function CopilotPanel() {
             endCall();
             stopListening();
             stopSpeaking();
-            setMeetingOpen(true);
+            openMeeting?.();
           }}
           disabled={!isReady}
           aria-label="Start a meeting"

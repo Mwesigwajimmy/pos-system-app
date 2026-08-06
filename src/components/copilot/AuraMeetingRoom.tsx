@@ -7,6 +7,12 @@
  * Runs on the public Jitsi server. Everything below works there today; when
  * you move to your own server, one constant changes and nothing else.
  *
+ * v2.4 — the meeting is opened by CopilotContext, which closes the Sheet
+ * first. Every workaround below was an attempt to survive inside an open
+ * Radix dialog; none of them could, because react-remove-scroll blocks the
+ * wheel in the capture phase on document, before anything here can run. The
+ * pointer-events-auto class stays as a safety net for any future caller.
+ *
  * v2.3 FIX — the real reason the meeting looked frozen.
  *
  *   POINTER EVENTS. Radix's Dialog (which Sheet is built on) sets
@@ -183,22 +189,19 @@ export default function AuraMeetingRoom({
   useEffect(() => { setMounted(true); }, []);
 
   /**
-   * Stops the Radix Sheet dismissing itself when the director clicks in here.
+   * REMOVED in v2.4: a native listener that stopped pointerdown, mousedown,
+   * touchstart, click and focusin from reaching document.
    *
-   * Radix listens on `document` for pointerdown and focusin. These listeners
-   * sit on this panel's own root in the bubble phase, so the event is halted
-   * before it ever reaches document. They are native listeners on purpose:
-   * React synthetic events do not reliably reach a portal rendered outside the
-   * React root container, but the native event bubbles regardless.
+   * It was meant to keep the Radix Sheet from dismissing itself. What it
+   * actually did was break the panel: React 18 dispatches every event from a
+   * single listener at the root container, so stopping click and mousedown
+   * before they got there meant onClick and onChange never fired at all.
+   * Buttons did nothing, inputs would not accept text, and the cursor still
+   * changed shape because that is pure CSS with nothing behind it.
+   *
+   * The Sheet is now closed before this opens (see CopilotContext v29.4), so
+   * there is nothing to guard against.
    */
-  useEffect(() => {
-    const node = rootRef.current;
-    if (!node || !open) return;
-    const stop = (e: Event) => e.stopPropagation();
-    const events = ['pointerdown', 'mousedown', 'touchstart', 'focusin', 'click'];
-    events.forEach((n) => node.addEventListener(n, stop));
-    return () => events.forEach((n) => node.removeEventListener(n, stop));
-  }, [open, minimised]);
 
   useEffect(() => {
     if (!started || !startedAt) return;

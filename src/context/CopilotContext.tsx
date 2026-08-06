@@ -18,6 +18,23 @@
  * these were undefined here, which meant the guard's boardroom overlay
  * could never render and its onClose would throw if ever wired up.
  *
+ * v29.4: The meeting room moved OUT of CopilotPanel and up to here, rendered
+ * as a sibling of the Sheet rather than a child of it.
+ *
+ * Radix's Sheet is a Dialog. While open it sets pointer-events:none on body,
+ * traps focus, watches document for pointerdown to decide it has been
+ * dismissed, and installs react-remove-scroll — which blocks wheel events in
+ * the CAPTURE phase on document, before anything downstream can intervene.
+ * A full-screen meeting portalled to body inherited every one of those: dead
+ * to clicks, dead to the wheel, and closing the drawer whenever it was
+ * touched. Each workaround broke something else — the last one stopped click
+ * and mousedown reaching React's root listener, so onClick and onChange
+ * stopped firing altogether.
+ *
+ * Opening the meeting now CLOSES the drawer, and because the meeting is no
+ * longer inside it, closing the drawer no longer unmounts the meeting. No
+ * scroll lock, no focus trap, no pointer-events lock, nothing to fight.
+ *
  * v29.3: Generated reports now reach the UI. aura-quantum-audit v31.0 emits a
  * `data-reportFile` part carrying the signed download URL and the file's key
  * figures. Two things had to change for it to be usable:
@@ -42,6 +59,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 // CORE UI COMPONENT
 import CopilotPanel from '@/components/copilot/CopilotPanel';
+import AuraMeetingRoom from '@/components/copilot/AuraMeetingRoom';
 
 // ✅ THE MASTER IDENTITY HOOKS
 import { useBusiness } from '@/context/BusinessContext';
@@ -93,6 +111,14 @@ function NeuralSanctuary({
   // consuming component (CopilotPanel, MissionControlPage separately).
   const [boardroomData, setBoardroomData] = useState<BoardroomData | null>(null);
   const closeBoardroom = useCallback(() => setBoardroomData(null), []);
+
+  // ✅ v29.4: the meeting lives here, beside the Sheet rather than inside it.
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const openMeeting = useCallback(() => {
+    setIsOpen(false);          // the drawer's locks are the whole problem
+    setMeetingOpen(true);
+  }, [setIsOpen]);
+  const closeMeeting = useCallback(() => setMeetingOpen(false), []);
 
   const sessionTokenRef = useRef(sessionToken);
   const businessIdRef = useRef(businessId);
@@ -164,6 +190,18 @@ function NeuralSanctuary({
     // stays attached to its own message and survives after the stream closes.
     reportFile: (m.parts || []).find((p: any) => p.type === 'data-reportFile')?.data,
   })), [rawMessages]);
+
+  // ✅ v29.4: this conversation, shaped for the meeting minutes.
+  const meetingTranscript = useMemo(
+    () => messages
+      .filter((m) => m.content)
+      .map((m) => ({
+        role: (m.role === 'assistant' ? 'aura' : 'director') as 'aura' | 'director',
+        text: m.content,
+        at: Date.now(),
+      })),
+    [messages],
+  );
 
   // ✅ v29.2: `data-agentStep` parts with action === 'prepare_boardroom_presentation'
   // now feed the shared boardroom state directly here, so ANY page using
@@ -280,10 +318,15 @@ function NeuralSanctuary({
     boardroomData,
     setBoardroomData,
     closeBoardroom,
+    // ✅ v29.4
+    meetingOpen,
+    openMeeting,
+    closeMeeting,
   }), [
     messages, isLoading, data, inputValue, isOpen, businessId, userId,
     tenantId, organizationId, tenantData, handleSubmit, handleInputChange,
-    startAIAssistance, setIsOpen, setMessages, boardroomData, closeBoardroom
+    startAIAssistance, setIsOpen, setMessages, boardroomData, closeBoardroom,
+    meetingOpen, openMeeting, closeMeeting
   ]);
 
   return (
@@ -297,6 +340,24 @@ function NeuralSanctuary({
            <CopilotPanel />
         </SheetContent>
       </Sheet>
+
+      {/* ✅ v29.4: outside the Sheet on purpose. Inside it, the dialog's
+          pointer-events lock, focus trap and scroll lock made the meeting
+          visible but completely inert. */}
+      <AuraMeetingRoom
+        open={meetingOpen}
+        onClose={closeMeeting}
+        businessId={businessId}
+        businessName={tenantData?.business_name || tenantData?.name || 'the business'}
+        directorName={tenantData?.full_name || 'Director'}
+        transcript={meetingTranscript}
+        onRequestMinutes={(prompt: string) => {
+          setMeetingOpen(false);
+          setIsOpen(true);       // bring the chat back to receive the minutes
+          handleSubmit(prompt);
+        }}
+        thinking={isLoading}
+      />
     </CopilotContext.Provider>
   );
 }
@@ -373,6 +434,10 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
           boardroomData: null,
           setBoardroomData: () => {},
           closeBoardroom: () => {},
+          // ✅ v29.4: shape stays consistent before the handshake completes.
+          meetingOpen: false,
+          openMeeting: () => {},
+          closeMeeting: () => {},
       }}>
         {children}
       </CopilotContext.Provider>
