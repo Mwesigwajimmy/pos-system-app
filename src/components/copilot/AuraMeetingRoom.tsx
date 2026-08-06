@@ -7,6 +7,28 @@
  * Runs on the public Jitsi server. Everything below works there today; when
  * you move to your own server, one constant changes and nothing else.
  *
+ * v3.3 — the avatar's mouth now moves with the actual words. AuraStage has
+ * always accepted a `word` prop fed by useSpeechBoundary, and nothing had ever
+ * supplied it, so it fell back to a fixed 165ms chew regardless of what she was
+ * saying. Every utterance in this file is now tracked, which is the difference
+ * between speech and a screensaver.
+ *
+ * v3.2 — Aura is IN the meeting rather than beside it.
+ *
+ * Until now she was decoration here: the room received a `thinking` flag and
+ * nothing else, so the avatar drew a state it was never given and there was no
+ * way to say anything to her. She sat there saying "Ready" while the director
+ * talked to a picture.
+ *
+ * Now there is an Aura rail — ask her a question without leaving the call, and
+ * her answer is spoken aloud AND pinned into the meeting record, so anything
+ * she contributes reaches the minutes like any other remark. She also opens
+ * the meeting with a spoken welcome once the room goes live.
+ *
+ * Her voice goes out through the speakers, so an unmuted microphone will carry
+ * it to the other participants. That is usually what you want in a meeting —
+ * they should hear her too — but it is worth knowing rather than discovering.
+ *
  * v3.1 — Aura greets each person as they join, by name, aloud and in the
  * meeting chat. Both, deliberately: the spoken welcome is lost on anyone who
  * joined muted or cannot hear, and the written line is what tells participants
@@ -115,11 +137,11 @@ import { toast } from 'sonner';
 import {
   X, Copy, Mail, MessageCircle, Users, FileText, Loader2, Video,
   Lock, ShieldCheck, ListChecks, Plus, Trash2, Clock, MicOff, LayoutGrid, Save,
-  Minus, Maximize2,
+  Minus, Maximize2, Send, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import { AuraStage } from '@/components/copilot/AuraStage';
+import { AuraStage, useSpeechBoundary } from '@/components/copilot/AuraStage';
 
 // --- WHERE THE MEETING RUNS ---
 // JaaS is the supported way to embed. meet.jit.si withdrew embedding: calls
@@ -173,6 +195,10 @@ export interface AuraMeetingRoomProps {
   transcript?: { role: 'director' | 'aura'; text: string; at: number }[];
   /** Sends a prompt into the Aura chat. */
   onRequestMinutes?: (prompt: string) => void;
+  /** ✅ v3.2: the live conversation, so Aura can be spoken to in the meeting. */
+  messages?: { id: string; role: string; content: string }[];
+  /** Sends a question to Aura without leaving the room. */
+  onAsk?: (text: string) => void;
   speaking?: boolean;
   listening?: boolean;
   thinking?: boolean;
@@ -181,7 +207,8 @@ export interface AuraMeetingRoomProps {
 export default function AuraMeetingRoom({
   open, onClose, businessId, businessName = 'the business', directorName = 'Director',
   transcript = [], onRequestMinutes,
-  speaking = false, listening = false, thinking = false,
+  messages = [], onAsk,
+  speaking: speakingProp = false, listening = false, thinking = false,
 }: AuraMeetingRoomProps) {
   const [title, setTitle] = useState('Management meeting');
   const [agenda, setAgenda] = useState('');
@@ -205,7 +232,17 @@ export default function AuraMeetingRoom({
   const [noteDraft, setNoteDraft] = useState('');
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const [rail, setRail] = useState<'people' | 'notes' | null>('people');
+  const [rail, setRail] = useState<'people' | 'notes' | 'aura' | null>('people');
+  const [auraInput, setAuraInput] = useState('');
+  const [auraSpeaking, setAuraSpeaking] = useState(false);
+  const spokenIdRef = useRef<string | null>(null);
+  const greetedRef = useRef(false);
+
+  // ✅ v3.3: drives the mouth from `onboundary`, the one real signal
+  // SpeechSynthesis emits — it fires as each word begins. Without this the
+  // avatar chews at a fixed 165ms whatever she is saying, which reads as a
+  // screensaver rather than speech.
+  const { word: spokenWord, attach: trackSpeech } = useSpeechBoundary();
   const [saving, setSaving] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -222,6 +259,74 @@ export default function AuraMeetingRoom({
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { meetingTitleRef.current = title; }, [title]);
+
+  /**
+   * Speaks Aura's replies in the room, and pins them into the record.
+   *
+   * Waits for `thinking` to clear first: speaking mid-stream would stutter
+   * through half-formed sentences as tokens arrive. Anything she says here is
+   * also written into the notes, because a spoken answer that never reaches
+   * the minutes may as well not have been given.
+   */
+  useEffect(() => {
+    if (!open || thinking) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant' || !last.content) return;
+    if (spokenIdRef.current === last.id) return;
+    spokenIdRef.current = last.id;
+
+    addNote({ at: Date.now(), who: 'Aura', text: last.content.slice(0, 600), kind: 'note' });
+
+    try {
+      const clean = last.content
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/https?:\/\/\S+/g, ' a link ')
+        .replace(/[*_#>`|]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 900);
+      if (!clean || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(clean);
+      u.rate = 1.02;
+      trackSpeech(u);
+      u.onstart = () => setAuraSpeaking(true);
+      u.onend = () => setAuraSpeaking(false);
+      u.onerror = () => setAuraSpeaking(false);
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      setAuraSpeaking(false);
+    }
+  }, [messages, thinking, open, addNote]);
+
+  /** One spoken welcome when the room goes live — not on every re-render. */
+  useEffect(() => {
+    if (phase !== 'live' || greetedRef.current) return;
+    greetedRef.current = true;
+    try {
+      const opening = `Good day. ${title} is now open for ${businessName}. I am listening, and anything typed in the chat goes into the minutes. Ask me for figures at any point.`;
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(opening);
+        u.rate = 1.02;
+        trackSpeech(u);
+        u.onstart = () => setAuraSpeaking(true);
+        u.onend = () => setAuraSpeaking(false);
+        window.speechSynthesis.speak(u);
+      }
+      addNote({ at: Date.now(), who: 'Aura', text: 'Meeting opened.', kind: 'note' });
+    } catch (e) { /* a greeting is a courtesy, never a failure path */ }
+  }, [phase, title, businessName, addNote]);
+
+  const askAura = () => {
+    const q = auraInput.trim();
+    if (!q || !onAsk) return;
+    addNote({ at: Date.now(), who: directorName, text: q, kind: 'note' });
+    onAsk(q);
+    setAuraInput('');
+    setRail('aura');
+  };
 
   /**
    * REMOVED in v2.4: a native listener that stopped pointerdown, mousedown,
@@ -398,6 +503,9 @@ export default function AuraMeetingRoom({
           if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
             const u = new SpeechSynthesisUtterance(greeting);
             u.rate = 1.02;
+            trackSpeech(u);
+            u.onstart = () => setAuraSpeaking(true);
+            u.onend = () => setAuraSpeaking(false);
             window.speechSynthesis.speak(u);
           }
           api.executeCommand('sendChatMessage', greeting);
@@ -616,6 +724,11 @@ IMPORTANT: state near the top that spoken contributions from participants other 
                 rail === 'notes' ? 'border-blue-400/50 bg-blue-500/15 text-blue-200' : 'border-white/15 text-slate-200 hover:bg-white/10')}>
               <ListChecks className="h-3.5 w-3.5" /> {notes.length}
             </button>
+            <button type="button" onClick={() => setRail(rail === 'aura' ? null : 'aura')}
+              className={cn('flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium',
+                rail === 'aura' ? 'border-blue-400/50 bg-blue-500/15 text-blue-200' : 'border-white/15 text-slate-200 hover:bg-white/10')}>
+              <Sparkles className="h-3.5 w-3.5" /> Ask Aura
+            </button>
             <button type="button" onClick={requestMinutes}
               className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700">
               <FileText className="h-3.5 w-3.5" /> Minutes
@@ -661,7 +774,7 @@ IMPORTANT: state near the top that spoken contributions from participants other 
 
           {started && (
             <div className="pointer-events-none absolute bottom-4 left-4 rounded-2xl border border-white/10 bg-slate-900/80 p-3 backdrop-blur">
-              <AuraStage speaking={speaking} listening={listening} thinking={thinking} size="sm" />
+              <AuraStage speaking={auraSpeaking || speakingProp} word={spokenWord} listening={listening} thinking={thinking} size="sm" />
             </div>
           )}
 
@@ -669,7 +782,7 @@ IMPORTANT: state near the top that spoken contributions from participants other 
             <div className="absolute inset-0 z-10 overflow-y-auto bg-slate-950">
               <div className="flex min-h-full items-center justify-center px-6 py-10">
                 <div className="w-full max-w-md space-y-5">
-                <AuraStage speaking={speaking} listening={listening} thinking={thinking} size="md" caption="Ready to join" />
+                <AuraStage speaking={auraSpeaking || speakingProp} word={spokenWord} listening={listening} thinking={thinking} size="md" caption="Ready to join" />
 
                 <div className="space-y-3">
                   <div>
@@ -770,6 +883,71 @@ IMPORTANT: state near the top that spoken contributions from participants other 
                 )}
                 <p className="mt-3 break-all text-[10px] text-slate-500">{meetingUrl}</p>
               </div>
+            )}
+
+            {rail === 'aura' && (
+              <>
+                <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                  <div className="flex items-center gap-2">
+                    <AuraStage speaking={auraSpeaking} word={spokenWord} thinking={thinking} size="sm" caption="" />
+                  </div>
+
+                  {messages.length === 0 && (
+                    <p className="text-[12px] leading-relaxed text-slate-500">
+                      Ask her anything about the business while the meeting runs — figures, overdue accounts,
+                      stock. Her answers are spoken aloud and written into the record.
+                    </p>
+                  )}
+
+                  {messages.slice(-8).map((m) => (
+                    <div key={m.id} className={cn('rounded-lg px-2.5 py-2',
+                      m.role === 'assistant' ? 'border border-white/10 bg-white/5' : 'bg-blue-500/10')}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        {m.role === 'assistant' ? 'Aura' : directorName}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-200">
+                        {m.content.slice(0, 700)}
+                      </p>
+                    </div>
+                  ))}
+
+                  {thinking && (
+                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Working it out...
+                    </div>
+                  )}
+                </div>
+
+                <div className="shrink-0 border-t border-white/10 p-3">
+                  <div className="flex items-end gap-2">
+                    <textarea
+                      value={auraInput}
+                      onChange={(e) => setAuraInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        // Enter sends; Shift+Enter is a new line. In a meeting
+                        // the common case is a short question, not a paragraph.
+                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askAura(); }
+                      }}
+                      rows={2}
+                      placeholder="Ask Aura..."
+                      className="flex-1 resize-none rounded-lg border border-white/15 bg-white/5 px-2.5 py-2 text-[12px] text-white placeholder:text-slate-600 outline-none focus:border-blue-400"
+                    />
+                    <button type="button" onClick={askAura} disabled={!auraInput.trim() || thinking}
+                      aria-label="Ask Aura"
+                      className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition',
+                        auraInput.trim() && !thinking ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white/10 text-slate-500')}>
+                      {thinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {auraSpeaking && (
+                    <button type="button"
+                      onClick={() => { try { window.speechSynthesis.cancel(); } catch (e) { /* stopped */ } setAuraSpeaking(false); }}
+                      className="mt-2 w-full rounded-lg border border-white/15 py-1.5 text-[11px] font-medium text-slate-300 hover:bg-white/5">
+                      Stop speaking
+                    </button>
+                  )}
+                </div>
+              </>
             )}
 
             {rail === 'notes' && (

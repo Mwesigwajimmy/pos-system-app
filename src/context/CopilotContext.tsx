@@ -378,6 +378,8 @@ function NeuralSanctuary({
           setIsOpen(true);       // bring the chat back to receive the minutes
           handleSubmit(prompt);
         }}
+        messages={messages}
+        onAsk={(text: string) => handleSubmit(text)}
         thinking={isLoading}
       />
     </CopilotContext.Provider>
