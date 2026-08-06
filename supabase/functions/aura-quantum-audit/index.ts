@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
 
 /**
  * --- BBU1 AURA QUANTUM EDGE MOTHERBOARD ---
- * VERSION: v35.0 OMEGA-ULTIMATUM (RELIABILITY GATE + HUMAN REGISTER)
+ * VERSION: v36.0 OMEGA-ULTIMATUM (LIVE BOARDROOM PRESENTATIONS)
  *
  * Wire format verified against installed ai@6.0.190 source
  * (uiMessageChunkSchema, process-ui-message-stream, JsonToSseTransformStream).
@@ -91,6 +91,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
  * tenant's real figures, and that a caveat is required when those figures are
  * known to be unreliable.
  *
+ * v36.0: The boardroom is alive. AuraBoardroom.tsx has existed since July and
+ * has never once been shown, because nothing in the system emitted
+ * prepare_boardroom_presentation — CopilotContext was listening for a message
+ * that was never sent. Slides are now built HERE, in code, from figures
+ * already computed from the tenant's own rows, so the numbers on screen are
+ * the same ones the reports use. The model narrates; it does not author.
+ *
+ * The component speaks each slide aloud as it appears, which is why directive
+ * 10 tells Aura to say only that the briefing is up rather than reciting
+ * figures the director is already hearing.
+ *
  * v35.0: Directives 11 and 12 — reading the person, and writing for people who
  * hear or read your replies rather than see them.
  *
@@ -174,12 +185,15 @@ const ROUTE_MAP: Record<string, { path: string | null; label: string; match: Reg
   dashboard:       { path: null, label: 'Dashboard',       match: /\b(dashboard|home|overview|mission control)\b/ },
 };
 
-// Boardroom slides stay OFF until the slide schema is confirmed. AuraBoardroom
-// takes `slides: any[]`, and I have not seen that component — emitting a shape
-// it does not understand renders an empty or broken presentation over the
-// director's screen. Send me AuraBoardroom.tsx and this becomes a one-line
-// change.
-const BOARDROOM = { enabled: false };
+// Boardroom slides are ON. The schema below is taken from AuraBoardroom.tsx,
+// not guessed:
+//   visual_type: 'pie_chart' | 'bar_chart' | 'area_chart' | 'stats_grid'
+//                | 'ledger_comparison'
+//   data_payload: [{ name, value, trend? }]  — value is a string for
+//                 stats_grid and a number for every chart type
+// The component speaks each slide's `content` aloud as it appears, so the
+// presentation narrates itself.
+const BOARDROOM = { enabled: true, maxSlides: 6 };
 
 // Drafted actions are proposed, never performed. Aura writes the message and
 // the director approves it. For a system whose figures do not yet reconcile,
@@ -455,6 +469,14 @@ function resolveChaseIntent(rawQuery: string): boolean {
   const q = (rawQuery || '').toLowerCase();
   return /\b(chase|remind|follow up|follow-up|send a reminder|nudge|write to|draft (a )?(message|email|reminder))\b/.test(q)
       && /\b(customer|customers|client|clients|debtor|debtors|overdue|unpaid|owes|owing|late)\b/.test(q);
+}
+
+/** A request to be PRESENTED to, rather than answered. */
+function resolveBoardroomIntent(rawQuery: string): boolean {
+  if (!BOARDROOM.enabled) return false;
+  const q = (rawQuery || '').toLowerCase();
+  return /\b(board ?room|present|presentation|brief me|briefing|slides?|walk me through|show me on screen|take the board through|pitch)\b/.test(q)
+      && !/\b(pdf|excel|xlsx|csv|download|export|file)\b/.test(q);   // that is a report request
 }
 
 function needsLiveIntel(rawQuery: string): boolean {
@@ -812,6 +834,102 @@ RULE: Every figure above is real data pulled from this business's own tables, or
     // Built after the data pack so a drafted message can quote real balances.
     const actionFrames: any[] = [];
     let actionBlock = '';
+
+    // --- BOARDROOM SLIDES (v36.0) ---
+    // Every figure below is one already computed above from the tenant's own
+    // rows. The model writes none of it — it only narrates what the component
+    // displays, which is why the numbers on screen can be trusted.
+    if (resolveBoardroomIntent(lastQuery)) {
+      const money = (v: number) => `${t.currency || ''} ${Math.round(v).toLocaleString('en-US')}`;
+      const slides: any[] = [];
+
+      if (pnlHasData) {
+        slides.push({
+          title: 'Where the business stands',
+          content: `Revenue of ${money(totalRevenue)} against operating expenses of ${money(totalOpEx)}, leaving a ${netProfit >= 0 ? 'profit' : 'loss'} of ${money(Math.abs(netProfit))}.`,
+          visual_type: 'stats_grid',
+          data_payload: [
+            { name: 'Revenue', value: money(totalRevenue) },
+            { name: 'Gross Profit', value: money(grossProfit) },
+            { name: 'Operating Expenses', value: money(totalOpEx) },
+            { name: netProfit >= 0 ? 'Net Profit' : 'Net Loss', value: money(Math.abs(netProfit)) },
+          ],
+        });
+      }
+
+      if (reliabilityFlags.length > 0) {
+        slides.push({
+          title: 'Read these figures with care',
+          content: `Before we go further: ${reliabilityFlags.length} arithmetic check${reliabilityFlags.length > 1 ? 's have' : ' has'} failed on this data. Treat anything resting on it as provisional until the books are corrected.`,
+          visual_type: 'stats_grid',
+          data_payload: reliabilityFlags.slice(0, 4).map((f, i) => ({
+            name: `Check ${i + 1}`,
+            value: f.split('.')[0].slice(0, 60),
+          })),
+        });
+      }
+
+      if (topOpexAccounts.length > 0) {
+        slides.push({
+          title: 'Where the money goes',
+          content: `The largest cost line is ${topOpexAccounts[0].account}, at ${topOpexAccounts[0].share_of_opex} of all operating expenses. Cost reduction has the most leverage here.`,
+          visual_type: 'pie_chart',
+          data_payload: topOpexAccounts.slice(0, 6).map((a) => ({ name: a.account.slice(0, 24), value: Math.round(a.amount) })),
+        });
+      }
+
+      if (receivables.length > 0 || payables.length > 0) {
+        slides.push({
+          title: 'Money owed, both ways',
+          content: `${money(totalReceivable)} is owed to the business and ${money(totalPayable)} is owed out, a net position of ${money(totalReceivable - totalPayable)}.`,
+          visual_type: 'bar_chart',
+          data_payload: [
+            { name: 'Owed to us', value: Math.round(totalReceivable) },
+            { name: 'We owe', value: Math.round(totalPayable) },
+            { name: 'Net', value: Math.round(totalReceivable - totalPayable) },
+          ],
+        });
+      }
+
+      if (inventoryList.length > 0) {
+        slides.push({
+          title: 'Stock on the floor',
+          content: `${inventoryList.length} active lines carrying ${money(totalInventoryValue)}. ${lowStockItems.length} ${lowStockItems.length === 1 ? 'item is' : 'items are'} at five units or fewer.`,
+          visual_type: 'bar_chart',
+          data_payload: inventoryList.slice(0, 6).map((i: any) => ({
+            name: String(i.product_name ?? i.sku ?? 'Item').slice(0, 20),
+            value: Number(i.stock_quantity) || 0,
+          })),
+        });
+      }
+
+      if (overdueInvoices.length > 0) {
+        slides.push({
+          title: 'What needs chasing',
+          content: `${overdueInvoices.length} invoice${overdueInvoices.length > 1 ? 's are' : ' is'} overdue. These are the largest balances outstanding.`,
+          visual_type: 'bar_chart',
+          data_payload: overdueInvoices.slice(0, 6).map((inv: any) => ({
+            name: String(inv.invoice_number ?? 'Invoice').slice(0, 18),
+            value: Number(inv.balance_due) || 0,
+          })),
+        });
+      }
+
+      if (slides.length > 0) {
+        actionFrames.push(actionFrame('prepare_boardroom_presentation', {
+          presenter_role: 'CFO',
+          meeting_title: `${verifiedName} — Executive Briefing`,
+          slides: slides.slice(0, BOARDROOM.maxSlides),
+        }));
+
+        actionBlock += `
+--- BOARDROOM PRESENTATION OPENED ---
+A ${Math.min(slides.length, BOARDROOM.maxSlides)}-slide briefing is now on the director's screen, and it reads each slide aloud by itself as they advance.
+Say in ONE short line that the briefing is up. Do not repeat the figures — they are
+on screen and being spoken. Do not describe the slides.
+--- END BOARDROOM PRESENTATION OPENED ---`;
+      }
+    }
 
     const navIntent = resolveNavIntent(lastQuery);
     if (navIntent) {
@@ -1199,7 +1317,7 @@ right now, giving the reason in simple terms — do not invent a download link.
             await supabaseAdmin.from('aura_forensic_audit').update({
                 forensic_output: {
                     response: fullResponse,
-                    node_version: 'v35.0_REGISTER',
+                    node_version: 'v36.0_BOARDROOM',
                     report: reportDownload
                         ? { type: reportDownload.reportType, format: reportDownload.format, file: reportDownload.fileName, rows: reportDownload.rowCount }
                         : (reportError ? { error: reportError } : null)

@@ -30,6 +30,10 @@
  * would act on it. Captions and text are honest accessibility; a signing
  * mannequin would not be.
  *
+ * v11 CHANGE: the boardroom is no longer rendered here either — same reason
+ * as the meeting. Both are full-screen overlays and both are now rendered by
+ * CopilotContext, outside the Sheet.
+ *
  * v10 CHANGE: the meeting is no longer rendered here. It lives in
  * CopilotContext, as a sibling of the Sheet rather than a child of it, because
  * a Radix dialog locks pointer events, focus and scrolling on everything
@@ -84,7 +88,6 @@ import {
   Accessibility, Captions,
 } from 'lucide-react';
 
-import { AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -94,7 +97,6 @@ import { createClient } from '@/lib/supabase/client';
 import { useLocalWhisper } from '@/hooks/useLocalWhisper';
 import { useCopilot } from '@/context/CopilotContext';
 import { AuraAvatar } from './AuraAvatar';
-import AuraBoardroom from './AuraBoardroom';
 
 const supabase = createClient();
 
@@ -462,8 +464,6 @@ export default function CopilotPanel() {
     data: streamData = [],
     isReady = false,
     closeCopilot,
-    boardroomData,    // ✅ from CopilotContext, not local useState
-    closeBoardroom,   // ✅ from CopilotContext
     businessId,       // ✅ v4: needed to scope the upload path
     userId,           // ✅ v4
     tenantData,       // ✅ v8: business and director names for the minutes
@@ -796,17 +796,6 @@ export default function CopilotPanel() {
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden relative font-sans">
-
-      <AnimatePresence mode="wait">
-        {boardroomData && (
-          <AuraBoardroom
-            presenter={boardroomData.presenter_role}
-            title={boardroomData.meeting_title}
-            slides={boardroomData.slides}
-            onClose={closeBoardroom}
-          />
-        )}
-      </AnimatePresence>
 
       {/* HEADER */}
       <header className="h-14 px-3 sm:px-4 border-b border-slate-100 bg-white flex items-center gap-2.5 shrink-0">

@@ -18,6 +18,11 @@
  * these were undefined here, which meant the guard's boardroom overlay
  * could never render and its onClose would throw if ever wired up.
  *
+ * v29.5: AuraBoardroom moved here too, and for the same reason — it is
+ * fixed inset-0, and inside the Sheet it would be trapped by the drawer's
+ * transform and pointer-events lock exactly as the meeting was. A briefing
+ * arriving now also closes the drawer.
+ *
  * v29.4: The meeting room moved OUT of CopilotPanel and up to here, rendered
  * as a sibling of the Sheet rather than a child of it.
  *
@@ -60,6 +65,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 // CORE UI COMPONENT
 import CopilotPanel from '@/components/copilot/CopilotPanel';
 import AuraMeetingRoom from '@/components/copilot/AuraMeetingRoom';
+import AuraBoardroom from '@/components/copilot/AuraBoardroom';
 
 // ✅ THE MASTER IDENTITY HOOKS
 import { useBusiness } from '@/context/BusinessContext';
@@ -215,6 +221,10 @@ function NeuralSanctuary({
             const output = typeof part.data.output === 'string' ? JSON.parse(part.data.output) : part.data.output;
             if (output?.action === 'prepare_boardroom_presentation' && output.payload) {
               setBoardroomData(output.payload);
+              // The boardroom is fixed inset-0. Inside the Sheet it would be
+              // trapped by the same transform, pointer-events and scroll locks
+              // that made the meeting inert, so the drawer steps aside.
+              setIsOpen(false);
             }
           } catch (e) { /* not a boardroom payload, ignore */ }
         }
@@ -344,6 +354,18 @@ function NeuralSanctuary({
       {/* ✅ v29.4: outside the Sheet on purpose. Inside it, the dialog's
           pointer-events lock, focus trap and scroll lock made the meeting
           visible but completely inert. */}
+      {/* ✅ v29.5: rendered here, outside the Sheet, for the same reason as
+          the meeting — and because it had never been shown at all until the
+          edge function started emitting prepare_boardroom_presentation. */}
+      {boardroomData && (
+        <AuraBoardroom
+          presenter={boardroomData.presenter_role as any}
+          title={boardroomData.meeting_title}
+          slides={boardroomData.slides}
+          onClose={closeBoardroom}
+        />
+      )}
+
       <AuraMeetingRoom
         open={meetingOpen}
         onClose={closeMeeting}

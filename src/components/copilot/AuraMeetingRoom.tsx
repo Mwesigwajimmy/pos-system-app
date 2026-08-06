@@ -7,6 +7,19 @@
  * Runs on the public Jitsi server. Everything below works there today; when
  * you move to your own server, one constant changes and nothing else.
  *
+ * v3.0 — JaaS. Every participant is authenticated with a short-lived JWT
+ * signed by aura-meeting-token, and the RSA key never reaches the browser.
+ *
+ * Guests need no account. JaaS requires a token from everyone, so an invitee
+ * without one would hit a sign-in wall — the invite link therefore carries a
+ * guest token in ?jwt=, scoped to this one room and valid for twelve hours.
+ * That is what makes "just click the link" true.
+ *
+ * If JaaS is not configured the room falls back to the public server so the
+ * feature still works for a five-minute demo, and a banner says plainly that
+ * the call will be cut short. Silently degrading would be worse: the director
+ * would blame the product when the call dropped.
+ *
  * v2.4 — the meeting is opened by CopilotContext, which closes the Sheet
  * first. Every workaround below was an attempt to survive inside an open
  * Radix dialog; none of them could, because react-remove-scroll blocks the
@@ -102,8 +115,16 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { AuraStage } from '@/components/copilot/AuraStage';
 
-// Public server for now. Point this at your own domain when you have one.
-const JITSI_DOMAIN = 'meet.jit.si';
+// --- WHERE THE MEETING RUNS ---
+// JaaS is the supported way to embed. meet.jit.si withdrew embedding: calls
+// placed through it end after five minutes and force the host to sign in.
+// The fallback is kept only so the feature still demonstrates before JaaS is
+// configured — it is not a production path, and the banner says so.
+const JAAS_DOMAIN = '8x8.vc';
+const FALLBACK_DOMAIN = 'meet.jit.si';
+
+const TOKEN_ENDPOINT =
+  'https://oezlqscjymzoeizysljp.supabase.co/functions/v1/aura-meeting-token';
 
 const supabase = createClient();
 
@@ -167,6 +188,8 @@ export default function AuraMeetingRoom({
   const [loadingApi, setLoadingApi] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [minimised, setMinimised] = useState(false);
+  const [jaas, setJaas] = useState<{ appId: string; guestUrl: string } | null>(null);
+  const [usingFallback, setUsingFallback] = useState(false);
   const joinTimeoutRef = useRef<any>(null);
 
   const started = phase !== 'setup';
@@ -183,7 +206,11 @@ export default function AuraMeetingRoom({
   const apiRef = useRef<any>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const meetingUrl = room ? `https://${JITSI_DOMAIN}/${room}` : '';
+  // Guests open the JaaS URL with their own token embedded. Without it JaaS
+  // would show them a sign-in wall, and "no account needed" would be a lie.
+  const meetingUrl = jaas?.guestUrl
+    ? jaas.guestUrl
+    : room ? `https://${FALLBACK_DOMAIN}/${room}` : '';
   const present = attendees.filter((a) => !a.leftAt);
 
   useEffect(() => { setMounted(true); }, []);
@@ -216,21 +243,22 @@ export default function AuraMeetingRoom({
 
   const addNote = useCallback((entry: NoteEntry) => setNotes((p) => [...p, entry]), []);
 
-  const loadJitsi = useCallback((): Promise<any> => new Promise((resolve, reject) => {
+  /** JaaS serves its own build of the API script, per app id. */
+  const loadJitsi = useCallback((src: string): Promise<any> => new Promise((resolve, reject) => {
     if ((window as any).JitsiMeetExternalAPI) return resolve((window as any).JitsiMeetExternalAPI);
     const existing = document.querySelector<HTMLScriptElement>('script[data-jitsi]');
     if (existing) {
       existing.addEventListener('load', () => resolve((window as any).JitsiMeetExternalAPI));
-      existing.addEventListener('error', () => reject(new Error('Jitsi script failed to load.')));
+      existing.addEventListener('error', () => reject(new Error('The meeting script failed to load.')));
       return;
     }
-    const s = document.createElement('script');
-    s.src = `https://${JITSI_DOMAIN}/external_api.js`;
-    s.async = true;
-    s.dataset.jitsi = 'true';
-    s.onload = () => resolve((window as any).JitsiMeetExternalAPI);
-    s.onerror = () => reject(new Error(`Could not reach ${JITSI_DOMAIN}.`));
-    document.body.appendChild(s);
+    const el = document.createElement('script');
+    el.src = src;
+    el.async = true;
+    el.dataset.jitsi = 'true';
+    el.onload = () => resolve((window as any).JitsiMeetExternalAPI);
+    el.onerror = () => reject(new Error(`Could not reach ${src}.`));
+    document.body.appendChild(el);
   }), []);
 
   const endMeeting = useCallback(() => {
@@ -244,9 +272,47 @@ export default function AuraMeetingRoom({
     if (!businessId) { toast.error('Still connecting to your business.'); return; }
     setLoadingApi(true);
     try {
-      const Jitsi = await loadJitsi();
       const name = roomFor(businessId, title);
       setRoom(name);
+
+      // --- Ask the server for tokens. The signing key stays there. ---
+      let token: string | null = null;
+      let domain = FALLBACK_DOMAIN;
+      let roomName = name;
+      let scriptSrc = `https://${FALLBACK_DOMAIN}/external_api.js`;
+      let fellBack = true;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(TOKEN_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({ businessId, userId: session?.user?.id, room: name, displayName: directorName, email: session?.user?.email }),
+        });
+        const t = await res.json();
+
+        if (t?.success && t.moderatorToken) {
+          token = t.moderatorToken;
+          domain = t.domain || JAAS_DOMAIN;
+          roomName = t.fullRoomName;                     // JaaS rooms are appId/room
+          scriptSrc = `https://${domain}/${t.appId}/external_api.js`;
+          setJaas({ appId: t.appId, guestUrl: t.guestUrl });
+          fellBack = false;
+        } else if (t && t.configured === false) {
+          toast.warning('JaaS is not set up yet, so this call will end after five minutes.', { duration: 7000 });
+        } else if (t?.error) {
+          toast.warning(`Falling back to the public server: ${t.error}`, { duration: 7000 });
+        }
+      } catch (e) {
+        toast.warning('Could not reach the token service. Falling back to the public server.');
+      }
+
+      setUsingFallback(fellBack);
+
+      const Jitsi = await loadJitsi(scriptSrc);
 
       // Container must be on screen BEFORE the API is constructed. Jitsi
       // measures its parent and will not complete a join into a hidden node.
@@ -254,8 +320,9 @@ export default function AuraMeetingRoom({
       setStartedAt(Date.now());
       await new Promise((r) => setTimeout(r, 60));   // let React paint it
 
-      const api = new Jitsi(JITSI_DOMAIN, {
-        roomName: name,
+      const api = new Jitsi(domain, {
+        roomName,
+        ...(token ? { jwt: token } : {}),
         parentNode: containerRef.current,
         width: '100%',
         height: '100%',
@@ -352,7 +419,8 @@ export default function AuraMeetingRoom({
     `Join: ${meetingUrl}\n` +
     (locked ? `Password: ${password}\n` : '') +
     `\nOpens in any browser. No account or download needed.` +
-    (locked ? `\nYou will wait briefly in the lobby until the host admits you.` : '');
+    (locked ? `\nYou will wait briefly in the lobby until the host admits you.` : '') +
+    (jaas ? `\nThis link works for 12 hours.` : '');
 
   const copyInvite = async () => {
     try { await navigator.clipboard.writeText(inviteText); toast.success('Invitation copied'); }
@@ -550,6 +618,15 @@ IMPORTANT: state near the top that spoken contributions from participants other 
               while Jitsi is joining — that is what stalled it. */}
           <div ref={containerRef} className={cn('h-full w-full', phase === 'setup' && 'invisible')} />
 
+          {started && usingFallback && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-24 flex justify-center px-4">
+              <div className="max-w-md rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-center text-[11px] leading-relaxed text-amber-200">
+                Running on the public test server, so this call ends after five minutes.
+                Configure JaaS to remove the limit — see JAAS_SETUP.md.
+              </div>
+            </div>
+          )}
+
           {phase === 'connecting' && (
             <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
               <div className="flex items-center gap-2 rounded-full bg-slate-900/90 px-4 py-2 text-[12px] font-medium text-slate-200 shadow-lg">
@@ -601,6 +678,15 @@ IMPORTANT: state near the top that spoken contributions from participants other 
                     {loadingApi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
                     {loadingApi ? 'Preparing the room...' : 'Start meeting'}
                   </button>
+
+                  {usingFallback && room && (
+                    <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3.5 py-2.5">
+                      <p className="text-[11px] leading-relaxed text-amber-200/80">
+                        JaaS is not configured, so this will run on the public test server and
+                        the call will end after five minutes.
+                      </p>
+                    </div>
+                  )}
 
                   <p className="text-center text-[11px] leading-relaxed text-slate-500">
                     If Aura is listening or in a spoken conversation, end that first —
