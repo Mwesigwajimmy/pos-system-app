@@ -153,7 +153,17 @@ export default function AuraVision({ open, onClose, businessId, userId, onScanne
         }),
       });
       const out = await res.json();
-      if (!out?.success) throw new Error(out?.error || 'Nothing could be made out.');
+      if (!out?.success) {
+        // The debug block names the cause: wrong model, rejected key, or a
+        // model that simply does not take images. Logged rather than shown,
+        // because the user needs an instruction and you need the detail.
+        if (out?.debug) console.error('[Aura Vision]', out.debug);
+        throw new Error(
+          out?.debug?.likelyCause
+            ? `${out.error} ${out.debug.likelyCause}`
+            : (out?.error || 'Nothing could be made out.'),
+        );
+      }
       setResult(out.text);
       say(out.text);
     } catch (e) {

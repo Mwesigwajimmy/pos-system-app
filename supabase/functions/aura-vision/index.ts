@@ -136,43 +136,66 @@ serve(async (req) => {
       ? imageBase64
       : `data:${mimeType};base64,${imageBase64}`;
 
+    // The instruction goes INSIDE the user message rather than in a separate
+    // system role. Several vision endpoints, this one included, ignore or
+    // reject a system message when an image is attached and return an empty
+    // completion rather than an error — which surfaced as "nothing could be
+    // made out" on every single capture, whatever the photo.
+    const instruction = `${PROMPTS[mode]}\n\n---\n\n${question || (mode === 'read' ? 'Transcribe all the text in this image.' : 'Describe what is in front of the camera.')}`;
+
+    const payload = {
+      model: VISION_MODEL,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: instruction },
+          { type: 'image_url', image_url: { url: dataUrl } },
+        ],
+      }],
+      temperature: mode === 'read' ? 0 : 0.3,
+      max_tokens: mode === 'read' ? 1500 : 500,
+    };
+
     const res = await fetch('https://api.sambanova.ai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: VISION_MODEL,
-        messages: [
-          { role: 'system', content: PROMPTS[mode] },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: question || (mode === 'read' ? 'Transcribe the text.' : 'What is in front of me?') },
-              { type: 'image_url', image_url: { url: dataUrl } },
-            ],
-          },
-        ],
-        temperature: mode === 'read' ? 0 : 0.3,
-        max_tokens: mode === 'read' ? 1500 : 400,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
-      const detail = (await res.text()).slice(0, 250);
-      const hint = /model/i.test(detail)
-        ? ` The model string "${VISION_MODEL}" may have changed — check the SambaNova Playground.`
-        : '';
-      throw new Error(`Vision model returned ${res.status}.${hint}`);
+      const detail = (await res.text()).slice(0, 400);
+      console.error('[AURA VISION] provider rejected the request:', res.status, detail);
+      return json({
+        success: false,
+        error: `The vision model returned ${res.status}.`,
+        // Returned rather than swallowed. "Nothing could be made out" gave no
+        // way to tell a dark photo from a wrong model name from an expired key.
+        debug: { status: res.status, detail, model: VISION_MODEL },
+      });
     }
 
     const out = await res.json();
-    const text = String(out?.choices?.[0]?.message?.content ?? '').trim();
+    const choice = out?.choices?.[0];
+    const text = String(choice?.message?.content ?? '').trim();
 
     if (!text) {
+      console.error('[AURA VISION] empty completion:', JSON.stringify(out).slice(0, 600));
       return json({
         success: false,
         error: mode === 'read'
-          ? 'No readable text was found. Try holding steadier, closer, or with more light.'
-          : 'Nothing could be made out. Try again with more light.',
+          ? 'No text could be read from that image.'
+          : 'Nothing could be made out in that image.',
+        debug: {
+          model: VISION_MODEL,
+          finishReason: choice?.finish_reason ?? null,
+          hadChoices: Array.isArray(out?.choices),
+          imageBytes: Math.round(imageBase64.length * 0.75),
+          // An empty completion WITH a valid response usually means the model
+          // does not accept images at all, whatever its dashboard tag says.
+          likelyCause: Array.isArray(out?.choices) && choice
+            ? 'The model replied but said nothing. It may not accept images on this endpoint — confirm in the SambaNova Playground by attaching a picture there.'
+            : 'The response contained no choices at all.',
+        },
       });
     }
 

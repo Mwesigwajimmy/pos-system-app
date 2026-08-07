@@ -36,6 +36,11 @@ export interface AuraStageProps {
   /** Caption line under the avatar. */
   caption?: string;
   size?: 'sm' | 'md' | 'lg';
+  /** Hex colour for the halo and bars. Defaults to the blue used elsewhere. */
+  accent?: string;
+  /** Set false to hold everything still — for reduced-motion preferences, and
+   *  for anyone who finds a moving face distracting during a meeting. */
+  motion?: boolean;
   className?: string;
 }
 
@@ -53,6 +58,8 @@ export function AuraStage({
   word = null,
   caption,
   size = 'md',
+  accent,
+  motion = true,
   className,
 }: AuraStageProps) {
   const [mouthOpen, setMouthOpen] = useState(false);
@@ -62,6 +69,7 @@ export function AuraStage({
   // Mouth. A word arriving from the caller opens it; otherwise a steady
   // cadence keeps it moving for as long as she is actually speaking.
   useEffect(() => {
+    if (!motion) { setMouthOpen(false); return; }
     if (!speaking) {
       setMouthOpen(false);
       clearInterval(timerRef.current);
@@ -73,7 +81,7 @@ export function AuraStage({
       setMouthOpen(open);
     }, 165);
     return () => clearInterval(timerRef.current);
-  }, [speaking]);
+  }, [speaking, motion]);
 
   useEffect(() => {
     if (!word || !speaking) return;
@@ -85,7 +93,7 @@ export function AuraStage({
   // Bars. Movement while she speaks, a slow sweep while she listens, still
   // when neither — so the state is readable across a room.
   useEffect(() => {
-    if (!speaking && !listening) {
+    if (!motion || (!speaking && !listening)) {
       setLevels(new Array(9).fill(0.18));
       return;
     }
@@ -101,7 +109,7 @@ export function AuraStage({
       );
     }, speaking ? 110 : 240);
     return () => clearInterval(id);
-  }, [speaking, listening]);
+  }, [speaking, listening, motion]);
 
   const s = SIZES[size];
   const state = speaking ? (mouthOpen ? 'happy' : 'idle')
@@ -121,17 +129,21 @@ export function AuraStage({
           className={cn(
             'absolute rounded-full transition-all duration-500',
             s.ring,
-            speaking ? 'bg-blue-500/10 scale-105' :
-            listening ? 'bg-red-500/10 scale-100' :
-            thinking ? 'bg-amber-500/10 scale-100' : 'bg-slate-400/5 scale-95',
+            !accent && speaking ? 'bg-blue-500/10 scale-105' :
+            !accent && listening ? 'bg-red-500/10 scale-100' :
+            !accent && thinking ? 'bg-amber-500/10 scale-100' : 'bg-slate-400/5 scale-95',
+            speaking && 'scale-105',
           )}
+          style={accent && speaking ? { backgroundColor: `${accent}1a` } : undefined}
         />
         <span
           className={cn(
             'absolute rounded-full border transition-all duration-300',
             s.ring,
-            speaking ? 'border-blue-300/70 animate-pulse' :
-            listening ? 'border-red-300/70 animate-pulse' :
+            speaking && motion ? 'border-blue-300/70 animate-pulse' :
+            speaking ? 'border-blue-300/70' :
+            listening && motion ? 'border-red-300/70 animate-pulse' :
+            listening ? 'border-red-300/70' :
             thinking ? 'border-amber-300/60' : 'border-slate-200',
           )}
         />
@@ -144,17 +156,22 @@ export function AuraStage({
             key={i}
             className={cn(
               'w-[3px] rounded-full transition-all duration-100',
-              speaking ? 'bg-blue-500' : listening ? 'bg-red-400' : 'bg-slate-300',
+              !accent && (speaking ? 'bg-blue-500' : listening ? 'bg-red-400' : 'bg-slate-300'),
             )}
-            style={{ height: `${Math.round(lvl * 100)}%` }}
+            style={{
+              height: `${Math.round(lvl * 100)}%`,
+              ...(accent ? { backgroundColor: speaking ? accent : listening ? '#f87171' : '#cbd5e1' } : {}),
+            }}
           />
         ))}
       </div>
 
       <p className={cn(
         'text-[12px] font-medium tracking-wide',
-        speaking ? 'text-blue-600' : listening ? 'text-red-500' : thinking ? 'text-amber-600' : 'text-slate-400',
-      )}>
+        !accent && speaking ? 'text-blue-600' : listening ? 'text-red-500' : thinking ? 'text-amber-600' : 'text-slate-400',
+      )}
+        style={accent && speaking ? { color: accent } : undefined}
+      >
         {label}
       </p>
     </div>

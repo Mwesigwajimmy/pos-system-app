@@ -30,6 +30,11 @@
  * would act on it. Captions and text are honest accessibility; a signing
  * mannequin would not be.
  *
+ * v14 CHANGE: a location button and avatar preferences. Location reports the
+ * device position AND the network estimate separately rather than merging
+ * them — a disagreement between the two is exactly the signal that catches a
+ * sign-in from somewhere the account has never been.
+ *
  * v13 CHANGE: the camera. Scan a receipt straight into the document pipeline,
  * transcribe any text in view, or have Aura describe what is in front of the
  * lens aloud — the last of those being what makes this usable by a director
@@ -96,6 +101,7 @@ import {
   Presentation, Paperclip, FileText, AlertTriangle, CheckCircle2,
   Mic, Square, Volume2, VolumeX, Phone, PhoneOff, Settings2, Video,
   Accessibility, Captions, Presentation as PresentIcon, Table2, Camera,
+  MapPin, UserCircle2,
 } from 'lucide-react';
 
 import ReactMarkdown from 'react-markdown';
@@ -106,6 +112,7 @@ import remarkGfm from 'remark-gfm';
 import { createClient } from '@/lib/supabase/client';
 import { useLocalWhisper } from '@/hooks/useLocalWhisper';
 import AuraVision from './AuraVision';
+import { AuraStage } from './AuraStage';
 import { useCopilot } from '@/context/CopilotContext';
 import { AuraAvatar } from './AuraAvatar';
 
@@ -129,6 +136,27 @@ const VOICE = { autoSend: false, maxSpokenChars: 1400 };
 // installed on the device, which costs nothing and sends no audio anywhere.
 const VOICE_KEYS = { uri: 'aura.voice.uri', rate: 'aura.voice.rate', pitch: 'aura.voice.pitch', private: 'aura.voice.private' };
 const A11Y_KEYS = { captions: 'aura.a11y.captions', large: 'aura.a11y.large' };
+
+// Avatar preferences, per device.
+const AVATAR_KEYS = { size: 'aura.avatar.size', motion: 'aura.avatar.motion', accent: 'aura.avatar.accent', perMessage: 'aura.avatar.perMessage' };
+
+const ACCENTS = [
+  { id: '', label: 'Default', swatch: '#3b82f6' },
+  { id: '#0f766e', label: 'Teal', swatch: '#0f766e' },
+  { id: '#7c3aed', label: 'Violet', swatch: '#7c3aed' },
+  { id: '#b45309', label: 'Amber', swatch: '#b45309' },
+  { id: '#0f172a', label: 'Slate', swatch: '#0f172a' },
+];
+
+const GEO_ENDPOINT = 'https://oezlqscjymzoeizysljp.supabase.co/functions/v1/aura-geo';
+
+interface PlaceResult {
+  id: string;
+  status: 'locating' | 'done' | 'failed';
+  error?: string;
+  place?: any;
+  network?: any;
+}
 
 const readStored = (key: string, fallback: string): string => {
   if (typeof window === 'undefined') return fallback;
@@ -371,6 +399,70 @@ const DocumentIntakeCard = ({ item, onPresent }: { item: DocIntake; onPresent?: 
   );
 };
 
+/** ✅ v14: where the device is, and where the network says it is. */
+const LocationCard = ({ item }: { item: PlaceResult }): React.ReactNode => {
+  if (item.status === 'locating') {
+    return (
+      <div className="ml-[46px] my-2 flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
+        <p className="text-[12px] text-slate-500">Finding your location</p>
+      </div>
+    );
+  }
+
+  if (item.status === 'failed') {
+    return (
+      <div className="ml-[46px] my-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 shadow-sm">
+        <p className="text-[11px] leading-relaxed text-amber-700">{item.error}</p>
+      </div>
+    );
+  }
+
+  const p = item.place;
+  const n = item.network;
+
+  return (
+    <div className="ml-[46px] my-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-3 py-2.5">
+        <MapPin className="h-4 w-4 shrink-0 text-slate-500" />
+        <p className="text-[12px] font-semibold text-slate-900">Location</p>
+      </div>
+
+      {p ? (
+        <div className="space-y-1 px-3 py-2.5 text-[12px]">
+          {p.display && <p className="leading-relaxed text-slate-700">{p.display}</p>}
+          <div className="flex justify-between"><span className="text-slate-500">City</span><span className="text-slate-800">{p.city ?? '—'}</span></div>
+          <div className="flex justify-between"><span className="text-slate-500">District</span><span className="text-slate-800">{p.district ?? '—'}</span></div>
+          <div className="flex justify-between"><span className="text-slate-500">Country</span><span className="text-slate-800">{p.country ?? '—'}</span></div>
+          {typeof p.accuracyMetres === 'number' && (
+            <div className="flex justify-between"><span className="text-slate-500">Accurate to</span><span className="text-slate-800">about {p.accuracyMetres} m</span></div>
+          )}
+        </div>
+      ) : (
+        <p className="px-3 py-2.5 text-[12px] leading-relaxed text-slate-500">
+          Device location was not shared, so only the network estimate is available.
+        </p>
+      )}
+
+      {n && (
+        <div className="border-t border-slate-100 bg-slate-50 px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Network</p>
+          <p className="mt-1 text-[12px] text-slate-700">
+            {[n.city, n.region, n.country].filter(Boolean).join(', ') || 'not resolved'}
+            {n.org ? ` · ${n.org}` : ''}
+          </p>
+          {/* Said plainly because it is genuinely unreliable here — mobile
+              traffic often routes through a gateway in another country, and
+              treating that as fact locks people out of their own accounts. */}
+          <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+            Network location is approximate and often wrong on mobile connections. Used only to notice a sign-in from an unexpected country.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
 
@@ -442,6 +534,13 @@ export default function CopilotPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [intakes, setIntakes] = useState<DocIntake[]>([]);   // ✅ v4
   const [visionOpen, setVisionOpen] = useState(false);       // ✅ v13
+
+  // ✅ v14 avatar preferences + location
+  const [avatarSize, setAvatarSize] = useState<'sm' | 'md'>('sm');
+  const [avatarMotion, setAvatarMotion] = useState(true);
+  const [avatarAccent, setAvatarAccent] = useState('');
+  const [avatarPerMessage, setAvatarPerMessage] = useState(true);
+  const [places, setPlaces] = useState<PlaceResult[]>([]);
 
   // ✅ v5 voice
   const [listening, setListening] = useState(false);
@@ -605,6 +704,12 @@ export default function CopilotPanel() {
     setPrivateVoice(readStored(VOICE_KEYS.private, 'false') === 'true');
     setCaptionsOn(readStored(A11Y_KEYS.captions, 'false') === 'true');
     setLargeText(readStored(A11Y_KEYS.large, 'false') === 'true');
+    setAvatarSize(readStored(AVATAR_KEYS.size, 'sm') === 'md' ? 'md' : 'sm');
+    setAvatarAccent(readStored(AVATAR_KEYS.accent, ''));
+    setAvatarPerMessage(readStored(AVATAR_KEYS.perMessage, 'true') === 'true');
+    // Respect the operating system unless the director has said otherwise.
+    const stored = readStored(AVATAR_KEYS.motion, '');
+    setAvatarMotion(stored === '' ? !window.matchMedia('(prefers-reduced-motion: reduce)').matches : stored === 'true');
     setRate(Number(readStored(VOICE_KEYS.rate, '1.02')) || 1.02);
     setPitch(Number(readStored(VOICE_KEYS.pitch, '1')) || 1);
     return () => { window.speechSynthesis.onvoiceschanged = null; };
@@ -989,6 +1094,90 @@ export default function CopilotPanel() {
             </span>
           </label>
 
+          {/* ✅ v14: avatar */}
+          <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 space-y-2.5">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+              <UserCircle2 className="h-3.5 w-3.5" /> Avatar
+            </p>
+
+            <div className="flex items-center justify-center rounded-lg bg-slate-50 py-3">
+              <AuraStage
+                speaking={speaking}
+                listening={listening || whisper.listening}
+                thinking={isChatLoading}
+                size="sm"
+                accent={avatarAccent || undefined}
+                motion={avatarMotion}
+                caption=""
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-600">Accent</label>
+              <div className="flex gap-2">
+                {ACCENTS.map((a) => (
+                  <button
+                    key={a.id || 'default'}
+                    type="button"
+                    onClick={() => { setAvatarAccent(a.id); writeStored(AVATAR_KEYS.accent, a.id); }}
+                    title={a.label}
+                    aria-label={a.label}
+                    className={cn('h-7 w-7 rounded-full border-2 transition',
+                      avatarAccent === a.id ? 'border-slate-900 scale-110' : 'border-transparent hover:scale-105')}
+                    style={{ backgroundColor: a.swatch }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-600">Size in chat</label>
+              <div className="flex gap-2">
+                {(['sm', 'md'] as const).map((sz) => (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={() => { setAvatarSize(sz); writeStored(AVATAR_KEYS.size, sz); }}
+                    className={cn('flex-1 rounded-lg border py-1.5 text-[11px] font-medium transition',
+                      avatarSize === sz ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300')}
+                  >
+                    {sz === 'sm' ? 'Compact' : 'Large'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={avatarMotion}
+                onChange={(e) => { setAvatarMotion(e.target.checked); writeStored(AVATAR_KEYS.motion, String(e.target.checked)); }}
+                className="mt-0.5 accent-blue-600"
+              />
+              <span className="min-w-0">
+                <span className="block text-[12px] font-medium text-slate-800">Animate while speaking</span>
+                <span className="block text-[11px] leading-relaxed text-slate-500">
+                  Off by default if your device asks for reduced motion.
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={avatarPerMessage}
+                onChange={(e) => { setAvatarPerMessage(e.target.checked); writeStored(AVATAR_KEYS.perMessage, String(e.target.checked)); }}
+                className="mt-0.5 accent-blue-600"
+              />
+              <span className="min-w-0">
+                <span className="block text-[12px] font-medium text-slate-800">Show on every reply</span>
+                <span className="block text-[11px] leading-relaxed text-slate-500">
+                  Turn off for a quieter thread on long conversations.
+                </span>
+              </span>
+            </label>
+          </div>
+
           {/* ✅ v9 */}
           <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 space-y-2">
             <p className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
@@ -1099,9 +1288,14 @@ export default function CopilotPanel() {
 
             {messages.map((m: any) => (
               <div key={m.id} className={cn('flex items-end gap-2.5', m.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-2 duration-300')}>
-                {m.role === 'assistant' && (
-                  <AuraAvatar agent="aura" className="h-9 w-9" interactive={false} />
+                {m.role === 'assistant' && avatarPerMessage && (
+                  <AuraAvatar
+                    agent="aura"
+                    className={avatarSize === 'md' ? 'h-12 w-12' : 'h-9 w-9'}
+                    interactive={false}
+                  />
                 )}
+                {m.role === 'assistant' && !avatarPerMessage && <span className="w-9 shrink-0" />}
                 <div className={cn(
                     'rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 max-w-[85%] sm:max-w-[80%] shadow-sm leading-relaxed break-words',
                     largeText ? 'text-[16px] sm:text-[17px]' : 'text-[13px] sm:text-[14px]',
@@ -1129,6 +1323,13 @@ export default function CopilotPanel() {
                 )}
               </div>
             ))}
+
+            {/* ✅ v14 */}
+            {places.length > 0 && (
+                <div className="space-y-1">
+                    {places.map((item) => <LocationCard key={item.id} item={item} />)}
+                </div>
+            )}
 
             {/* ✅ v4: uploaded documents and what Aura read from them */}
             {intakes.length > 0 && (
@@ -1229,6 +1430,18 @@ export default function CopilotPanel() {
             className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 hover:bg-white/70 transition-colors disabled:opacity-40"
           >
             <Paperclip className="h-4 w-4" />
+          </button>
+
+          {/* ✅ v14: where the business is */}
+          <button
+            type="button"
+            onClick={locate}
+            disabled={isChatLoading || !isReady}
+            aria-label="Find my location"
+            title="Find my location"
+            className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 hover:bg-white/70 transition-colors disabled:opacity-40"
+          >
+            <MapPin className="h-4 w-4" />
           </button>
 
           {/* ✅ v13: capture instead of upload — the receipt gets scanned at the
