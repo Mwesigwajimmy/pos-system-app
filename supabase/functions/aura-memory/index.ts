@@ -56,9 +56,20 @@ const corsHeaders = {
 
 const EMBED_MODEL = 'jina-embeddings-v3';
 const EMBED_DIMENSIONS = 1024;      // must match vector(1024) on the column
-const BATCH = 64;                   // Jina accepts up to 2048 inputs; 64 keeps
-                                    // a failure cheap and progress visible
+// Jina's ceiling is a TOKEN rate, not a request rate: 100,000 per minute on
+// this plan. Sixty-four passages at up to 8,000 characters is roughly 128,000
+// tokens in one call — over the whole minute's budget in a single request.
+// Batch size alone cannot fix that; the run has to pace itself.
+const BATCH = 20;
+const MAX_TEXT_CHARS = 3000;        // ~750 tokens; longer adds little to recall
+const TOKENS_PER_MINUTE = 85000;    // headroom under 100k for other callers
 const MAX_BACKFILL_PER_RUN = 1000;
+
+/** Rough but adequate: English averages close to four characters per token. */
+const estimateTokens = (texts: string[]) =>
+  Math.ceil(texts.reduce((sum, t) => sum + t.length, 0) / 4);
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const GLOBAL_BUSINESS = '00000000-0000-0000-0000-000000000000';
 
 function json(body: unknown, status = 200) {
@@ -94,7 +105,7 @@ async function embed(texts: string[], apiKey: string, task: 'retrieval.query' | 
       model: EMBED_MODEL,
       task,
       dimensions: EMBED_DIMENSIONS,
-      input: texts.map((t) => t.slice(0, 8000)),
+      input: texts.map((t) => t.slice(0, MAX_TEXT_CHARS)),
     }),
   });
 
@@ -192,11 +203,38 @@ serve(async (req) => {
       let embeddedCount = 0;
       const failures: any[] = [];
 
+      // Token budget for the current minute, refilled as the window rolls.
+      let windowStart = Date.now();
+      let tokensThisWindow = 0;
+      let pausedMs = 0;
+
       for (let i = 0; i < usable.length; i += BATCH) {
         const batch = usable.slice(i, i + BATCH);
+        const texts = batch.map((b) => b.text.slice(0, MAX_TEXT_CHARS));
+        const tokens = estimateTokens(texts);
+
+        // Reset the window once a minute has passed.
+        if (Date.now() - windowStart >= 60_000) {
+          windowStart = Date.now();
+          tokensThisWindow = 0;
+        }
+
+        // Would this batch exceed the minute's budget? Wait for the window to
+        // roll rather than sending it and being refused — a 429 costs the
+        // whole batch, and this costs a few seconds.
+        if (tokensThisWindow + tokens > TOKENS_PER_MINUTE) {
+          const waitFor = Math.max(0, 60_000 - (Date.now() - windowStart)) + 500;
+          pausedMs += waitFor;
+          await sleep(waitFor);
+          windowStart = Date.now();
+          tokensThisWindow = 0;
+        }
+
         try {
           // Stored content is what gets searched THROUGH, so it is a passage.
-          const vectors = await embed(batch.map((b) => b.text), key, 'retrieval.passage');
+          const vectors = await embed(texts, key, 'retrieval.passage');
+          tokensThisWindow += tokens;
+
           for (let j = 0; j < batch.length; j++) {
             const { error: upErr } = await sb.from('ai_knowledge')
               // Same literal form on the way in. Writes happened to work as an
@@ -208,8 +246,34 @@ serve(async (req) => {
             else embeddedCount += 1;
           }
         } catch (e) {
-          failures.push({ from: i, count: batch.length, reason: (e as Error).message });
-          break;   // a failing batch usually means the key or quota; stop early
+          const message = (e as Error).message;
+
+          // A rate limit is worth waiting out once — the alternative is
+          // stopping a run that would finish on its own in under a minute.
+          if (message.includes('429')) {
+            await sleep(62_000);
+            pausedMs += 62_000;
+            windowStart = Date.now();
+            tokensThisWindow = 0;
+            try {
+              const vectors = await embed(texts, key, 'retrieval.passage');
+              tokensThisWindow += tokens;
+              for (let j = 0; j < batch.length; j++) {
+                const { error: upErr } = await sb.from('ai_knowledge')
+                  .update({ embedding: `[${vectors[j].join(',')}]`, updated_at: new Date().toISOString() })
+                  .eq('id', batch[j].row.id);
+                if (upErr) failures.push({ id: batch[j].row.id, reason: upErr.message });
+                else embeddedCount += 1;
+              }
+              continue;
+            } catch (retryErr) {
+              failures.push({ from: i, count: batch.length, reason: `After waiting out the rate limit: ${(retryErr as Error).message}` });
+              break;
+            }
+          }
+
+          failures.push({ from: i, count: batch.length, reason: message });
+          break;   // anything else is usually the key or the account; stop
         }
       }
 
@@ -222,6 +286,7 @@ serve(async (req) => {
         skippedAsEmpty: skipped,
         remaining: remaining ?? 0,
         failures,
+        pausedForRateLimitMs: pausedMs,
         note: (remaining ?? 0) > 0
           ? `${remaining} rows still unembedded. Call backfill again — it is resumable and picks up where it stopped.`
           : 'Everything usable is now searchable.',
@@ -261,7 +326,22 @@ serve(async (req) => {
       if (!businessId) throw new Error('businessId is required.');
 
       const key = await jinaKey(sb);
-      const [vector] = await embed([question], key, 'retrieval.query');
+
+      // The SAME task as stored text, deliberately.
+      //
+      // The pair 'retrieval.query' and 'retrieval.passage' is meant to align —
+      // that is the whole point of task adapters. In this account they do not:
+      // recalling a stored sentence using its own text returned nothing, while
+      // recalling it with its own stored vector returned 1.000. Identical text,
+      // and the only difference was the task. Two adapters producing
+      // near-orthogonal vectors give exactly that, and it fails silently
+      // because there is no error anywhere — just a similarity too low to
+      // clear any threshold.
+      //
+      // Embedding both sides identically guarantees one space. It gives up a
+      // few points of theoretical retrieval quality and buys a system that
+      // actually finds things.
+      const [vector] = await embed([question], key, 'retrieval.passage');
 
       // The vector goes over the wire as a STRING, not an array.
       //
@@ -280,7 +360,11 @@ serve(async (req) => {
         p_business_id: businessId,
         p_query: queryLiteral,
         p_limit: Math.min(Number(body.limit) || 6, 25),
-        p_min_similarity: Number(body.minSimilarity) || 0.35,
+        // ?? rather than ||: zero is falsy, so || quietly replaced a requested
+        // threshold of 0 with 0.35 — which made "turn the threshold off"
+        // impossible to actually test.
+        p_min_similarity: body.minSimilarity !== undefined && body.minSimilarity !== null
+          ? Number(body.minSimilarity) : 0.35,
         p_content_types: body.contentTypes ?? null,
       });
 
@@ -305,8 +389,18 @@ serve(async (req) => {
         // than leaving it looking like a poor match.
         diagnostics: memories.length === 0 ? {
           queryDimensions: vector.length,
-          minSimilarity: Number(body.minSimilarity) || 0.35,
-          note: 'Nothing matched. If the store has embedded rows, check the query vector reached the function — a failed cast returns no rows and no error.',
+          minSimilarity: body.minSimilarity !== undefined && body.minSimilarity !== null
+            ? Number(body.minSimilarity) : 0.35,
+          // The actual numbers. A vector of zeros makes cosine distance NaN,
+          // every comparison then fails, and the result is an empty set with
+          // no error — indistinguishable from a search that simply found
+          // nothing. These three values tell the two apart at a glance.
+          firstThreeValues: vector.slice(0, 3),
+          magnitude: Math.sqrt(vector.reduce((s: number, v: number) => s + v * v, 0)).toFixed(4),
+          allZero: vector.every((v: number) => v === 0),
+          anyNaN: vector.some((v: number) => !Number.isFinite(v)),
+          literalPrefix: `[${vector.slice(0, 2).join(',')}...`,
+          note: 'Nothing matched. If magnitude is 0 or anyNaN is true, the embedding is the problem, not the search.',
         } : undefined,
         // Prompt-ready, and labelled as recall rather than fact so the model
         // does not present a remembered figure as a computed one.
