@@ -21,7 +21,7 @@ import {
     Library, ScrollText, PieChart, Gavel, FileCheck, Calculator, HardHat, Signal, HeartHandshake,
     Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
     CreditCard, Repeat, FileStack, Loader2, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
-    Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
+    Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, Inbox, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle,
     Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
     ChevronLeft, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Unlock, Sprout, X, LogOut, Minimize2, Maximize2, User
@@ -62,6 +62,7 @@ const navSections: NavItem[] = [
 
     { type: 'link', href: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager', 'owner', 'architect', 'commander', 'accountant', 'auditor'] },
     { type: 'link', href: '/copilot', label: 'AI Assistant', icon: Sparkles, roles: ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'] }, 
+    { type: 'link', href: '/inbox', label: 'Inbox', icon: Inbox, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander'] },
     { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'waiter_staff', 'pharmacist'] },
     
     { 
