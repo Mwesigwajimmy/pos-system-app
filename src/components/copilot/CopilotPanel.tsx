@@ -35,6 +35,16 @@
  * them — a disagreement between the two is exactly the signal that catches a
  * sign-in from somewhere the account has never been.
  *
+ * v14.1 FIX: the location button called `locate`, but `locate` was never
+ * declared anywhere in this file — the v14 note above describes what the
+ * feature does, but the function itself never made it in, so pressing the
+ * button threw `ReferenceError: locate is not defined`. Added below, right
+ * after `handleFile`: it asks the browser for the device's coordinates,
+ * falls back to a network-only estimate if permission is denied or
+ * geolocation is unavailable, and posts either to `aura-geo`, which is
+ * expected to return `{ success, place, network }` — the same shape
+ * `LocationCard` already renders.
+ *
  * v13 CHANGE: the camera. Scan a receipt straight into the document pipeline,
  * transcribe any text in view, or have Aura describe what is in front of the
  * lens aloud — the last of those being what makes this usable by a director
@@ -669,6 +679,91 @@ export default function CopilotPanel() {
       console.error('[Aura document intake]', msg);
       setIntakes((p) => p.map((x) => (x.id === id ? { ...x, status: 'failed', error: msg } : x)));
     }
+  };
+
+  /**
+   * ✅ v14.1: added — this was missing.
+   *
+   * aura-geo has two independent actions, not one combined call:
+   *
+   *   resolve      { action: 'resolve', lat, lng } -> { success, place }
+   *                Turns device coordinates into a place name. No businessId,
+   *                no userId, no auth header — the function reads none of
+   *                those.
+   *
+   *   login_check  { action: 'login_check' } -> { success, location, ... }
+   *                The server reads the IP off the request itself (x-forwarded-for
+   *                / cf-connecting-ip). Nothing is sent in the body for this
+   *                one — an endpoint that accepted a caller-supplied IP to
+   *                look up would be a tracking tool, which the function's own
+   *                comments rule out on purpose.
+   *
+   * Both are fetched (in parallel where possible) and folded into one
+   * `PlaceResult`: `place` from resolve, `network` from login_check's
+   * `location` field — kept as two separate readings rather than merged,
+   * since a disagreement between them is exactly what flags a sign-in from
+   * somewhere the account has never been.
+   */
+  const locate = async () => {
+    const id = crypto.randomUUID();
+    setPlaces((p) => [...p, { id, status: 'locating' }]);
+
+    const finish = (patch: Partial<PlaceResult>) => {
+      setPlaces((p) => p.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    };
+
+    const resolvePlace = async (lat: number, lng: number) => {
+      const res = await fetch(GEO_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resolve', lat, lng }),
+      });
+      const out = await res.json();
+      if (!out?.success) throw new Error(out?.error || 'The place could not be resolved.');
+      return out.place ?? null;
+    };
+
+    const checkNetwork = async () => {
+      // Not fatal on its own — the device place can still stand alone.
+      try {
+        const res = await fetch(GEO_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'login_check' }),
+        });
+        const out = await res.json();
+        return out?.success ? (out.location ?? null) : null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const run = async (coords: { latitude: number; longitude: number } | null) => {
+      try {
+        const [place, network] = await Promise.all([
+          coords ? resolvePlace(coords.latitude, coords.longitude) : Promise.resolve(null),
+          checkNetwork(),
+        ]);
+        if (!place && !network) throw new Error('Location could not be resolved.');
+        finish({ status: 'done', place, network });
+      } catch (e) {
+        finish({ status: 'failed', error: (e as Error).message || 'Location could not be resolved.' });
+      }
+    };
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      // No device coordinates available at all — the network estimate alone
+      // is still worth showing rather than failing outright.
+      run(null);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => run({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      // Permission denied, timed out, or position unavailable.
+      () => run(null),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+    );
   };
 
   useEffect(() => {
