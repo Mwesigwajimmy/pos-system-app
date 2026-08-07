@@ -14,6 +14,12 @@
  *
  * Nothing sends on its own. These messages go to customers under the
  * business's own name, from its own number.
+ *
+ * ✅ v1.1: oldest-waiting indicator. A raw "3 waiting" count doesn't say
+ * whether the longest-ignored customer has been sitting for ten minutes or
+ * three days — and a business that's slow to reply has no way to notice that
+ * from the count alone. Computed from the same `list` query already on
+ * screen, so it costs nothing extra to fetch.
  */
 
 import * as React from 'react';
@@ -130,6 +136,16 @@ export function AuraInbox({ businessId }: { businessId: string }) {
     (m) => m.direction === 'inbound' && (m.status === 'new' || m.status === 'drafted'),
   ).length;
 
+  // ✅ v1.1: oldest-waiting indicator. Reuses the same query data already on
+  // screen — a count alone can't tell you the longest-ignored customer has
+  // been waiting three days instead of three minutes.
+  const oldestWaiting = (data ?? [])
+    .filter((m) => m.direction === 'inbound' && (m.status === 'new' || m.status === 'drafted'))
+    .reduce((oldest: Message | null, m) => {
+      if (!oldest) return m;
+      return new Date(m.created_at) < new Date(oldest.created_at) ? m : oldest;
+    }, null as Message | null);
+
   const hasChannels = (channels ?? []).length > 0;
 
   return (
@@ -145,24 +161,34 @@ export function AuraInbox({ businessId }: { businessId: string }) {
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          {!isLoading && !isError && (
-            <Badge
-              variant="secondary"
-              className={cn('border-none px-3 py-1 text-[12px] font-semibold',
-                waiting > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700')}
-            >
-              {waiting === 0 ? 'All handled' : `${waiting} waiting`}
-            </Badge>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <div className="flex items-center gap-2">
+            {!isLoading && !isError && (
+              <Badge
+                variant="secondary"
+                className={cn('border-none px-3 py-1 text-[12px] font-semibold',
+                  waiting > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700')}
+              >
+                {waiting === 0 ? 'All handled' : `${waiting} waiting`}
+              </Badge>
+            )}
+            <Button variant="ghost" onClick={() => refetch()} disabled={isFetching}
+              className="h-9 w-9 rounded-lg p-0 text-slate-500 hover:text-slate-900">
+              <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
+            </Button>
+            <Button variant="ghost" onClick={() => setShowConnect((v) => !v)}
+              className="h-9 gap-1.5 rounded-lg px-3 text-[13px] font-medium text-slate-600 hover:text-slate-900">
+              <Plug className="h-3.5 w-3.5" /> Channels
+            </Button>
+          </div>
+
+          {/* ✅ v1.1: only shown when something is actually waiting, so the
+              header stays quiet on a clean inbox. */}
+          {!isLoading && !isError && oldestWaiting && (
+            <p className="flex items-center gap-1 text-[11px] font-medium text-amber-700">
+              <Clock className="h-3 w-3" /> Oldest waiting: {when(oldestWaiting.created_at)}
+            </p>
           )}
-          <Button variant="ghost" onClick={() => refetch()} disabled={isFetching}
-            className="h-9 w-9 rounded-lg p-0 text-slate-500 hover:text-slate-900">
-            <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
-          </Button>
-          <Button variant="ghost" onClick={() => setShowConnect((v) => !v)}
-            className="h-9 gap-1.5 rounded-lg px-3 text-[13px] font-medium text-slate-600 hover:text-slate-900">
-            <Plug className="h-3.5 w-3.5" /> Channels
-          </Button>
         </div>
       </CardHeader>
 
