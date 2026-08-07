@@ -712,10 +712,24 @@ export default function CopilotPanel() {
       setPlaces((p) => p.map((x) => (x.id === id ? { ...x, ...patch } : x)));
     };
 
+    // ✅ v14.2 FIX: "Missing authorization header" — aura-geo's own code never
+    // reads Authorization, but Supabase's platform gate rejects unauthenticated
+    // requests to an Edge Function by default regardless of what the function
+    // body checks, unless it was deployed with JWT verification turned off.
+    // Nothing in the function source shows that override, so the header is
+    // required to get past the gateway even though the handler ignores it.
+    const authHeaders = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      return {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      };
+    };
+
     const resolvePlace = async (lat: number, lng: number) => {
       const res = await fetch(GEO_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ action: 'resolve', lat, lng }),
       });
       const out = await res.json();
@@ -728,7 +742,7 @@ export default function CopilotPanel() {
       try {
         const res = await fetch(GEO_ENDPOINT, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await authHeaders(),
           body: JSON.stringify({ action: 'login_check' }),
         });
         const out = await res.json();
