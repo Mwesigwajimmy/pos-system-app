@@ -30,7 +30,6 @@ export async function submitVendorBill(formData: any) {
         return { success: false, message: error.message };
     }
 
-    // Enterprise Refresh: Updates the UI and the reports simultaneously
     revalidatePath('/accounting/bills'); 
     return { success: true, billId: data };
 }
@@ -69,8 +68,6 @@ export async function postBillPayment(payload: {
 
 /**
  * 3. ENTERPRISE ERP ACTION: Authorize & Post Bill Batch
- * Logic: Atomically transitions bills to 'posted' and generates Ledger lines via RPC.
- * This is the high-performance engine for bulk operations.
  */
 export async function bulkApproveBills(payload: {
     billIds: string[];
@@ -79,10 +76,8 @@ export async function bulkApproveBills(payload: {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // Capture the current user ID for the Audit Trail 'posted_by' field
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Call the ERP Posting Engine RPC
     const { error } = await supabase.rpc('authorize_bill_posting_batch', {
         p_bill_ids: payload.billIds,
         p_business_id: payload.businessId,
@@ -100,14 +95,11 @@ export async function bulkApproveBills(payload: {
 
 /**
  * 4. ENTERPRISE ACTION: Fetch Audit Trail
- * Logic: Retrieves the IMMUTABLE history from your master compliance table.
- * UPDATED: Pointed to the REAL 'audit_logs' table confirmed in your schema.
  */
 export async function getAccountingAuditLogs(businessId: string, limit = 50) {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // Using your real schema name 'audit_logs' as verified
     const { data, error } = await supabase
         .from('audit_logs')
         .select('*')
@@ -121,4 +113,42 @@ export async function getAccountingAuditLogs(businessId: string, limit = 50) {
     }
 
     return data;
+}
+
+/**
+ * 5. ENTERPRISE ACTION: Register New Vendor (UUID Pattern)
+ * Deeply adds a new partner to the 'vendors' table.
+ */
+export async function registerVendor(formData: {
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    contact_person?: string;
+    businessId: string;
+}) {
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+
+    const { data, error } = await supabase
+        .from('vendors')
+        .insert([{
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            contact_person: formData.contact_person,
+            business_id: formData.businessId,
+            status: 'active'
+        }])
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Vendor Registry Failure:", error);
+        return { success: false, message: error.message };
+    }
+
+    revalidatePath('/procurement/suppliers');
+    return { success: true, vendor: data };
 }

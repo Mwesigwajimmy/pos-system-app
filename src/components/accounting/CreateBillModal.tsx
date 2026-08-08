@@ -3,33 +3,30 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { createClient } from '@/lib/supabase/client';
-import { submitVendorBill } from '@/lib/actions/bills'; // The interconnected backend action
+import { submitVendorBill } from '@/lib/actions/bills'; 
 import { toast } from 'sonner';
-import { Loader2, Plus, Calendar, Landmark, Globe, MapPin } from 'lucide-react';
+import { Loader2, Plus, Calendar, Landmark, Globe, MapPin, Hash } from 'lucide-react';
 
-// UI Components (Enterprise shadcn/ui pattern)
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-/**
- * Enterprise Interface: CreateBillModalProps
- * Includes the critical 'onSuccess' hook to trigger global ledger synchronization.
- */
 interface CreateBillModalProps {
     isOpen: boolean;
     onClose: () => void;
     businessId: string;
-    onSuccess?: () => void; // Added to fix the build error and synchronize the system
+    onSuccess?: () => void;
 }
 
 export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess }: CreateBillModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [vendors, setVendors] = useState<any[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]); // FIXED: Changed from vendors to suppliers
     const [expenseAccounts, setExpenseAccounts] = useState<any[]>([]);
-    const [locations, setLocations] = useState<any[]>([]); // Deep State Addition for Interconnect
+    const [locations, setLocations] = useState<any[]>([]);
+    const [unpaidInvoices, setUnpaidInvoices] = useState<any[]>([]); // NEW: For invoice fetching
+    
     const supabase = createClient();
 
     const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
@@ -45,67 +42,67 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
         }
     });
 
-    /**
-     * 1. Dynamic Data Fetching
-     * Loads Vendors and Expense Accounts scoped strictly to the current tenant (businessId).
-     */
     useEffect(() => {
         if (isOpen) {
             const loadData = async () => {
-                // Fetch Vendors - matching UUID schema from audit
-                const { data: v } = await supabase
-                    .from('vendors')
+                // 1. Fetch from SUPPLIERS (This matches your Supplier Registry screenshot)
+                const { data: s } = await supabase
+                    .from('suppliers')
                     .select('id, name')
                     .eq('business_id', businessId)
                     .eq('status', 'active');
 
-                // DEEP AUDIT FIX: Used .ilike to ignore case sensitivity 
-                // Matches "Expense" from your database results
+                // 2. Fetch Expense Accounts
                 const { data: a } = await supabase
                     .from('accounting_accounts')
                     .select('id, name, code')
                     .eq('business_id', businessId)
-                    .ilike('type', 'expense') 
+                    .ilike('type', 'expense')
                     .eq('is_active', true);
 
-                // Fetch Locations - matching verified schema columns
+                // 3. Fetch Locations
                 const { data: l } = await supabase
                     .from('locations')
                     .select('id, name')
                     .eq('business_id', businessId)
                     .eq('status', 'active');
+
+                // 4. Fetch UNPAID INVOICES (Deep Interconnect)
+                // We fetch invoices where status is NOT paid, including the supplier name
+                const { data: inv } = await supabase
+                    .from('invoices')
+                    .select(`
+                        id, 
+                        invoice_number, 
+                        total_amount,
+                        status,
+                        suppliers (name)
+                    `)
+                    .eq('business_id', businessId)
+                    .neq('status', 'paid');
                 
-                if (v) setVendors(v || []);
+                if (s) setSuppliers(s);
                 if (a) setExpenseAccounts(a || []);
                 if (l) setLocations(l || []);
+                if (inv) setUnpaidInvoices(inv);
             };
             loadData();
         }
     }, [isOpen, businessId]);
 
-    /**
-     * 2. Transaction Submission
-     * Passes raw data to the Backend Action (submitVendorBill) 
-     * which performs the Ledger math and ACID transaction.
-     */
     const onSubmit = async (data: any) => {
         setIsSubmitting(true);
         try {
             const result = await submitVendorBill({ ...data, businessId });
-            
             if (result.success) {
-                toast.success("Bill Posted & Ledger Updated Successfully");
+                toast.success("Bill Posted Successfully");
                 reset();
-                
-                // EXECUTE INTERCONNECT: Refreshes the parent table and aged payables report
                 if (onSuccess) onSuccess(); 
-                
                 onClose();
             } else {
                 toast.error(`Posting Failed: ${result.message}`);
             }
         } catch (error) {
-            console.error("Critical System Failure:", error);
             toast.error("Critical System Interconnect Error");
         } finally {
             setIsSubmitting(false);
@@ -121,12 +118,11 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
                         Record Enterprise Vendor Bill
                     </DialogTitle>
                     <DialogDescription>
-                        This will generate a legal debt record and post dynamic lines to the General Ledger.
+                        Generate debt record and post to General Ledger.
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
-                    {/* Multi-Location & Multi-Currency Provisioning */}
                     <div className="grid grid-cols-2 gap-4 bg-muted/30 p-3 rounded-lg border">
                         <div className="space-y-1">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
@@ -140,7 +136,6 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
                                     <SelectItem value="USD">USD - US Dollar</SelectItem>
                                     <SelectItem value="UGX">UGX - Uganda Shilling</SelectItem>
                                     <SelectItem value="EUR">EUR - Euro</SelectItem>
-                                    <SelectItem value="GBP">GBP - British Pound</SelectItem>
                                     <SelectItem value="KES">KES - Kenya Shilling</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -162,34 +157,44 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
                         </div>
                     </div>
 
-                    {/* Vendor Partner & Reference ID */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label>Vendor Partner</Label>
+                            <Label>Vendor / Supplier Partner</Label>
                             <Select onValueChange={(val) => setValue('vendorId', val)}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Search Vendors..." />
+                                    <SelectValue placeholder="Search Suppliers..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {vendors.length > 0 ? vendors.map(v => (
-                                        <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                                    )) : (
-                                        <SelectItem value="none" disabled>No vendors found</SelectItem>
-                                    )}
+                                    {suppliers.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
                             <Label>Bill / Invoice #</Label>
-                            <Input 
-                                {...register('billNumber', { required: true })} 
-                                placeholder="INV-2024-001" 
-                                className="bg-white"
-                            />
+                            {/* DEEP FIX: Changed Input to Select for Automatic Fetching */}
+                            <Select onValueChange={(val) => {
+                                setValue('billNumber', val);
+                                // Optional: Auto-fill amount if found
+                                const selected = unpaidInvoices.find(i => i.invoice_number === val);
+                                if (selected) setValue('amount', selected.total_amount.toString());
+                            }}>
+                                <SelectTrigger className="bg-white">
+                                    <SelectValue placeholder="Select Pending Invoice" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {unpaidInvoices.map(inv => (
+                                        <SelectItem key={inv.id} value={inv.invoice_number}>
+                                            <span className="font-bold">{inv.invoice_number}</span> 
+                                            <span className="text-muted-foreground ml-2">({inv.suppliers?.name})</span>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
-                    {/* Expense Mapping & Financial Value (Backend Math Source) */}
                     <div className="grid grid-cols-2 gap-4 border-y py-6 bg-slate-50/50 -mx-6 px-6">
                         <div className="space-y-2">
                             <Label className="font-semibold text-blue-900">Expense Account (GL)</Label>
@@ -221,7 +226,6 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
                         </div>
                     </div>
 
-                    {/* Enterprise Compliance Dates */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2 text-sm">
@@ -245,7 +249,7 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                    Posting to Ledger...
+                                    Posting...
                                 </>
                             ) : (
                                 <>
