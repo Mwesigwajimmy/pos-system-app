@@ -52,31 +52,32 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
     useEffect(() => {
         if (isOpen) {
             const loadData = async () => {
-                // Fetch Vendors - matching UUID schema
+                // Fetch Vendors - matching UUID schema from audit
                 const { data: v } = await supabase
                     .from('vendors')
                     .select('id, name')
                     .eq('business_id', businessId)
                     .eq('status', 'active');
 
-                // Fetch Expense Accounts - matching verified schema columns [id, name, code, type]
+                // DEEP AUDIT FIX: Used .ilike to ignore case sensitivity 
+                // Matches "Expense" from your database results
                 const { data: a } = await supabase
                     .from('accounting_accounts')
                     .select('id, name, code')
                     .eq('business_id', businessId)
-                    .eq('type', 'expense')
+                    .ilike('type', 'expense') 
                     .eq('is_active', true);
 
-                // Fetch Locations - matching verified schema columns [id, name, business_id]
+                // Fetch Locations - matching verified schema columns
                 const { data: l } = await supabase
                     .from('locations')
                     .select('id, name')
                     .eq('business_id', businessId)
                     .eq('status', 'active');
                 
-                if (v) setVendors(v);
-                if (a) setExpenseAccounts(a);
-                if (l) setLocations(l);
+                if (v) setVendors(v || []);
+                if (a) setExpenseAccounts(a || []);
+                if (l) setLocations(l || []);
             };
             loadData();
         }
