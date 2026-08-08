@@ -9,17 +9,21 @@
  * The draft is editable, and what gets sent is whatever is in the box when
  * Send is pressed — not what the model wrote. That is deliberate. An
  * uneditable draft trains people to either accept it blindly or ignore the
- * feature; an editable one gets read, corrected, and improved. Most edits will
- * be a word or two, and those are exactly the corrections worth keeping.
+ * feature; an editable one gets read, corrected, and improved.
  *
  * Nothing sends on its own. These messages go to customers under the
  * business's own name, from its own number.
  *
- * ✅ v1.1: oldest-waiting indicator. A raw "3 waiting" count doesn't say
- * whether the longest-ignored customer has been sitting for ten minutes or
- * three days — and a business that's slow to reply has no way to notice that
- * from the count alone. Computed from the same `list` query already on
- * screen, so it costs nothing extra to fetch.
+ * ✅ v1.2:
+ * - The relay address is finally SHOWN. It was always generated on the
+ *   server, but the UI threw it away — which is exactly why a newly
+ *   connected business never received anything: nobody told them where to
+ *   forward their mail. Each email channel now shows its relay address with
+ *   a copy button and the three forwarding steps, including the fact that
+ *   Gmail's confirmation email will arrive HERE, in this inbox.
+ * - New email. Compose from scratch, to one address or a pasted list of up
+ *   to 500, with Aura writing the first draft from a plain instruction.
+ *   Sending still requires a person to press Send.
  */
 
 import * as React from 'react';
@@ -28,7 +32,7 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import {
   MessageSquare, Mail, Send, Loader2, RefreshCw, Check, X,
-  AlertTriangle, Inbox as InboxIcon, Plug, Clock,
+  AlertTriangle, Inbox as InboxIcon, Plug, Clock, PenLine, Copy, Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +59,14 @@ interface Message {
   sent_at: string | null;
 }
 
+interface Channel {
+  id: string;
+  channel: string;
+  identifier: string;
+  auto_send: boolean;
+  relay_address: string | null;
+}
+
 async function callInbox(payload: Record<string, unknown>) {
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch(INBOX_ENDPOINT, {
@@ -78,11 +90,21 @@ const when = (iso: string) => {
   return new Date(iso).toLocaleDateString();
 };
 
+const countRecipients = (raw: string) => {
+  const seen = new Set<string>();
+  for (const part of raw.split(/[,;\n]/)) {
+    const addr = part.trim().toLowerCase();
+    if (addr && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) seen.add(addr);
+  }
+  return seen.size;
+};
+
 export function AuraInbox({ businessId }: { businessId: string }) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = React.useState<'waiting' | 'all'>('waiting');
   const [edits, setEdits] = React.useState<Record<string, string>>({});
   const [showConnect, setShowConnect] = React.useState(false);
+  const [showCompose, setShowCompose] = React.useState(false);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['aura_inbox', businessId, filter],
@@ -98,7 +120,7 @@ export function AuraInbox({ businessId }: { businessId: string }) {
 
   const { data: channels } = useQuery({
     queryKey: ['aura_channels', businessId],
-    queryFn: async () => (await callInbox({ action: 'channels', businessId })).channels,
+    queryFn: async () => (await callInbox({ action: 'channels', businessId })).channels as Channel[],
     enabled: !!businessId,
   });
 
@@ -136,9 +158,8 @@ export function AuraInbox({ businessId }: { businessId: string }) {
     (m) => m.direction === 'inbound' && (m.status === 'new' || m.status === 'drafted'),
   ).length;
 
-  // ✅ v1.1: oldest-waiting indicator. Reuses the same query data already on
-  // screen — a count alone can't tell you the longest-ignored customer has
-  // been waiting three days instead of three minutes.
+  // A count alone can't tell you the longest-ignored customer has been
+  // waiting three days instead of three minutes.
   const oldestWaiting = (data ?? [])
     .filter((m) => m.direction === 'inbound' && (m.status === 'new' || m.status === 'drafted'))
     .reduce((oldest: Message | null, m) => {
@@ -147,6 +168,7 @@ export function AuraInbox({ businessId }: { businessId: string }) {
     }, null as Message | null);
 
   const hasChannels = (channels ?? []).length > 0;
+  const hasEmailChannel = (channels ?? []).some((c) => c.channel === 'email');
 
   return (
     <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -176,14 +198,18 @@ export function AuraInbox({ businessId }: { businessId: string }) {
               className="h-9 w-9 rounded-lg p-0 text-slate-500 hover:text-slate-900">
               <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
             </Button>
-            <Button variant="ghost" onClick={() => setShowConnect((v) => !v)}
+            {hasEmailChannel && (
+              <Button variant="ghost" onClick={() => { setShowCompose((v) => !v); setShowConnect(false); }}
+                className="h-9 gap-1.5 rounded-lg px-3 text-[13px] font-medium text-slate-600 hover:text-slate-900">
+                <PenLine className="h-3.5 w-3.5" /> New email
+              </Button>
+            )}
+            <Button variant="ghost" onClick={() => { setShowConnect((v) => !v); setShowCompose(false); }}
               className="h-9 gap-1.5 rounded-lg px-3 text-[13px] font-medium text-slate-600 hover:text-slate-900">
               <Plug className="h-3.5 w-3.5" /> Channels
             </Button>
           </div>
 
-          {/* ✅ v1.1: only shown when something is actually waiting, so the
-              header stays quiet on a clean inbox. */}
           {!isLoading && !isError && oldestWaiting && (
             <p className="flex items-center gap-1 text-[11px] font-medium text-amber-700">
               <Clock className="h-3 w-3" /> Oldest waiting: {when(oldestWaiting.created_at)}
@@ -191,6 +217,16 @@ export function AuraInbox({ businessId }: { businessId: string }) {
           )}
         </div>
       </CardHeader>
+
+      {showCompose && (
+        <ComposeEmail
+          businessId={businessId}
+          onSent={() => {
+            setShowCompose(false);
+            queryClient.invalidateQueries({ queryKey: ['aura_inbox', businessId] });
+          }}
+        />
+      )}
 
       {showConnect && <ConnectChannels businessId={businessId} channels={channels ?? []} />}
 
@@ -347,14 +383,144 @@ export function AuraInbox({ businessId }: { businessId: string }) {
   );
 }
 
-/** Connecting a number or an address. Credentials go straight to the function. */
-function ConnectChannels({ businessId, channels }: { businessId: string; channels: any[] }) {
+/**
+ * ✅ v1.2: writing a new email — to one address or a pasted list. Aura can
+ * write the first version from a plain instruction; the person edits and
+ * presses Send. The recipient count sits on the button itself so sending to
+ * 200 people never happens by surprise.
+ */
+function ComposeEmail({ businessId, onSent }: { businessId: string; onSent: () => void }) {
+  const [to, setTo] = React.useState('');
+  const [subject, setSubject] = React.useState('');
+  const [body, setBody] = React.useState('');
+  const [instruction, setInstruction] = React.useState('');
+
+  const recipientCount = countRecipients(to);
+
+  const draft = useMutation({
+    mutationFn: () => callInbox({ action: 'compose_draft', businessId, instruction: instruction.trim() }),
+    onSuccess: (out: any) => {
+      if (out.subject && !subject.trim()) setSubject(out.subject);
+      else if (out.subject) setSubject(out.subject);
+      setBody(out.body);
+      toast.success('Drafted — read it before sending');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const sendAll = useMutation({
+    mutationFn: () => callInbox({
+      action: 'compose',
+      businessId,
+      to,
+      subject: subject.trim(),
+      body: body.trim(),
+      confirm: true,
+    }),
+    onSuccess: (out: any) => {
+      if (out.sent > 0 && out.failed === 0) {
+        toast.success(out.sent === 1 ? 'Sent' : `Sent to ${out.sent} recipients`);
+        onSent();
+      } else if (out.sent > 0) {
+        toast.warning(`Sent to ${out.sent}, but ${out.failed} failed. The failures are recorded in Everything.`);
+        onSent();
+      } else {
+        toast.error(out.failures?.[0]?.error ?? 'Nothing could be sent.');
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-3 border-b border-slate-100 bg-slate-50/60 px-6 py-5">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">New email</p>
+
+      <div className="space-y-2">
+        <textarea
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          rows={2}
+          placeholder="To — one address, or paste a list separated by commas or new lines (up to 500)"
+          className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-400"
+        />
+
+        <input
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Subject"
+          className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none placeholder:text-slate-400 focus:border-slate-400"
+        />
+
+        <div className="flex gap-2">
+          <input
+            value={instruction}
+            onChange={(e) => setInstruction(e.target.value)}
+            placeholder="Tell Aura what this email should say, e.g. we are closed on Monday for stocktaking"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none placeholder:text-slate-400 focus:border-slate-400"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && instruction.trim() && !draft.isPending) draft.mutate();
+            }}
+          />
+          <Button
+            variant="ghost"
+            onClick={() => draft.mutate()}
+            disabled={!instruction.trim() || draft.isPending}
+            className="h-11 shrink-0 gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 hover:text-slate-900"
+          >
+            {draft.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Write it
+          </Button>
+        </div>
+
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={7}
+          placeholder="The email itself. Write it here, or have Aura write the first version above."
+          className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[14px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-400"
+        />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => sendAll.mutate()}
+            disabled={recipientCount === 0 || !subject.trim() || !body.trim() || sendAll.isPending}
+            className="h-9 gap-1.5 rounded-lg bg-slate-900 px-4 text-[13px] font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {sendAll.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            {recipientCount <= 1 ? 'Send' : `Send to ${recipientCount} recipients`}
+          </Button>
+
+          {recipientCount > 1 && (
+            <span className="text-[11px] text-slate-500">
+              Every recipient gets their own copy — nobody sees the list.
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Connecting a number or an address. Credentials go straight to the function.
+ *
+ * ✅ v1.2: the relay address is shown for every email channel, with the
+ * forwarding steps. This is the single piece of information receiving
+ * depends on, and it used to be invisible.
+ */
+function ConnectChannels({ businessId, channels }: { businessId: string; channels: Channel[] }) {
   const queryClient = useQueryClient();
   const [kind, setKind] = React.useState<'email' | 'whatsapp'>('email');
   const [identifier, setIdentifier] = React.useState('');
   const [phoneNumberId, setPhoneNumberId] = React.useState('');
   const [accessToken, setAccessToken] = React.useState('');
   const [resendKey, setResendKey] = React.useState('');
+
+  const copyRelay = (relay: string) => {
+    navigator.clipboard.writeText(relay)
+      .then(() => toast.success('Copied'))
+      .catch(() => toast.error('Could not copy — select it and copy manually.'));
+  };
 
   const connect = useMutation({
     mutationFn: () => callInbox({
@@ -370,8 +536,11 @@ function ConnectChannels({ businessId, channels }: { businessId: string; channel
         autoSend: false,
       },
     }),
-    onSuccess: () => {
-      toast.success('Connected');
+    onSuccess: (out: any) => {
+      const relay = out?.channel?.relay_address;
+      toast.success(relay
+        ? 'Connected — now set up forwarding to the address shown below'
+        : 'Connected');
       setIdentifier(''); setPhoneNumberId(''); setAccessToken(''); setResendKey('');
       queryClient.invalidateQueries({ queryKey: ['aura_channels', businessId] });
     },
@@ -381,16 +550,46 @@ function ConnectChannels({ businessId, channels }: { businessId: string; channel
   return (
     <div className="space-y-4 border-b border-slate-100 bg-slate-50/60 px-6 py-5">
       {channels.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Connected</p>
           {channels.map((c) => (
-            <div key={c.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <span className="text-[13px] text-slate-800">
-                {c.channel === 'whatsapp' ? 'WhatsApp' : 'Email'} · {c.identifier}
-              </span>
-              <span className="text-[11px] text-slate-500">
-                {c.auto_send ? 'replies automatically' : 'drafts only'}
-              </span>
+            <div key={c.id} className="rounded-lg border border-slate-200 bg-white">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-[13px] text-slate-800">
+                  {c.channel === 'whatsapp' ? 'WhatsApp' : 'Email'} · {c.identifier}
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  {c.auto_send ? 'replies automatically' : 'drafts only'}
+                </span>
+              </div>
+
+              {c.channel === 'email' && c.relay_address && (
+                <div className="border-t border-slate-100 px-3 py-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Your forwarding address
+                  </p>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <code className="min-w-0 flex-1 truncate rounded-md bg-slate-100 px-2 py-1.5 text-[12px] font-medium text-slate-800">
+                      {c.relay_address}
+                    </code>
+                    <Button variant="ghost" onClick={() => copyRelay(c.relay_address!)}
+                      className="h-8 w-8 shrink-0 rounded-lg p-0 text-slate-500 hover:text-slate-900">
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <ol className="mt-2 list-decimal space-y-1 pl-4 text-[12px] leading-relaxed text-slate-600">
+                    <li>In Gmail or Outlook, open the forwarding settings for {c.identifier}.</li>
+                    <li>Add this address as the forwarding destination.</li>
+                    <li>
+                      Gmail sends a confirmation email — it will arrive here in this inbox
+                      as a message from Google. Open it and use the code or link inside.
+                    </li>
+                  </ol>
+                  <p className="mt-1.5 text-[11px] text-slate-500">
+                    Until forwarding is set up, no messages can arrive on this channel.
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -413,8 +612,8 @@ function ConnectChannels({ businessId, channels }: { businessId: string; channel
           <input
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            placeholder={kind === 'email' ? 'replies@yourbusiness.com' : '+256700000000'}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] outline-none focus:border-slate-400"
+            placeholder={kind === 'email' ? 'The address customers write to, e.g. info@yourbusiness.com' : '+256700000000'}
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none placeholder:text-slate-400 focus:border-slate-400"
           />
 
           {kind === 'whatsapp' ? (
@@ -423,14 +622,14 @@ function ConnectChannels({ businessId, channels }: { businessId: string; channel
                 value={phoneNumberId}
                 onChange={(e) => setPhoneNumberId(e.target.value)}
                 placeholder="Phone number ID (from Meta)"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] outline-none focus:border-slate-400"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none placeholder:text-slate-400 focus:border-slate-400"
               />
               <input
                 type="password"
                 value={accessToken}
                 onChange={(e) => setAccessToken(e.target.value)}
                 placeholder="Access token (from Meta)"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] outline-none focus:border-slate-400"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none placeholder:text-slate-400 focus:border-slate-400"
               />
               <p className="text-[11px] leading-relaxed text-slate-500">
                 This number must be registered to the WhatsApp Cloud API. A number already in use
@@ -444,10 +643,11 @@ function ConnectChannels({ businessId, channels }: { businessId: string; channel
                 value={resendKey}
                 onChange={(e) => setResendKey(e.target.value)}
                 placeholder="Resend API key (optional — uses the shared key if blank)"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] outline-none focus:border-slate-400"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none placeholder:text-slate-400 focus:border-slate-400"
               />
               <p className="text-[11px] leading-relaxed text-slate-500">
-                Forward mail from this address to the inbox function and replies will be drafted here.
+                After connecting, you will be given a forwarding address. Set your email to
+                forward there and messages will start arriving in this inbox.
               </p>
             </>
           )}

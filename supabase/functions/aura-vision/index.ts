@@ -4,9 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
 
 /**
  * --- AURA VISION ---
- * v1.0 — what the camera is pointed at, in words.
+ * v2.0 — what the camera is pointed at, in words.
  *
- * Two jobs:
+ * Four jobs:
  *
  *   READ    — transcribe visible text. A shopkeeper points a phone at a fuel
  *             slip and the figures come back; no file, no upload step.
@@ -14,6 +14,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
  *   DESCRIBE — say what is in front of the camera, for a blind or low-vision
  *             director. Read aloud by the browser, so the app can be used
  *             without seeing it.
+ *
+ *   ASK     — (v2.0) answer a specific question about the frame. "Which of
+ *             these boxes is damaged?", "what price is on that shelf label?",
+ *             "is the shutter fully closed?". Same guardrails as every other
+ *             mode — the question changes what is attended to, never what is
+ *             permitted.
+ *
+ *   COUNT   — (v2.0) count things. Crates in the store, bottles on a shelf,
+ *             sacks on a truck. The model states the count AND how sure it
+ *             is: a partly occluded stack gets "at least 14, some may be
+ *             hidden", never a confident guess. A stocktake built on a
+ *             confident wrong count is worse than no count.
+ *
+ * LANGUAGE — (v2.0) an optional `language` field. When present, the reply is
+ * written in that language, so a director who works in Luganda or Swahili
+ * hears descriptions in their own words. Figures and printed text are still
+ * transcribed exactly as printed.
  *
  * NOTHING IS STORED. The frame is posted inline, sent to the model, and
  * dropped. Receipt scanning goes through aura-document-intake instead, because
@@ -93,6 +110,28 @@ Two or three sentences unless there is genuinely more to say. This is being list
 
 Never say "I see an image of". Just say what is there.
 ${GUARDRAILS}`,
+
+  ask: `You answer a specific question about what a camera is pointed at, for a business owner. Your words may be read aloud.
+
+Answer the question first, in one or two sentences, then add only the detail that supports the answer. If the image does not contain the answer, say so plainly — "the price label is not visible from this angle" is a useful answer; a guess is not.
+
+Read printed text exactly as printed when it is part of the answer.
+
+If the question asks about anything the boundaries below forbid, decline that part in one plain sentence and answer whatever remains of the question.
+${GUARDRAILS}`,
+
+  count: `You count things in a photograph for a business owner doing a stocktake. Your words may be read aloud.
+
+State the count first, then what you counted: "Fourteen crates, stacked in two rows of seven."
+
+Honesty about certainty is the whole job:
+- If every item is clearly visible, give the exact number.
+- If items are partly hidden, stacked behind each other, or cut off by the frame, say "at least N" and say why: "At least 12 sacks — the back of the stack is not visible."
+- If the items are too small, too blurred or too many to count reliably, say so and give a bounded estimate: "Roughly 40 to 50 bottles; the shelf is too far away for an exact count."
+Never present an estimate as an exact count. A stocktake built on a confident wrong number is worse than one with an honest range.
+
+If asked to count people, give only the number present — nothing about who they are or what they look like.
+${GUARDRAILS}`,
 };
 
 serve(async (req) => {
@@ -109,9 +148,13 @@ serve(async (req) => {
     const imageBase64 = String(body.imageBase64 ?? '');
     const mimeType = String(body.mimeType ?? 'image/jpeg');
     const question = String(body.question ?? '').slice(0, 300);
+    // v2.0: reply language. Free text ("Luganda", "Swahili", "French") so no
+    // list needs maintaining. Transcribed text stays exactly as printed.
+    const language = String(body.language ?? '').slice(0, 40).trim();
 
-    if (!PROMPTS[mode]) throw new Error(`mode must be "read" or "describe".`);
+    if (!PROMPTS[mode]) throw new Error(`mode must be "read", "describe", "ask" or "count".`);
     if (!imageBase64) throw new Error('imageBase64 is required.');
+    if (mode === 'ask' && !question) throw new Error('mode "ask" needs a question.');
 
     // base64 is roughly 4/3 the size of the bytes it encodes.
     if (imageBase64.length * 0.75 > MAX_IMAGE_BYTES) {
@@ -136,12 +179,23 @@ serve(async (req) => {
       ? imageBase64
       : `data:${mimeType};base64,${imageBase64}`;
 
+    // The reply-language note rides with the prompt, not instead of it. The
+    // guardrails and transcription rules above still govern everything.
+    const languageNote = language
+      ? `\n\nWrite your reply in ${language}. Keep any printed text, figures, product names and codes exactly as they appear in the image — transcription is never translated.`
+      : '';
+
+    const defaultTask =
+      mode === 'read' ? 'Transcribe all the text in this image.'
+      : mode === 'count' ? 'Count the items in this image as instructed above.'
+      : 'Describe what is in front of the camera.';
+
     // The instruction goes INSIDE the user message rather than in a separate
     // system role. Several vision endpoints, this one included, ignore or
     // reject a system message when an image is attached and return an empty
     // completion rather than an error — which surfaced as "nothing could be
     // made out" on every single capture, whatever the photo.
-    const instruction = `${PROMPTS[mode]}\n\n---\n\n${question || (mode === 'read' ? 'Transcribe all the text in this image.' : 'Describe what is in front of the camera.')}`;
+    const instruction = `${PROMPTS[mode]}${languageNote}\n\n---\n\n${question || defaultTask}`;
 
     const payload = {
       model: VISION_MODEL,
@@ -152,7 +206,7 @@ serve(async (req) => {
           { type: 'image_url', image_url: { url: dataUrl } },
         ],
       }],
-      temperature: mode === 'read' ? 0 : 0.3,
+      temperature: mode === 'read' || mode === 'count' ? 0 : 0.3,
       max_tokens: mode === 'read' ? 1500 : 500,
     };
 

@@ -4,12 +4,26 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
 
 /**
  * --- AURA LIVE INTEL ---
- * v1.0
+ * v1.1
  *
- * Aura's window on the outside world: web search, page reading, and live
- * exchange rates. Called by aura-quantum-audit (signed-in directors) and
- * aura-public-concierge (website visitors) when a question needs information
- * that is not in the database and not in the model's training data.
+ * Aura's window on the outside world: web search, page reading, live
+ * exchange rates, and (v1.1) actual currency conversion. Called by
+ * aura-quantum-audit (signed-in directors) and aura-public-concierge
+ * (website visitors) when a question needs information that is not in the
+ * database and not in the model's training data.
+ *
+ * v1.1 ADDS
+ *
+ * CONVERT. "How much is 500 dollars in shillings" used to come back as a rate
+ * table the model then had to multiply — and a model multiplying is exactly
+ * the step this system removes everywhere else. Conversion amounts are now
+ * detected from the question, computed here from the cached rates, and put
+ * in the pack as a finished sentence the model only has to repeat. There is
+ * also a direct `convert` action for the app to call.
+ *
+ * MULTI-READ. The `read` action accepts either one `url` or an array `urls`
+ * of up to three, fetched in parallel — so comparing two suppliers' pages or
+ * two announcements no longer takes two round trips.
  *
  * WHY THIS IS A SEPARATE FUNCTION
  *
@@ -32,6 +46,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
  * built to pass only the user's own typed words — never the business data
  * pack. That is enforced here rather than left to a prompt instruction,
  * because a prompt instruction is a request and code is a guarantee.
+ *
+ * Note on conversion: detectConvert() runs on the RAW question, because the
+ * amount is the point — but the amount is used only in arithmetic HERE. What
+ * goes to the search provider is still the sanitised string, amounts removed.
+ * The number never leaves; only the answer computed from it stays.
  *
  * INBOUND
  *
@@ -56,6 +75,7 @@ const MAX_QUERY_CHARS = 200;
 const MAX_RESULTS = 5;
 const SNIPPET_CHARS = 600;
 const PAGE_CHARS = 6000;
+const MAX_READ_URLS = 3;
 const CACHE_TTL_MS = 15 * 60 * 1000;      // search results
 const FX_CACHE_TTL_MS = 60 * 60 * 1000;   // rates move slowly enough
 
@@ -220,12 +240,56 @@ async function exchangeRates(base: string, symbols: string[]) {
   return { base: payload.base, updated: payload.updated, rates, error: null };
 }
 
+/**
+ * v1.1: a finished conversion, computed here. The multiplication happens in
+ * code, the model repeats the sentence. Returns null when the rate is not
+ * available rather than inventing one.
+ */
+async function convertAmount(amount: number, from: string, to: string) {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { error: 'A positive amount is required.', amount, from, to, result: null };
+  }
+  const f = (from || '').toUpperCase().slice(0, 3);
+  const to3 = (to || '').toUpperCase().slice(0, 3);
+  const fx = await exchangeRates(f, [to3]);
+  if (fx.error) return { error: fx.error, amount, from: f, to: to3, result: null };
+  const rate = fx.rates?.[to3];
+  if (rate === undefined) return { error: `No rate available from ${f} to ${to3}.`, amount, from: f, to: to3, result: null };
+
+  const result = amount * Number(rate);
+  return {
+    error: null,
+    amount,
+    from: f,
+    to: to3,
+    rate: Number(rate),
+    result,
+    updated: fx.updated ?? null,
+    sentence: `${amount.toLocaleString('en-US')} ${f} is ${result.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${to3} at the current rate (1 ${f} = ${Number(rate).toLocaleString('en-US', { maximumFractionDigits: 6 })} ${to3}${fx.updated ? `, updated ${fx.updated}` : ''}).`,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // INTENT
 // ---------------------------------------------------------------------------
 
-const FX_PATTERN = /\b(exchange\s*rate|forex|fx\b|currency|convert|how much is|worth in|rate of|usd|ugx|kes|tzs|rwf|eur|gbp|ngn|zar|dollar|shilling|euro|pound)\b/i;
+const FX_PATTERN = /\b(exchange\s*rate|forex|fx\b|currency|convert|how much is|worth in|rate of|usd|ugx|kes|tzs|rwf|eur|gbp|dollar|shilling|euro|pound)\b/i;
 const CURRENCY_CODES = /\b(USD|UGX|KES|TZS|RWF|EUR|GBP|NGN|ZAR|CNY|INR|AED|JPY|CAD|AUD|CHF|SAR|EGP|GHS|XOF|XAF)\b/g;
+
+// Common currency words -> codes, so "500 dollars in shillings" converts
+// without the director having to know ISO codes. Shilling defaults to UGX
+// because this system's home market is Uganda; a director who means KES will
+// write KES or "Kenyan shillings", which the code match above catches first.
+const CURRENCY_WORDS: [RegExp, string][] = [
+  [/\bus\s*dollars?\b|\bdollars?\b|\bbucks\b/i, 'USD'],
+  [/\bugandan?\s*shillings?\b|\bshillings?\b|\bugx\b/i, 'UGX'],
+  [/\bkenyan\s*shillings?\b/i, 'KES'],
+  [/\btanzanian\s*shillings?\b/i, 'TZS'],
+  [/\beuros?\b/i, 'EUR'],
+  [/\bpounds?( sterling)?\b|\bquid\b/i, 'GBP'],
+  [/\brands?\b/i, 'ZAR'],
+  [/\bnairas?\b/i, 'NGN'],
+];
 
 function detectFx(q: string): { base: string; symbols: string[] } | null {
   if (!FX_PATTERN.test(q)) return null;
@@ -233,6 +297,34 @@ function detectFx(q: string): { base: string; symbols: string[] } | null {
   if (codes.length >= 2) return { base: codes[0], symbols: codes.slice(1) };
   if (codes.length === 1) return { base: codes[0], symbols: [] };
   return { base: 'USD', symbols: [] };
+}
+
+/**
+ * v1.1: "convert 500 usd to ugx", "how much is 250 dollars in shillings".
+ * Runs on the RAW question because the amount is needed for arithmetic —
+ * the amount itself never leaves this function (see the sanitisation note
+ * at the top of the file).
+ */
+function detectConvert(q: string): { amount: number; from: string; to: string } | null {
+  const raw = String(q ?? '');
+  const m = raw.match(/([\d][\d,]*(?:\.\d+)?)\s*(?:worth of\s*)?([a-zA-Z .]{2,25})\s*(?:to|in|into|as)\s+([a-zA-Z .]{2,25})/);
+  if (!m) return null;
+
+  const amount = Number(m[1].replace(/,/g, ''));
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+
+  const resolve = (s: string): string | null => {
+    const upper = s.toUpperCase().trim();
+    const codeHit = upper.match(CURRENCY_CODES);
+    if (codeHit && codeHit.length > 0) return codeHit[0];
+    for (const [re, code] of CURRENCY_WORDS) if (re.test(s)) return code;
+    return null;
+  };
+
+  const from = resolve(m[2]);
+  const to = resolve(m[3]);
+  if (!from || !to || from === to) return null;
+  return { amount, from, to };
 }
 
 // ---------------------------------------------------------------------------
@@ -249,7 +341,7 @@ serve(async (req) => {
     const maxResults = Math.min(Number(body.maxResults) || 4, MAX_RESULTS);
 
     let jinaKey = Deno.env.get('JINA_API_KEY') ?? '';
-    if (!jinaKey && action !== 'fx') {
+    if (!jinaKey && action !== 'fx' && action !== 'convert') {
       const sb = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -265,10 +357,20 @@ serve(async (req) => {
       return json({ success: true, fx });
     }
 
+    // v1.1: a direct conversion, arithmetic done here.
+    if (action === 'convert') {
+      const conversion = await convertAmount(Number(body.amount), String(body.from ?? ''), String(body.to ?? ''));
+      return json({ success: !conversion.error, conversion });
+    }
+
     if (action === 'read') {
       if (!jinaKey) return json({ success: false, error: 'No JINA_API_KEY available.' }, 400);
-      const page = await readPage(String(body.url ?? ''), jinaKey);
-      return json({ success: true, page });
+      // v1.1: one url or several, in parallel, capped.
+      const urls: string[] = Array.isArray(body.urls)
+        ? body.urls.map(String).slice(0, MAX_READ_URLS)
+        : [String(body.url ?? '')];
+      const pages = await Promise.all(urls.map((u) => readPage(u, jinaKey)));
+      return json({ success: true, page: pages[0], pages });
     }
 
     if (action === 'search') {
@@ -279,16 +381,23 @@ serve(async (req) => {
 
     // --- auto: work out what the question needs and fetch it in parallel ---
     const fxIntent = detectFx(query);
+    const convertIntent = detectConvert(query);
     const jobs: Promise<any>[] = [];
 
     jobs.push(jinaKey ? webSearch(query, jinaKey, maxResults) : Promise.resolve({ query, results: [], error: 'No search key configured.' }));
     jobs.push(fxIntent ? exchangeRates(fxIntent.base, fxIntent.symbols) : Promise.resolve(null));
+    jobs.push(convertIntent ? convertAmount(convertIntent.amount, convertIntent.from, convertIntent.to) : Promise.resolve(null));
 
-    const [search, fx] = await Promise.all(jobs);
+    const [search, fx, conversion] = await Promise.all(jobs);
 
     // Compact, prompt-ready text. Built here so both callers render live facts
     // identically and neither has to reimplement the formatting.
     const lines: string[] = [];
+    if (conversion && !conversion.error) {
+      lines.push(`CURRENCY CONVERSION (computed here, not by you — repeat it as given):`);
+      lines.push(`  ${conversion.sentence}`);
+      lines.push('');
+    }
     if (fx && !fx.error && Object.keys(fx.rates).length > 0) {
       lines.push(`EXCHANGE RATES (base ${fx.base}${fx.updated ? `, updated ${fx.updated}` : ''}):`);
       for (const [code, rate] of Object.entries(fx.rates)) {
@@ -309,9 +418,12 @@ serve(async (req) => {
     return json({
       success: true,
       query: search?.query ?? sanitiseQuery(query),
-      hasResults: (search?.results?.length ?? 0) > 0 || (fx && !fx.error && Object.keys(fx.rates ?? {}).length > 0),
+      hasResults: (search?.results?.length ?? 0) > 0
+        || (fx && !fx.error && Object.keys(fx.rates ?? {}).length > 0)
+        || (conversion && !conversion.error),
       search,
       fx,
+      conversion,
       pack: lines.join('\n'),
     });
 
