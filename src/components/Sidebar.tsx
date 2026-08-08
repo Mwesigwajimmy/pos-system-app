@@ -372,6 +372,7 @@ const navSections: NavItem[] = [
             { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner', 'architect'] },
             { href: '/finance/receivables', label: 'Receivables', icon: FilePlus },
             { href: '/expenses', label: 'Expenses', icon: Wallet },
+            { href: '/accounting/assets/purchase', label: 'Asset Purchase', icon: ShoppingCart },
             { href: '/reports/forensic-audit', label: 'Forensic Cash Audit', icon: Fingerprint },
             { href: '/ledger', label: 'General Ledger', icon: BookOpen, roles: ['admin', 'manager', 'accountant', 'owner', 'architect'] },
             { href: '/finance/journal', label: 'Journal', icon: BookCopy },

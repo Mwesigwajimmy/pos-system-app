@@ -29,6 +29,7 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [vendors, setVendors] = useState<any[]>([]);
     const [expenseAccounts, setExpenseAccounts] = useState<any[]>([]);
+    const [locations, setLocations] = useState<any[]>([]); // Deep State Addition for Interconnect
     const supabase = createClient();
 
     const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
@@ -51,21 +52,31 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
     useEffect(() => {
         if (isOpen) {
             const loadData = async () => {
-                // Fetch Vendors for this business
+                // Fetch Vendors - matching UUID schema
                 const { data: v } = await supabase
                     .from('vendors')
                     .select('id, name')
-                    .eq('business_id', businessId);
+                    .eq('business_id', businessId)
+                    .eq('status', 'active');
 
-                // Fetch Expense Accounts (Interconnected to General Ledger)
+                // Fetch Expense Accounts - matching verified schema columns [id, name, code, type]
                 const { data: a } = await supabase
                     .from('accounting_accounts')
                     .select('id, name, code')
                     .eq('business_id', businessId)
-                    .eq('type', 'expense');
+                    .eq('type', 'expense')
+                    .eq('is_active', true);
+
+                // Fetch Locations - matching verified schema columns [id, name, business_id]
+                const { data: l } = await supabase
+                    .from('locations')
+                    .select('id, name')
+                    .eq('business_id', businessId)
+                    .eq('status', 'active');
                 
                 if (v) setVendors(v);
                 if (a) setExpenseAccounts(a);
+                if (l) setLocations(l);
             };
             loadData();
         }
@@ -126,6 +137,7 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="USD">USD - US Dollar</SelectItem>
+                                    <SelectItem value="UGX">UGX - Uganda Shilling</SelectItem>
                                     <SelectItem value="EUR">EUR - Euro</SelectItem>
                                     <SelectItem value="GBP">GBP - British Pound</SelectItem>
                                     <SelectItem value="KES">KES - Kenya Shilling</SelectItem>
@@ -138,12 +150,12 @@ export default function CreateBillModal({ isOpen, onClose, businessId, onSuccess
                             </Label>
                             <Select onValueChange={(val) => setValue('locationId', val)}>
                                 <SelectTrigger className="h-8 bg-white">
-                                    <SelectValue placeholder="Headquarters" />
+                                    <SelectValue placeholder="Select Location" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="main">Main Branch</SelectItem>
-                                    <SelectItem value="warehouse">Main Warehouse</SelectItem>
-                                    <SelectItem value="store_front">Store Front</SelectItem>
+                                    {locations.map(loc => (
+                                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>

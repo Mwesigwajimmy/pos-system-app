@@ -4,49 +4,71 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
 
 /**
  * --- AURA INBOX ---
- * v1.2 — customer messages in, drafted replies out, and now outbound mail.
+ * v1.1 — customer messages in, drafted replies out.
  *
  * ACTIONS
- *   inbound        a provider webhook delivers a message
- *   draft          write a reply for one message
- *   list           the queue, newest first
- *   approve_send   a person approves; only then does anything leave
- *   channels       connect or list a business's numbers and addresses
- *   compose        send a NEW email to one or many recipients (v1.2)
- *   compose_draft  Aura writes the subject and body from an instruction (v1.2)
+ *   inbound       a provider webhook delivers a message
+ *   draft         write a reply for one message
+ *   list          the queue, newest first
+ *   approve_send  a person approves; only then does anything leave
+ *   channels      connect or list a business's numbers and addresses
  *
- * WHAT v1.2 FIXES AND ADDS
+ * WHY APPROVAL IS NOT OPTIONAL
  *
- * 1. Credential merge on reconnect. Connecting a channel that already exists
- *    used to REPLACE the credentials jsonb wholesale, wiping stored tokens
- *    and the relay address if fields were left blank. Now the new credentials
- *    are merged over the existing ones, and the relay address, once minted,
- *    is never regenerated.
+ * These replies go to customers under the business's own name, from the
+ * business's own number. A price quoted wrongly at two in the morning is a
+ * commitment the owner has to honour or publicly retract, and they will not
+ * have seen it happen. auto_send exists on the channel record for when a
+ * business has read a month of drafts and trusts them — it is off by default
+ * and should stay off far longer than feels necessary.
  *
- * 2. Relay backfill. A channel connected before v1.1 has no relay address.
- *    The channels list now mints one on read if it is missing, so every
- *    email channel always has one to show.
+ * WHAT THE DRAFT IS BUILT FROM
  *
- * 3. Compose. A business can write a brand-new email (not a reply) to one
- *    address or to hundreds. Bulk goes through Resend's batch endpoint in
- *    chunks of 100 with a pause between chunks, and every send is recorded
- *    as an outbound message so the thread history is complete. Capped at
- *    500 recipients per call — beyond that is a mailing list product, and
- *    a runaway loop should not be able to email a business's entire
- *    customer base twice.
+ * The customer's message, the last few turns of that conversation, and
+ * whatever aura-memory recalls for the business — its terms, its prices as
+ * stored, its standing instructions. Not the ledger. A reply to a customer
+ * should never contain a figure pulled live from the accounts, because the
+ * person receiving it is not entitled to see the accounts and the assistant
+ * cannot tell which figures are safe to share.
  *
- * 4. compose_draft. Aura writes the email from a plain instruction, using
- *    the same memory recall the reply drafter uses. Nothing is sent by this
- *    action — it only returns text for a person to read, edit and approve.
+ * SENDING — EMAIL, OPTION B (v1.1)
  *
- * WHY APPROVAL IS NOT OPTIONAL — unchanged, see v1.1 note. auto_send is off
- * by default and should stay off far longer than feels necessary.
+ * No business needs its own verified sending domain or its own Resend
+ * account. Every business's email goes out through one shared, already-
+ * verified domain (AURA_SENDING_DOMAIN, e.g. inbox.bbu1.com), with the
+ * business's own name as the display name and the business's own real
+ * address as reply-to:
  *
- * EMAIL, OPTION B — unchanged. Every business sends from the shared verified
- * domain with its own display name, and receives by forwarding its real
- * inbox to its unique relay address (credentials.relay_address).
+ *   From:     "Acme Traders" <replies@inbox.bbu1.com>
+ *   Reply-To: info@acmetraders.com
  *
- * REQUIRES sql/AURA_INBOX.sql (unchanged — no migration needed for v1.2)
+ * The customer sees the business's name; a reply lands in the business's
+ * real inbox. Nothing about your platform's name appears. This is what
+ * makes onboarding free and instant for any business, regardless of what
+ * they use for email (Gmail, Outlook, a custom domain — doesn't matter).
+ *
+ * RECEIVING — EMAIL, OPTION B (v1.1)
+ *
+ * Since every business shares one receiving domain, each one is given a
+ * unique relay address on it (credentials.relay_address, auto-generated on
+ * connect — no schema change, it just lives inside the existing jsonb
+ * credentials column). The business sets up ONE forwarding rule in their own
+ * mail provider — Outlook, Gmail, whatever — from their real address to
+ * that relay address. Resend's webhook then delivers to this function, and
+ * resolveBusiness() matches the relay address back to the right business.
+ *
+ * A business that later wants their own domain fully verified for sending
+ * (so the from-address is literally their own) can still do that later —
+ * this shared-domain path is the free default that works for everyone from
+ * day one, not the ceiling.
+ *
+ * SENDING — WHATSAPP
+ *
+ * Goes through Meta's Cloud API. Each business stores its own credentials on
+ * its own channel row, because one shared account would route one
+ * customer's replies from another customer's number.
+ *
+ * REQUIRES sql/AURA_INBOX.sql (unchanged — no migration needed for v1.1)
  */
 
 const corsHeaders = {
@@ -57,13 +79,11 @@ const corsHeaders = {
 
 const CHAT_MODEL = 'Meta-Llama-3.3-70B-Instruct';
 const MAX_DRAFT_TOKENS = 500;
-const MAX_COMPOSE_TOKENS = 700;
-const THREAD_CONTEXT = 6;
+const THREAD_CONTEXT = 6;         // previous messages given to the drafter
 
-const MAX_RECIPIENTS = 500;       // per compose call
-const BATCH_SIZE = 100;           // Resend's batch endpoint maximum
-const BATCH_PAUSE_MS = 700;       // stays under Resend's default 2 req/s
-
+// The one domain every business's outbound and inbound email shares, unless
+// overridden via AURA_SENDING_DOMAIN (env var or aura_system_settings row).
+// This must be a domain verified in Resend for both sending and receiving.
 const DEFAULT_SENDING_DOMAIN = 'inbox.bbu1.com';
 
 function json(body: unknown, status = 200) {
@@ -86,33 +106,6 @@ async function settingValue(client: any, key: string): Promise<string> {
   const { data } = await client.from('aura_system_settings')
     .select('key_value').eq('key_name', key).maybeSingle();
   return data?.key_value ?? '';
-}
-
-function mintRelayAddress(businessId: string, sendingDomain: string): string {
-  const slug = String(businessId).replace(/-/g, '').slice(0, 12);
-  return `biz-${slug}@${sendingDomain}`;
-}
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Accepts an array, or a string separated by commas, semicolons or newlines. */
-function normaliseRecipients(raw: unknown): { valid: string[]; invalid: string[] } {
-  const list = Array.isArray(raw)
-    ? raw.map(String)
-    : String(raw ?? '').split(/[,;\n]/);
-
-  const seen = new Set<string>();
-  const valid: string[] = [];
-  const invalid: string[] = [];
-
-  for (const item of list) {
-    const addr = item.trim().toLowerCase();
-    if (!addr) continue;
-    if (seen.has(addr)) continue;
-    seen.add(addr);
-    (EMAIL_RE.test(addr) ? valid : invalid).push(addr);
-  }
-  return { valid, invalid };
 }
 
 // ---------------------------------------------------------------------------
@@ -140,7 +133,7 @@ function parseWhatsApp(payload: any): Incoming[] {
   for (const entry of payload?.entry ?? []) {
     for (const change of entry?.changes ?? []) {
       const value = change?.value;
-      if (!value?.messages) continue;
+      if (!value?.messages) continue;      // statuses arrive here too
 
       const businessNumber = value?.metadata?.display_phone_number ?? '';
       const contacts = value?.contacts ?? [];
@@ -170,6 +163,7 @@ function parseEmail(payload: any): Incoming[] {
   const body = payload?.text ?? payload?.['body-plain'] ?? payload?.TextBody ?? payload?.html ?? '';
   if (!from || !body) return [];
 
+  // "Name <address@example.com>" or a bare address.
   const match = String(from).match(/^(.*?)\s*<(.+?)>$/);
   return [{
     channel: 'email',
@@ -233,14 +227,14 @@ async function parseResendInbound(payload: any, client: any): Promise<Incoming[]
 /**
  * Which business owns the number or address the message arrived at.
  *
- * For email: a message can arrive addressed either to the business's own
- * real address (identifier — relevant once a business verifies its own
- * domain) or to its relay address on the shared sending domain
+ * For email (v1.1): a message can arrive addressed either to the business's
+ * own real address (identifier — relevant if a business later verifies its
+ * own domain) or to its relay address on the shared sending domain
  * (credentials.relay_address — the normal path for everyone today).
  */
 async function resolveBusiness(client: any, channel: string, identifier: string) {
   const cleaned = channel === 'whatsapp'
-    ? identifier.replace(/[^\d]/g, '')
+    ? identifier.replace(/[^\d]/g, '')          // +256 700 123 456 -> 256700123456
     : identifier.toLowerCase().trim();
 
   const { data } = await client.from('aura_channels')
@@ -259,68 +253,17 @@ async function resolveBusiness(client: any, channel: string, identifier: string)
 }
 
 // ---------------------------------------------------------------------------
-// MEMORY RECALL — shared by reply drafting and composing
-// ---------------------------------------------------------------------------
-
-async function recallForBusiness(businessId: string, query: string): Promise<string> {
-  try {
-    const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/aura-memory`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` },
-      body: JSON.stringify({
-        action: 'recall',
-        businessId,
-        query,
-        limit: 4,
-        minSimilarity: 0.35,
-      }),
-    });
-    const out = await res.json();
-    if (out?.success && out.found > 0) return out.pack;
-  } catch (e) {
-    // A draft without recall is worse but still useful; a draft that never
-    // arrives because recall failed is not.
-    console.warn('[AURA INBOX] recall unavailable:', (e as Error).message);
-  }
-  return '';
-}
-
-async function callModel(client: any, system: string, user: string, maxTokens: number): Promise<{ text: string; error?: string }> {
-  const apiKey = await settingValue(client, 'SAMBANOVA_API_KEY');
-  if (!apiKey) return { text: '', error: 'No SAMBANOVA_API_KEY available.' };
-
-  try {
-    const res = await fetch('https://api.sambanova.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: CHAT_MODEL,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-        temperature: 0.4,
-        max_tokens: maxTokens,
-      }),
-    });
-
-    if (!res.ok) return { text: '', error: `Drafting model returned ${res.status}: ${(await res.text()).slice(0, 200)}` };
-
-    const out = await res.json();
-    const text = String(out?.choices?.[0]?.message?.content ?? '').trim();
-    return text ? { text } : { text: '', error: 'The model returned nothing.' };
-  } catch (e) {
-    return { text: '', error: (e as Error).message };
-  }
-}
-
-// ---------------------------------------------------------------------------
-// DRAFTING A REPLY
+// DRAFTING
 // ---------------------------------------------------------------------------
 
 async function draftReply(client: any, message: any, businessName: string, currency: string): Promise<{ draft: string; error?: string }> {
+  const apiKey = await settingValue(client, 'SAMBANOVA_API_KEY');
+  if (!apiKey) return { draft: '', error: 'No SAMBANOVA_API_KEY available.' };
+
+  // The conversation so far, so a reply does not repeat what was said an hour
+  // ago or answer a question that has already been answered.
   const { data: history } = await client.from('aura_messages')
-    .select('id, direction, body, draft_reply, status, created_at')
+    .select('direction, body, draft_reply, status, created_at')
     .eq('business_id', message.business_id)
     .eq('thread_key', message.thread_key)
     .order('created_at', { ascending: false })
@@ -333,7 +276,27 @@ async function draftReply(client: any, message: any, businessName: string, curre
       : `${businessName}: ${m.status === 'sent' ? m.body : (m.draft_reply ?? m.body)}`)
     .join('\n');
 
-  const recalled = await recallForBusiness(message.business_id, message.body);
+  // What the business has told Aura about itself: terms, prices, policies.
+  let recalled = '';
+  try {
+    const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/aura-memory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` },
+      body: JSON.stringify({
+        action: 'recall',
+        businessId: message.business_id,
+        query: message.body,
+        limit: 4,
+        minSimilarity: 0.35,
+      }),
+    });
+    const out = await res.json();
+    if (out?.success && out.found > 0) recalled = out.pack;
+  } catch (e) {
+    // A reply without recall is worse but still useful; a reply that never
+    // arrives because recall failed is not.
+    console.warn('[AURA INBOX] recall unavailable:', (e as Error).message);
+  }
 
   const system = `You are writing a reply on behalf of ${businessName}, to a customer who has messaged them on ${message.channel === 'whatsapp' ? 'WhatsApp' : 'email'}.
 
@@ -357,14 +320,94 @@ Currency, if amounts come up: ${currency}.
 
 Write only the reply itself. No preamble, no explanation, no quotation marks around it.`;
 
-  const { text, error } = await callModel(
-    client, system,
-    `The customer${message.counterparty_name ? ` (${message.counterparty_name})` : ''} wrote:\n\n${message.body}`,
-    MAX_DRAFT_TOKENS,
-  );
+  try {
+    const res = await fetch('https://api.sambanova.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: CHAT_MODEL,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: `The customer${message.counterparty_name ? ` (${message.counterparty_name})` : ''} wrote:\n\n${message.body}` },
+        ],
+        temperature: 0.4,
+        max_tokens: MAX_DRAFT_TOKENS,
+      }),
+    });
 
-  if (error) return { draft: '', error };
-  return { draft: text.replace(/^["']|["']$/g, '') };
+    if (!res.ok) return { draft: '', error: `Drafting model returned ${res.status}: ${(await res.text()).slice(0, 200)}` };
+
+    const out = await res.json();
+    const draft = String(out?.choices?.[0]?.message?.content ?? '').trim()
+      .replace(/^["']|["']$/g, '');
+
+    return draft ? { draft } : { draft: '', error: 'The model returned nothing.' };
+  } catch (e) {
+    return { draft: '', error: (e as Error).message };
+  }
+}
+
+/**
+ * Writes a fresh outbound email — not a reply to any specific customer, no
+ * thread history to draw on. Used by the standalone "New email" composer.
+ */
+async function draftCompose(client: any, businessId: string, prompt: string, businessName: string, currency: string): Promise<{ subject: string; body: string; error?: string }> {
+  const apiKey = await settingValue(client, 'SAMBANOVA_API_KEY');
+  if (!apiKey) return { subject: '', body: '', error: 'No SAMBANOVA_API_KEY available.' };
+
+  let recalled = '';
+  try {
+    const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/aura-memory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` },
+      body: JSON.stringify({ action: 'recall', businessId, query: prompt, limit: 4, minSimilarity: 0.35 }),
+    });
+    const out = await res.json();
+    if (out?.success && out.found > 0) recalled = out.pack;
+  } catch (e) {
+    console.warn('[AURA INBOX] recall unavailable for compose:', (e as Error).message);
+  }
+
+  const system = `You are writing a fresh email on behalf of ${businessName} — not a reply to anyone, a new message the business is initiating.
+
+You are writing AS the business. Never say you are an AI, never mention that a draft was generated.
+
+Plain, direct, short. No filler, no "we are pleased to inform you."
+
+${recalled ? `WHAT THIS BUSINESS HAS ON RECORD:\n${recalled}\n` : ''}
+Currency, if relevant: ${currency}.
+
+Respond in exactly this format and nothing else:
+SUBJECT: <a short subject line>
+BODY: <the email body>`;
+
+  try {
+    const res = await fetch('https://api.sambanova.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: CHAT_MODEL,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.4,
+        max_tokens: MAX_DRAFT_TOKENS,
+      }),
+    });
+    if (!res.ok) return { subject: '', body: '', error: `Drafting model returned ${res.status}: ${(await res.text()).slice(0, 200)}` };
+
+    const out = await res.json();
+    const raw = String(out?.choices?.[0]?.message?.content ?? '').trim();
+    const subjectMatch = raw.match(/SUBJECT:\s*(.+)/i);
+    const bodyMatch = raw.match(/BODY:\s*([\s\S]+)/i);
+    return {
+      subject: subjectMatch?.[1]?.trim() ?? '',
+      body: (bodyMatch?.[1]?.trim() ?? raw).replace(/^["']|["']$/g, ''),
+    };
+  } catch (e) {
+    return { subject: '', body: '', error: (e as Error).message };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -404,24 +447,13 @@ async function sendWhatsApp(channel: any, to: string, text: string): Promise<{ o
 }
 
 /**
- * The pieces every outbound email needs, resolved once per channel: which
- * API key, which from-address, which reply-to. Shared by single sends,
- * replies and bulk compose so they can never disagree.
+ * Email — Option B. Sends from the shared, already-verified sending domain,
+ * branded with the business's own name, replying to the business's real
+ * address. A business's own resend_api_key (if it ever adds one under
+ * Option A) still overrides the shared key; the from-domain logic here is
+ * independent of that and always uses AURA_SENDING_DOMAIN unless the
+ * channel itself carries a verified from_domain override in credentials.
  */
-async function emailSendConfig(client: any, channel: any, businessName?: string) {
-  const apiKey = channel?.credentials?.resend_api_key || await settingValue(client, 'RESEND_API_KEY');
-  const sendingDomain = channel?.credentials?.verified_from_domain
-    || await settingValue(client, 'AURA_SENDING_DOMAIN')
-    || DEFAULT_SENDING_DOMAIN;
-
-  const displayName = (businessName || 'Support').replace(/["<>]/g, '');
-  return {
-    apiKey,
-    from: `${displayName} <replies@${sendingDomain}>`,
-    replyTo: channel?.identifier || undefined,
-  };
-}
-
 async function sendEmail(
   client: any,
   channel: any,
@@ -430,8 +462,16 @@ async function sendEmail(
   text: string,
   businessName?: string,
 ): Promise<{ ok: boolean; error?: string; id?: string }> {
-  const { apiKey, from, replyTo } = await emailSendConfig(client, channel, businessName);
+  const apiKey = channel?.credentials?.resend_api_key || await settingValue(client, 'RESEND_API_KEY');
   if (!apiKey) return { ok: false, error: 'No Resend API key configured.' };
+
+  const sendingDomain = channel?.credentials?.verified_from_domain
+    || await settingValue(client, 'AURA_SENDING_DOMAIN')
+    || DEFAULT_SENDING_DOMAIN;
+
+  const displayName = (businessName || 'Support').replace(/["<>]/g, '');
+  const from = `${displayName} <replies@${sendingDomain}>`;
+  const replyTo = channel?.identifier || undefined;
 
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -451,61 +491,6 @@ async function sendEmail(
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
-}
-
-/**
- * Bulk email through Resend's batch endpoint: up to 100 messages per call,
- * with a pause between calls to stay under the rate limit. If a whole batch
- * call fails, every recipient in that chunk is marked failed with the same
- * reason — Resend does not report per-recipient outcomes on a failed call.
- */
-async function sendEmailBulk(
-  client: any,
-  channel: any,
-  recipients: string[],
-  subject: string,
-  text: string,
-  businessName?: string,
-): Promise<Array<{ to: string; ok: boolean; id?: string; error?: string }>> {
-  const { apiKey, from, replyTo } = await emailSendConfig(client, channel, businessName);
-  if (!apiKey) return recipients.map((to) => ({ to, ok: false, error: 'No Resend API key configured.' }));
-
-  const results: Array<{ to: string; ok: boolean; id?: string; error?: string }> = [];
-
-  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-    const chunk = recipients.slice(i, i + BATCH_SIZE);
-    if (i > 0) await new Promise((r) => setTimeout(r, BATCH_PAUSE_MS));
-
-    const batch = chunk.map((to) => ({
-      from,
-      to: [to],
-      ...(replyTo ? { reply_to: replyTo } : {}),
-      subject,
-      text,
-    }));
-
-    try {
-      const res = await fetch('https://api.resend.com/emails/batch', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(batch),
-      });
-
-      if (!res.ok) {
-        const reason = `${res.status}: ${(await res.text()).slice(0, 200)}`;
-        for (const to of chunk) results.push({ to, ok: false, error: reason });
-        continue;
-      }
-
-      const out = await res.json().catch(() => ({}));
-      const ids: any[] = Array.isArray(out?.data) ? out.data : [];
-      chunk.forEach((to, idx) => results.push({ to, ok: true, id: ids[idx]?.id }));
-    } catch (e) {
-      for (const to of chunk) results.push({ to, ok: false, error: (e as Error).message });
-    }
-  }
-
-  return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -741,126 +726,6 @@ serve(async (req) => {
       return json({ success: result.ok, sent: result.ok, error: result.error ?? null });
     }
 
-    // ------------------------------------------------------- COMPOSE_DRAFT
-    // Aura writes a new email from an instruction. Nothing sends here — this
-    // only returns text for a person to read, edit and approve.
-    if (action === 'compose_draft') {
-      if (!payload.businessId) throw new Error('businessId is required.');
-      const instruction = String(payload.instruction ?? '').trim();
-      if (!instruction) throw new Error('Say what the email should be about.');
-
-      const { data: tenant } = await client.from('tenants')
-        .select('name, currency').eq('id', payload.businessId).maybeSingle();
-      const businessName = tenant?.name ?? 'the business';
-
-      const recalled = await recallForBusiness(payload.businessId, instruction);
-
-      const system = `You are writing an email on behalf of ${businessName}, to be sent to one or more of their customers.
-
-You are writing AS the business. Never say you are an AI and never mention that this was drafted.
-
-HOW TO WRITE
-- Plain, warm, direct language. Short paragraphs. No corporate filler.
-- If this goes to many recipients, write it so it reads naturally without a personal name.
-- Never quote a price, a stock figure or a date unless it appears in the material below.
-- Never promise discounts, refunds or exceptions the instruction did not state.
-- Never mention the business's finances, other customers, staff or suppliers.
-
-${recalled ? `WHAT THIS BUSINESS HAS ON RECORD:\n${recalled}\n` : ''}Currency, if amounts come up: ${tenant?.currency ?? ''}.
-
-Respond with ONLY a JSON object, no markdown fences, in exactly this shape:
-{"subject": "...", "body": "..."}`;
-
-      const { text, error } = await callModel(client, system, instruction, MAX_COMPOSE_TOKENS);
-      if (error) throw new Error(error);
-
-      let subject = '';
-      let body = '';
-      try {
-        const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
-        subject = String(parsed?.subject ?? '').trim();
-        body = String(parsed?.body ?? '').trim();
-      } catch {
-        // The model ignored the shape — treat everything as the body rather
-        // than failing the whole request.
-        body = text;
-      }
-      if (!body) throw new Error('The model returned nothing usable.');
-
-      return json({ success: true, subject, body });
-    }
-
-    // -------------------------------------------------------------- COMPOSE
-    // A brand-new outbound email to one or many recipients. Requires an
-    // explicit confirm, the same as approve_send — bulk especially, because
-    // a mis-sent campaign cannot be unsent.
-    if (action === 'compose') {
-      if (!payload.businessId) throw new Error('businessId is required.');
-      if (payload.confirm !== true) {
-        return json({ success: false, error: 'Nothing was sent. Send confirm: true once a person has read the email.' }, 200);
-      }
-
-      const { valid: recipients, invalid } = normaliseRecipients(payload.to);
-      if (recipients.length === 0) throw new Error('No valid email address to send to.');
-      if (recipients.length > MAX_RECIPIENTS) {
-        throw new Error(`That is ${recipients.length} recipients — the limit is ${MAX_RECIPIENTS} per send. Split the list.`);
-      }
-
-      const subject = String(payload.subject ?? '').trim();
-      const body = String(payload.body ?? '').trim();
-      if (!subject) throw new Error('The email needs a subject.');
-      if (!body) throw new Error('The email needs a body.');
-
-      const { data: channelRow } = await client.from('aura_channels')
-        .select('*').eq('business_id', payload.businessId)
-        .eq('channel', 'email').eq('is_active', true).maybeSingle();
-      if (!channelRow) throw new Error('No active email channel is connected for this business. Connect one first.');
-
-      const { data: tenant } = await client.from('tenants')
-        .select('name').eq('id', payload.businessId).maybeSingle();
-
-      const results = recipients.length === 1
-        ? [{ to: recipients[0], ...(await sendEmail(client, channelRow, recipients[0], subject, body, tenant?.name)) }]
-        : await sendEmailBulk(client, channelRow, recipients, subject, body, tenant?.name);
-
-      // Every send becomes an outbound message on that recipient's thread, so
-      // when they reply, the conversation already has its first half.
-      const now = new Date().toISOString();
-      const rows = results.map((r) => ({
-        business_id: payload.businessId,
-        channel: 'email',
-        direction: 'outbound',
-        external_id: r.id ?? null,
-        counterparty: r.to,
-        counterparty_name: null,
-        thread_key: r.to,
-        subject,
-        body,
-        status: r.ok ? 'sent' : 'failed',
-        send_error: r.ok ? null : (r.error ?? null),
-        approved_by: payload.approvedBy ?? null,
-        approved_at: now,
-        sent_at: r.ok ? now : null,
-      }));
-
-      for (let i = 0; i < rows.length; i += 100) {
-        const { error } = await client.from('aura_messages').insert(rows.slice(i, i + 100));
-        if (error) console.warn('[AURA INBOX] compose record failed:', error.message);
-      }
-
-      const sent = results.filter((r) => r.ok).length;
-      const failed = results.filter((r) => !r.ok);
-
-      return json({
-        success: sent > 0,
-        sent,
-        failed: failed.length,
-        failures: failed.slice(0, 20),
-        invalidAddresses: invalid,
-        durationMs: Date.now() - started,
-      });
-    }
-
     // ------------------------------------------------------------ CHANNELS
     if (action === 'channels') {
       if (!payload.businessId) throw new Error('businessId is required.');
@@ -869,30 +734,15 @@ Respond with ONLY a JSON object, no markdown fences, in exactly this shape:
         const { channel, identifier, provider, credentials, autoDraft, autoSend } = payload.connect;
         if (!channel || !identifier) throw new Error('channel and identifier are required.');
 
-        // v1.2: merge over what is already stored, so reconnecting with a
-        // blank key field no longer wipes tokens or the relay address. Blank
-        // strings from an empty form field must not overwrite real values.
-        const { data: existing } = await client.from('aura_channels')
-          .select('credentials')
-          .eq('business_id', payload.businessId)
-          .eq('channel', channel).eq('identifier', identifier)
-          .maybeSingle();
-
-        const supplied: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(credentials ?? {})) {
-          if (v !== '' && v !== null && v !== undefined) supplied[k] = v;
-        }
-        const finalCredentials: Record<string, any> = {
-          ...(existing?.credentials ?? {}),
-          ...supplied,
-        };
+        const finalCredentials = { ...(credentials ?? {}) };
 
         // Email, Option B: every business gets a unique relay address on the
         // shared sending domain, so inbound mail forwarded to it can be
-        // matched back to this business. Minted once, kept stable after.
+        // matched back to this business. Generated once, kept stable after.
         if (channel === 'email' && !finalCredentials.relay_address) {
           const sendingDomain = await settingValue(client, 'AURA_SENDING_DOMAIN') || DEFAULT_SENDING_DOMAIN;
-          finalCredentials.relay_address = mintRelayAddress(payload.businessId, sendingDomain);
+          const slug = String(payload.businessId).replace(/-/g, '').slice(0, 12);
+          finalCredentials.relay_address = `biz-${slug}@${sendingDomain}`;
         }
 
         const { data, error } = await client.from('aura_channels').upsert({
@@ -922,41 +772,24 @@ Respond with ONLY a JSON object, no markdown fences, in exactly this shape:
         .select('id, channel, identifier, provider, credentials, auto_draft, auto_send, is_active, created_at')
         .eq('business_id', payload.businessId);
 
-      // v1.2 backfill: an email channel connected before relay addresses
-      // existed gets one minted here, on read, so the UI always has an
-      // address to show and forwarding can be set up.
-      const sendingDomain = await settingValue(client, 'AURA_SENDING_DOMAIN') || DEFAULT_SENDING_DOMAIN;
-      const sanitized: any[] = [];
-
-      for (const c of (data ?? [])) {
-        let relay = c.credentials?.relay_address ?? null;
-
-        if (c.channel === 'email' && !relay) {
-          relay = mintRelayAddress(payload.businessId, sendingDomain);
-          await client.from('aura_channels')
-            .update({ credentials: { ...(c.credentials ?? {}), relay_address: relay } })
-            .eq('id', c.id);
-        }
-
-        // Same principle as connect: only relay_address escapes credentials,
-        // nothing else.
-        sanitized.push({
-          id: c.id,
-          channel: c.channel,
-          identifier: c.identifier,
-          provider: c.provider,
-          auto_draft: c.auto_draft,
-          auto_send: c.auto_send,
-          is_active: c.is_active,
-          created_at: c.created_at,
-          relay_address: relay,
-        });
-      }
+      // Same principle on the read path: only relay_address escapes
+      // credentials, nothing else.
+      const sanitized = (data ?? []).map((c: any) => ({
+        id: c.id,
+        channel: c.channel,
+        identifier: c.identifier,
+        provider: c.provider,
+        auto_draft: c.auto_draft,
+        auto_send: c.auto_send,
+        is_active: c.is_active,
+        created_at: c.created_at,
+        relay_address: c.credentials?.relay_address ?? null,
+      }));
 
       return json({ success: true, channels: sanitized });
     }
 
-    throw new Error(`Unknown action "${action}". Use inbound, draft, list, approve_send, compose, compose_draft or channels.`);
+    throw new Error(`Unknown action "${action}". Use inbound, draft, list, approve_send or channels.`);
 
   } catch (error) {
     console.error('[AURA INBOX]', (error as Error).message);
