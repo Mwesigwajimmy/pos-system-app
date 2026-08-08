@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { registerVendor } from '@/lib/actions/bills';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Mail, Phone, MapPin, User } from 'lucide-react';
+import { Loader2, UserPlus, Mail, Phone, MapPin, User, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
